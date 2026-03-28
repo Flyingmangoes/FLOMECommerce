@@ -4,7 +4,6 @@ import (
 	"backend/cmd/server"
 	"backend/src/config"
 	"backend/src/database"
-	"backend/src/middlewares"
 	"backend/src/services"
 	"log/slog"
 	"os"
@@ -28,10 +27,9 @@ func main() {
 	userStore := services.NewUserStore(db)
 	productStore := services.NewProductStore(db)
 	orderStore := services.NewOrderStore(db)
+	tokenStore := services.NewTokenStore(db)
 
-	authc := middlewares.NewAuthContext(cfg.ServConf)
-
-	serv := server.SetupServer(userStore, productStore, orderStore, *authc)
+	serv := server.SetupServer(userStore, productStore, orderStore, tokenStore, cfg.ServConf)
 
 	serv.StartLoop(cfg)
 }

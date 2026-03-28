@@ -16,10 +16,6 @@ func (e *AppError) Error() string {
     return e.Message
 }
 
-//
-// Middleware Error Handler in server package
-//
-
 // Helper constructors
 func ErrBadRequest(msg string) *AppError {
     return &AppError{Code: http.StatusBadRequest, Message: msg}
@@ -44,6 +40,10 @@ func ErrNotFound(msg string) *AppError {
 func JSONAppErrorReporter() gin.HandlerFunc {
     return jsonAppErrorReporterT(gin.ErrorTypeAny)
 }
+
+//
+// Middleware Error Handler in server package
+//
 
 func jsonAppErrorReporterT(errType gin.ErrorType) gin.HandlerFunc {
     return func(c *gin.Context) {

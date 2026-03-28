@@ -2,12 +2,11 @@ package models
 
 import "time"
 
-type UserRefreshToken struct {
-	Id				string
-	UserID 			string 				 
-	Username		string		
-	UserType 		string		
-	CreatedAt 		time.Time 	
-	ExpiredAt		*time.Time	
-	Revoked 		bool
+type RefreshToken struct {
+	TokenID   string    `db:"token_id"`
+    UserID    string    `db:"user_id"`
+	Token     string    `db:"token"`		 
+	ExpiresAt time.Time `db:"expires_at"`
+    CreatedAt time.Time `db:"created_at"`
+	Revoked   bool		`db:"is_revoked"`
 }	

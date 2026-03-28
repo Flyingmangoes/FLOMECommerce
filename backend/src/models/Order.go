@@ -5,11 +5,13 @@ import "time"
 type Order struct {
     OrderID     string      `db:"order_id"`
     BuyerID     string      `db:"buyer_id"`
+    BuyerEmail  string      `db:"buyer_email"`
     TotalPrice  float64     `db:"price_total"`
     Location    string      `db:"location"`
     Status      string      `db:"status"`
     ETA         time.Time   `db:"ETA"`
-    CreatedAt   time.Time   `db:"created_at"`   // needed for cursor
+    CreatedAt   time.Time   `db:"created_at"`
+    FulfilledAt time.Time   `db:"fulfilled_at"`
     OrderItems  []OrderItem
 }
 

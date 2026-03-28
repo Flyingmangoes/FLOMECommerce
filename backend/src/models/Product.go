@@ -7,12 +7,15 @@ import (
 type Product struct {
     ProductID       string      `db:"product_id"`
     SellerID        string      `db:"seller_id"`
-    ProductName     string      `db:"product_name"`
-    ProductDesc     string      `db:"product_desc"`
+    Name            string      `db:"product_name"`
+    Desc            string      `db:"product_desc"`
     StoreName       string      `db:"store_name"`
-    ProductPicUrl   string      `db:"product_pic"`   // URLpath
+    Url             string      `db:"url"`
+    ImageUrl        string      `db:"product_pic"`  
     Price           float64     `db:"price"`
+    Category        string      `db:"Category"`
     Rating          float64     `db:"rating"`
-    CreatedAt       time.Time   `db:"created_at"`    // needed for cursor
+    Availability     int         `db:"availability"`
+    CreatedAt       time.Time   `db:"created_at"` 
     UpdatedAt       *time.Time  `db:"updated_at"`
 }

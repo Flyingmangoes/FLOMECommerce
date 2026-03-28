@@ -8,11 +8,17 @@ type User struct {
 	LastName 		string		`db:"lastname"`
 	Username		string		`db:"username"`
 	Email 			string 		`db:"email"`
+	PhoneNumber		string		`db:"phone_number"`
 	PasswordHash 	string 		`db:"passwordhashed"`
-	UserLocation 	string 		`db:"user_location"`
+	Locale 			string 		`db:"user_locale"`
+	Country			string		`db:"user_country"`
 	UserType 		string		`db:"user_type"`
 	IsVerified		bool 		`db:"is_verified"`	
-	IsAgree 		bool		`db:"is_agree"`
+	IsAgree			bool		`db:"is_agree"`
+	EmailConsent 	bool		`db:"email_consent"`
+	SmsConsent		bool 		`db:"sms_consent"`
+	Consent_Updated *time.Time  `db:"consent_updated_at"`
+	Consent_src		string		`db:"consent_source"`
 	CreatedAt 		time.Time 	`db:"created_at"`
 	Updatedat  		*time.Time	`db:"updated_at"`
 }	
