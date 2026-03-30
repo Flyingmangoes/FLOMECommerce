@@ -6,6 +6,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"time"
 )
 
@@ -51,18 +52,26 @@ type UserProfileParams struct {
 	UpdatedAt		*time.Time
 }
 
+
+
 type ListUsersFilter struct {
 	UserType *string
 	utils.PagFilter
 }
 
+
+
 type UserStore struct {
 	db *sql.DB
 }
 
+
+
 func NewUserStore(db *sql.DB) *UserStore {
 	return &UserStore{db: db}
 }
+
+
 
 func (us *UserStore)CreateUser(ctx context.Context, params *UserProfileParams) (*models.User, error) {
 	user := &models.User{}
@@ -125,6 +134,8 @@ func (us *UserStore)CreateUser(ctx context.Context, params *UserProfileParams) (
 	return user, nil
 }
 
+
+
 func (us *UserStore)DeleteUser(ctx context.Context, params *UserProfileParams) error {
 	result, err := us.db.ExecContext(ctx, 
 		`DELETE FROM mkt_users
@@ -147,6 +158,8 @@ func (us *UserStore)DeleteUser(ctx context.Context, params *UserProfileParams) e
 	return nil
 }
 
+
+
 func (us *UserStore)GetUserByEmail(ctx context.Context, lookup *UserProfileParams) (*models.User, error) {
 	user := &models.User{}
 	err := us.db.QueryRowContext(ctx,
@@ -168,6 +181,8 @@ func (us *UserStore)GetUserByEmail(ctx context.Context, lookup *UserProfileParam
 
 	return user, nil
 }
+
+
 
 func (us *UserStore) GetUserByUsername(ctx context.Context, lookup *UserProfileParams) (*models.User, error) {
 	user := &models.User{}
@@ -194,19 +209,41 @@ func (us *UserStore) GetUserByUsername(ctx context.Context, lookup *UserProfileP
 func (us *UserStore) GetPassword(ctx context.Context, params *UserProfileParams) (*models.User, error) {
     user := &models.User{}
 
-    err := us.db.QueryRowContext(ctx,
-        `SELECT passwordhashed FROM mkt_users
-        WHERE
-            ($1::uuid IS NULL OR user_id  = $1) AND
-            ($2::varchar IS NULL OR email    = $2) AND
-            ($3::varchar IS NULL OR username = $3)
-        LIMIT 1`,
-        params.UserId, params.Email, params.Username,
-    ).Scan(&user.PasswordHash)
+	slog.Info("(us) [DEBUG]", "userid", params.UserId)
+	slog.Info("(us) [DEBUG]", "email", params.Email)
+	slog.Info("(us) [DEBUG]", "username", params.Username)
 
-    if err != nil {
-        return nil, err
-    }
+	var err error
+
+	switch {
+		case params.Email != nil:
+			err = us.db.QueryRowContext(ctx,
+				`SELECT passwordhashed from mkt_users
+				WHERE email = $1`,
+				params.Email,
+			).Scan(&user.PasswordHash)
+		
+		case params.UserId != nil:
+			err = us.db.QueryRowContext(ctx,
+				`SELECT passwordhashed FROM mkt_users 
+				WHERE user_id = $1`,
+				params.UserId,
+			).Scan(&user.PasswordHash)
+
+		case params.Username != nil:
+			err = us.db.QueryRowContext(ctx,
+				`SELECT passwordhashed FROM mkt_users
+				WHERE username = $1`,
+				params.Username,
+			).Scan(&user.PasswordHash)
+
+		default:
+			return nil, fmt.Errorf("at least one identifier must be provided")
+	}
+
+	if err != nil {
+		return nil, err
+	}
 
     return user, nil
-}
+}		

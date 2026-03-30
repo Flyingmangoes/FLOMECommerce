@@ -23,15 +23,15 @@ func AuthMiddlewares(secret string) gin.HandlerFunc {
 			return 
 		}
 
-		claims, err := utils.VerifyToken(parts[1], secret)
+		claims, err := utils.VerifyToken(parts[1], []byte(secret))
 		if err != nil {
 			c.Error(ErrUnauthorized(err.Error()))
             c.Abort()
             return
 		}
 
-		c.Set("user_id", claims.UserID)
-        c.Set("user_type", claims.UserType)
+		c.Set("userId", claims.UserID)
+        c.Set("userType", claims.UserType)
         c.Next()
 	}
 }

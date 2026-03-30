@@ -14,7 +14,7 @@ type User struct {
 	Country			string		`db:"user_country"`
 	UserType 		string		`db:"user_type"`
 	IsVerified		bool 		`db:"is_verified"`	
-	IsAgree			bool		`db:"is_agree"`
+	IsAgree			bool		`db:"is_agree"`	
 	EmailConsent 	bool		`db:"email_consent"`
 	SmsConsent		bool 		`db:"sms_consent"`
 	Consent_Updated *time.Time  `db:"consent_updated_at"`

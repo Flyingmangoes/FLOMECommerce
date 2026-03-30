@@ -28,7 +28,7 @@ type UserContext struct {
 	JWTSecret 	[]byte
 }
 
-type CreateUserRequest struct {
+type RegisterRequest struct {
     FirstName    string `json:"firstName"   binding:"required"`
     LastName     string `json:"lastName"    binding:"required"`
     Username     string `json:"username"    binding:"required"`
@@ -70,8 +70,7 @@ type RemoveUserRequest struct {
 	Password    string  `json:"password"     binding:"required"`
 }
 
-type GetUserRequest struct {
-	UserID		*string `json:"userId"  binding:"omitempty"`
+type LoginRequest struct {
 	Username 	*string	`json:"username" binding:"omitempty"`
 	Email		*string `json:"email"    binding:"omitempty,email"`
 	Password 	 string	`json:"password" binding:"required"`
@@ -100,10 +99,10 @@ type UserResponse struct {
 
 func (uc *UserContext)Register() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req CreateUserRequest
+		var req RegisterRequest
 
 		if err := c.ShouldBindBodyWithJSON(&req); err != nil {
-			slog.Error("[DEBUG]", "error", err)
+			slog.Error("(1) [DEBUG]", "error", err)
 			c.Error(middlewares.ErrBadRequest("Failed to read client request"))
 			return
 		}
@@ -134,7 +133,7 @@ func (uc *UserContext)Register() gin.HandlerFunc {
 
 		user, err := uc.Users.CreateUser(c.Request.Context(), params)
 		if err != nil {
-			slog.Error("[DEBUG]", "error", err)
+			slog.Error("(2) [DEBUG]", "error", err)
 			var PgErr *pq.Error
 			if errors.As(err, &PgErr) && PgErr.Code == "23505" {
 				c.Error(middlewares.ErrConflict("User already exists"))
@@ -151,15 +150,18 @@ func (uc *UserContext)Register() gin.HandlerFunc {
 			return
 		}
 
-		refreshToken, _, err := utils.GenerateRefreshToken(user.UserID, user.UserType, uc.JWTSecret)
+		refreshToken, expiresAt, err := utils.GenerateRefreshToken(user.UserID, user.UserType, uc.JWTSecret)
 		if err != nil {
 			c.Error(middlewares.ErrInternal("Failed to generate refresh token"))
 			return 
 		}
 
-		
+		if err := uc.Tokens.SaveRefreshToken(c.Request.Context(), user.UserID, refreshToken, expiresAt); err != nil {
+ 	   		c.Error(middlewares.ErrInternal("Failed to save session"))
+    		return
+		}
 
-		slog.Error("[DEBUG] Success")
+		slog.Info("(0) [STATUS] Success")
 		c.JSON(http.StatusCreated, gin.H{
 			"response": toUserResponse(user),
 			"token": gin.H{
@@ -170,11 +172,13 @@ func (uc *UserContext)Register() gin.HandlerFunc {
 	}
 }
 
+
+
 func (uc *UserContext)Update() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req UpdateUserRequest
 		if err := c.ShouldBindBodyWithJSON(&req); err != nil {
-			slog.Error("[DEBUG]", "error", err)
+			slog.Error("(1) [DEBUG]", "error", err)
 			c.Error(middlewares.ErrBadRequest("Failed to read client request"))
 			return
 		}
@@ -185,7 +189,7 @@ func (uc *UserContext)Update() gin.HandlerFunc {
 
 			hashedpass, err := bcrypt.GenerateFromPassword([]byte(pw), bcrypt.DefaultCost)
 			if err != nil {
-				slog.Error("[DEBUG]", "error", err)
+				slog.Error("(2) [DEBUG]", "error", err)
 				c.Error(middlewares.ErrInternal("Failed to hash password"))
 				return
 			}
@@ -215,34 +219,37 @@ func (uc *UserContext)Update() gin.HandlerFunc {
 		user, err := uc.Users.UpdateUser(c.Request.Context(), params)
 
 		if err != nil {
-			slog.Error("[DEBUG]", "error", err)
+			slog.Error("(3) [DEBUG]", "error", err)
 			c.Error(middlewares.ErrInternal("Failed to update user"))
 			return
 		}
 
 		if err := validators.ValidatePassword(user.PasswordHash, req.Password); err != nil {
-			slog.Error("[DEBUG]", "error", err)
+			slog.Error("(4) [DEBUG]", "error", err)
 			c.Error(middlewares.ErrUnauthorized("Invalid credentials"))
             return
 		}
 
-		slog.Error("[DEBUG] Success")
+		slog.Info("(0) [STATUS] Success")
 		c.JSON(http.StatusOK, gin.H{
 			"user updated": toUserResponse(user),
 		}) 
 	}
 }
 
+
+
 func (uc *UserContext)Delete() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req RemoveUserRequest
 		if err := c.ShouldBindBodyWithJSON(&req); err != nil {
-			slog.Error("[DEBUG]", "error", err)
+			slog.Error("(1) [DEBUG]", "error", err)
 			c.Error(middlewares.ErrBadRequest("Failed to read client request"))
 			return
 		}
 
 		id := c.GetString("userId")
+		slog.Info("(i) [DEBUG] attempting delete", "user_id", id) // ← add this
 
 		params := &services.UserProfileParams{
 			UserId: &id,
@@ -251,33 +258,36 @@ func (uc *UserContext)Delete() gin.HandlerFunc {
 
 		stored, err := uc.Users.GetPassword(c.Request.Context(), params)
         if err != nil {
-            slog.Error("[DEBUG]", "error", err)
+            slog.Error("(2) [DEBUG]", "error", err)
             c.Error(middlewares.ErrUnauthorized("Invalid credentials"))
             return
         }
 
 		if err := validators.ValidatePassword(stored.PasswordHash, req.Password); err != nil {
-			slog.Error("[DEBUG]", "error", err)
+			slog.Error("(3) [DEBUG]", "error", err)
+
 			c.Error(middlewares.ErrUnauthorized("Invalid credentials"))
 			return
 		}
 
 		if err := uc.Users.DeleteUser(c.Request.Context(), params); err != nil {
-			slog.Error("[DEBUG]", "error", err)
-			c.Error(middlewares.ErrInternal("Failed to update user"))
+			slog.Error("(4) [DEBUG]", "error", err)
+			c.Error(middlewares.ErrInternal("Failed to remove user"))
 			return
 		}
 
-		slog.Error("[DEBUG] Success")
+		slog.Info("(0) [STATUS] Success")
 		c.JSON(http.StatusOK, gin.H{"status": "success"})
 	}
 }
 
+
+
 func (uc *UserContext)Login() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req GetUserRequest
+		var req LoginRequest
 		if err := c.ShouldBindBodyWithJSON(&req); err != nil {
-			slog.Error("[DEBUG]", "error", err)
+			slog.Error("(1) [DEBUG]", "error", err)
 			c.Error(middlewares.ErrBadRequest("Failed to read client request"))
 			return
 		}
@@ -293,32 +303,37 @@ func (uc *UserContext)Login() gin.HandlerFunc {
 
 		user, err := uc.Users.GetUserByEmail(c.Request.Context(), params)
         if err != nil {
-			slog.Error("[DEBUG]", "error", err)
+			slog.Error("(2) [DEBUG]", "error", err)
             c.Error(middlewares.ErrUnauthorized("Invalid credentials"))
             return
         }
 
 		if err := validators.ValidatePassword(user.PasswordHash, req.Password); err != nil {
-			slog.Error("[DEBUG]", "error", err)
+			slog.Error("(3) [DEBUG]", "error", err)
             c.Error(middlewares.ErrUnauthorized("Invalid credentials"))
             return
         }
 
 		accessToken, err := utils.GenerateAccessToken(user.UserID, user.UserType, uc.JWTSecret)
 		if err != nil {
-			slog.Error("[DEBUG]", "error", err)
+			slog.Error("(4) [DEBUG]", "error", err)
 			c.Error(middlewares.ErrInternal("Failed to generate token"))
 			return
 		}
 
-		refreshToken, _, err := utils.GenerateRefreshToken(user.UserID, user.UserType, uc.JWTSecret)
+		refreshToken, expiresAt, err := utils.GenerateRefreshToken(user.UserID, user.UserType, uc.JWTSecret)
 		if err != nil {
-			slog.Error("[DEBUG]", "error", err)
+			slog.Error("(5) [DEBUG]", "error", err)
 			c.Error(middlewares.ErrInternal("Failed to generate refresh token"))
 			return 
 		}
+
+		if err := uc.Tokens.SaveRefreshToken(c.Request.Context(), user.UserID, refreshToken, expiresAt); err != nil {
+ 	   		c.Error(middlewares.ErrInternal("Failed to save session"))
+    		return
+		}
 		
-		slog.Error("[DEBUG] Success")
+		slog.Info("(0) [STATUS] Success")
 		c.JSON(http.StatusOK, gin.H{
 			"response": toUserResponse(user),
 			"token": gin.H{
@@ -329,6 +344,8 @@ func (uc *UserContext)Login() gin.HandlerFunc {
 	}
 }
 
+
+
 func (uc *UserContext)Refresh() gin.HandlerFunc {
 	return  func(c *gin.Context) {
 		var req struct {
@@ -336,12 +353,12 @@ func (uc *UserContext)Refresh() gin.HandlerFunc {
 		}
 
 		if err := c.ShouldBindBodyWithJSON(&req); err != nil {
-			slog.Error("[DEBUG]", "error", err)
+			slog.Error("(1) [DEBUG]", "error", err)
 			c.Error(middlewares.ErrInternal("Failed to read request"))
 			return
 		}
 
-		claims, err := utils.VerifyToken(req.RefreshToken, string(uc.JWTSecret))
+		claims, err := utils.VerifyToken(req.RefreshToken, uc.JWTSecret)
 		if err != nil {
 			c.Error(middlewares.ErrUnauthorized("Invalid or expired refresh token"))
 			return
@@ -354,32 +371,32 @@ func (uc *UserContext)Refresh() gin.HandlerFunc {
 		}
 
 		if err := uc.Tokens.DeleteRefreshToken(c.Request.Context(), stored.Token); err != nil {
-			slog.Error("[DEBUG]", "error", err)
+			slog.Error("(2) [DEBUG]", "error", err)
 			c.Error(middlewares.ErrInternal("Failed to rotate token"))
 			return
 		}
 
 		newAccess, err := utils.GenerateAccessToken(claims.UserID, claims.UserType, uc.JWTSecret)
 		if err != nil {
-			slog.Error("[DEBUG]", "error", err)
+			slog.Error("(3) [DEBUG]", "error", err)
 			c.Error(middlewares.ErrInternal("Failed to create token"))
 			return
 		}
 
 		newRefresh, expiresAt, err := utils.GenerateRefreshToken(claims.UserID, claims.UserType, uc.JWTSecret)
 		if err != nil {
-			slog.Error("[DEBUG]", "error", err)
+			slog.Error("(4) [DEBUG]", "error", err)
 			c.Error(middlewares.ErrInternal("Failed to create refresh token"))
 			return
 		}
 
 		if err := uc.Tokens.SaveRefreshToken(c.Request.Context(), claims.UserID, newRefresh, expiresAt); err != nil {
-			slog.Error("[DEBUG]", "error", err)
+			slog.Error("(5) [DEBUG]", "error", err)
 			c.Error(middlewares.ErrInternal("Failed to save refresh token"))
 			return
 		}
 
-		slog.Error("[DEBUG] Success")
+		slog.Info("(0) [STATUS] Success")
 		c.JSON(http.StatusOK, gin.H{
 			"token": gin.H{
 				"access_token": newAccess,
@@ -389,10 +406,12 @@ func (uc *UserContext)Refresh() gin.HandlerFunc {
 	}	
 }
 
+
+
 func (uc *UserContext)Logout() gin.HandlerFunc {
 	return func(c *gin.Context) {
 
-		slog.Error("[DEBUG] Success")
+		slog.Info("(0) [STATUS] Success")
 		c.JSON(http.StatusOK, gin.H{"response": "success"})
 	}	
 }

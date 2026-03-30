@@ -57,7 +57,7 @@ func GenerateRefreshToken(userID, userType string, secret []byte) (string, time.
     return signed, expiresAt, err
 }
 
-func VerifyToken(tokenString, secret string) (*Claims, error) {
+func VerifyToken(tokenString string, secret []byte) (*Claims, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, ErrInvalidToken

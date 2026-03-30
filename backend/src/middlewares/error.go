@@ -55,7 +55,7 @@ func jsonAppErrorReporterT(errType gin.ErrorType) gin.HandlerFunc {
 
             err := detectedErrors[0].Err
             var parsedError *AppError
-            switch e := err.(type) {
+            switch e := err.(type) {    
             case *AppError:
                 parsedError = e
             default:
