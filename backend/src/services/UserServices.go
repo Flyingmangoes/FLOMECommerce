@@ -75,6 +75,7 @@ func NewUserStore(db *sql.DB) *UserStore {
 
 func (us *UserStore)CreateUser(ctx context.Context, params *UserProfileParams) (*models.User, error) {
 	user := &models.User{}
+
 	tx, err := us.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
@@ -106,9 +107,10 @@ func (us *UserStore)CreateUser(ctx context.Context, params *UserProfileParams) (
 	return user, nil
 }
 
-	func (us *UserStore)UpdateUser(ctx context.Context, params *UserProfileParams) (*models.User, error) {
-		user:= &models.User{}
-		err := us.db.QueryRowContext(ctx, 
+func (us *UserStore)UpdateUser(ctx context.Context, params *UserProfileParams) (*models.User, error) {
+	user:= &models.User{}
+		
+	err := us.db.QueryRowContext(ctx, 
 		`UPDATE mkt_users SET 
 			firstname		= COALESCE ($1, firstname),
 			lastname		= COALESCE ($2, lastname),
@@ -142,6 +144,7 @@ func (us *UserStore)DeleteUser(ctx context.Context, params *UserProfileParams) e
 		WHERE user_id = $1 AND email = $2`,
 		params.UserId, params.Email,
 	)
+
 	if err != nil {
 		return err
 	}
@@ -162,6 +165,7 @@ func (us *UserStore)DeleteUser(ctx context.Context, params *UserProfileParams) e
 
 func (us *UserStore)GetUserByEmail(ctx context.Context, lookup *UserProfileParams) (*models.User, error) {
 	user := &models.User{}
+
 	err := us.db.QueryRowContext(ctx,
 		`SELECT user_id, firstname, lastname, username, email, phone_number, passwordhashed, user_locale, user_country, user_type, is_verified, is_agree, email_consent, sms_consent, consent_src, created_at, updated_at, consent_updated_at FROM mkt_users
 		WHERE email = $1`,
@@ -186,6 +190,7 @@ func (us *UserStore)GetUserByEmail(ctx context.Context, lookup *UserProfileParam
 
 func (us *UserStore) GetUserByUsername(ctx context.Context, lookup *UserProfileParams) (*models.User, error) {
 	user := &models.User{}
+
 	err := us.db.QueryRowContext(ctx,
 		`SELECT user_id, firstname, lastname, username, email, phone_number, passwordhashed, user_locale, user_country, user_type, is_verified, is_agree, email_consent, sms_consent, consent_src, created_at, updated_at, consent_updated_at FROM mkt_users 
 		WHERE username = $1`,
