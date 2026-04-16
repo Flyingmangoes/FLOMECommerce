@@ -53,7 +53,7 @@ func DecodeCursor(s string) (*PagCursor, error) {
     return &c, nil
 }
 
-func (f *PagFilter)     Normalize() {
+func (f *PagFilter) Normalize() {
     if f.Limit <= 0 || f.Limit > MaxLimit {
         f.Limit = DefaultLimit
     }

@@ -6,10 +6,9 @@ import (
 
 type Product struct {
     ProductID       string      `db:"product_id"`
-    SellerID        string      `db:"seller_id"`
+    StoreID         string       `db:"store_id"`
     Name            string      `db:"product_name"`
     Desc            string      `db:"product_desc"`
-    StoreName       string      `db:"store_name"`
     Url             string      `db:"url"`
     ImageUrl        string      `db:"product_pic"`  
     Price           float64     `db:"price"`

@@ -3,7 +3,7 @@ package controllers
 import (
 	"backend/src/middlewares"
 	"backend/src/models"
-	"backend/src/services"
+	"backend/src/repository"
 
 	"log/slog"
 	"net/http"
@@ -16,8 +16,8 @@ import (
 //
 
 type StoreContext struct {
-    Products 	services.ProductStoreInterface
-    Orders   	services.OrderStoreInterface
+    Products 	repository.ProductStoreInterface
+    Orders      repository.OrderStoreInterface
 }
 
 type ProductRequest struct {
@@ -49,7 +49,9 @@ type ProductRequest struct {
 }
 
 type StoreResponse struct {
-
+	ProductId string 
+	SellerId string
+	StoreName string
 }
 
 //
@@ -66,10 +68,8 @@ func (sc *StoreContext) CreateProduct() gin.HandlerFunc {
 			return
 		}
 
-		params := &services.ProductProfileParams{
+		params := &repository.ProductProfileParams{
 				ProductID: req.ProductId,
-				SellerID: req.SellerId,
-				Storename: req.StoreName,
 				Name: req.ProductName,
 				Desc: req.Desc,
 				Url: req.Url,

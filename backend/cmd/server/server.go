@@ -3,11 +3,12 @@ package server
 import (
 	"backend/src/config"
 	"backend/src/middlewares"
-	"backend/src/services"
-	"log/slog"
+	"backend/src/repository"
+	"backend/src/utils"
 	"net"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 )
 
@@ -16,20 +17,28 @@ import (
 // in SetupServer
 
 type ServerContext struct {
-	Users 		services.UserStoreInterface
-	Products 	services.ProductStoreInterface 
-	Orders 		services.OrderStoreInterface
-	Tokens  	services.TokenStoreInterface 
+	Users 		repository.UserStoreInterface
+	Products 	repository.ProductStoreInterface 
+	Orders 		repository.OrderStoreInterface
+	Tokens  	repository.TokenStoreInterface 
 	JWTSecret	[]byte
 }
 
-func SetupServer(us services.UserStoreInterface, prs services.ProductStoreInterface, ods services.OrderStoreInterface, tks services.TokenStoreInterface ,cfg *config.ServerConfig) *ServerContext {
+type ServerSetupParams struct {
+	Us repository.UserStoreInterface
+	Ps repository.ProductStoreInterface
+	Os repository.OrderStoreInterface
+	Ts repository.TokenStoreInterface
+	Cfg *config.ServerConfig
+}
+
+func SetupServer(params *ServerSetupParams) *ServerContext {
 	return &ServerContext{
-		Users: us,
-		Products: prs,
-		Orders: ods,
-		Tokens: tks,
-		JWTSecret: []byte(cfg.JWTSecret),
+		Users: params.Us,
+		Products: params.Ps,
+		Orders: params.Os,
+		Tokens: params.Ts,
+		JWTSecret: []byte(params.Cfg.JWTSecret),
 	}
 }
 
@@ -47,8 +56,8 @@ func (s *ServerContext)StartLoop(cfg *config.Application) {
 	addr := net.JoinHostPort(cfg.ServConf.Host, cfg.ServConf.Port)
 	router.SetTrustedProxies([]string{addr})
 
-	slog.Info("[DEBUG] server starting", "addr", addr) 
+	utils.Log.Info("Server starting", zap.String("addr", addr))
 	if err := router.Run(addr); err != nil {      
-		slog.Error("server failed", "error", err)
+		utils.Log.Error("Server Failed to Start", zap.Error(err))
 	}
 }

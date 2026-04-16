@@ -11,6 +11,7 @@ type Application struct {
 	ServConf *ServerConfig
 	AppConf *AppConfig
 	RateConf *RateLimitingConfig
+	Env string
 }
 
 type AppConfig struct {
@@ -49,6 +50,10 @@ func (a *Application) Validate() error {
 		return errors.New("SECRET is required")
 	}
 
+	if a.Env == "" {
+		return errors.New("ENV_STATUS is required")
+	}
+
     return nil
 }
 
@@ -69,6 +74,7 @@ func NewConfig() *Application {
 			RequestPerMinute: 30,
 			Burst: 3,
 		},
+		Env: os.Getenv("ENV_STATUS"),
 	}
 }
 	

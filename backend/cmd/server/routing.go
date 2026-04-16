@@ -42,7 +42,7 @@ func registerRoutes(r *gin.Engine, s *ServerContext) {
         protected.DELETE("/user", userCtrl.Delete())
     }
 
-	s_protected := r.Group("/v1/api/store")
+	s_protected := r.Group("/v1/store")
 	s_protected.Use(middlewares.AuthMiddlewares(string(s.JWTSecret)))
 	s_protected.Use(middlewares.CheckForStore())
 	{

@@ -4,7 +4,8 @@ import (
 	"backend/cmd/server"
 	"backend/src/config"
 	"backend/src/database"
-	"backend/src/services"
+	"backend/src/repository"
+	"backend/src/utils"
 	"log/slog"
 	"os"
 
@@ -22,14 +23,25 @@ func main() {
 		os.Exit(1)
 	}
 
+	utils.LoggerInit(cfg.Env)
+	defer utils.Log.Sync()
+
 	db := database.NewDatabaseConnection(cfg.DBConf.DBAddr)
 
-	userStore := services.NewUserStore(db)
-	productStore := services.NewProductStore(db)
-	orderStore := services.NewOrderStore(db)
-	tokenStore := services.NewTokenStore(db)
+	userStore := repository.NewUserStore(db)
+	productStore := repository.NewProductStore(db)
+	orderStore := repository.NewOrderStore(db)
+	tokenStore := repository.NewTokenStore(db)
 
-	serv := server.SetupServer(userStore, productStore, orderStore, tokenStore, cfg.ServConf)
+	params := &server.ServerSetupParams{
+		Us: userStore,
+		Ps: productStore,
+		Os: orderStore,
+		Ts: tokenStore,
+		Cfg: cfg.ServConf,
+	}
+
+	serv := server.SetupServer(params)
 
 	serv.StartLoop(cfg)
 }

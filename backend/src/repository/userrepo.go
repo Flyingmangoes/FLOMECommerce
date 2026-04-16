@@ -1,4 +1,4 @@
-package services
+package repository
 
 import (
 	"backend/src/models"
@@ -22,6 +22,12 @@ type UserStoreInterface interface {
 }
 
 type UserProfileParams struct {	
+	// Use the same structure for updating a product,
+	// product id cannot be updated, it stay forever like 
+	// how it supposed to be, when updating product id used 
+	// for specified which product to update
+	//
+	// keep that in mind for whoever find this usefull
 	//Identifier Section
 	UserId			*string
 	PhoneNumber		*string

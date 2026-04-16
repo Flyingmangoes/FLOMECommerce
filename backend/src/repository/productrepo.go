@@ -1,4 +1,4 @@
-package services
+package repository
 
 import (
 	"backend/src/models"
@@ -32,8 +32,7 @@ type ProductProfileParams struct {
 
 	// Identifier Section
 	ProductID string
-	SellerID string
-	Storename string
+	StoreId string
 	Name string
 
 	// Profile Section
@@ -70,17 +69,16 @@ func (ps *ProductStore) CreateProduct(ctx context.Context, params *ProductProfil
 	defer tx.Rollback()
 
 	err = tx.QueryRowContext(ctx,
-		`INSERT INTO mkt_products (product_id, seller_id, product_name, product_desc, storename, url, product_pic, price, category, availability)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-		RETURNING product_id, seller_id, product_name, product_desc, storename, url, product_pic, price, category, rating, availability, created_at, updated_at`,
-		params.ProductID, params.SellerID, params.Name, 
-		params.Desc, params.Storename, params.Url, 
+		`INSERT INTO mkt_products (product_id, product_name, product_desc, store_id, url, product_pic, price, category, availability)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		RETURNING product_id, product_name, product_desc, store_id, url, product_pic, price, category, rating, availability, created_at`,
+		params.ProductID, params.Name, 
+		params.Desc, params.StoreId, params.Url, 
 		params.ImageUrl, params.Price, params.Category,
 		params.Availability,
 	).Scan(&product.ProductID, 
-		&product.SellerID, &product.StoreName, 
-		&product.Name, &product.Desc, &product.Url, 
-		&product.ImageUrl, &product.Category, &product.Rating, 
+		&product.Name, &product.Desc, &product.StoreID ,&product.Url, 
+		&product.ImageUrl, &product.Price, &product.Category, &product.Rating, 
 		&product.Availability, &product.CreatedAt,
 	)
 
@@ -104,20 +102,19 @@ func (ps *ProductStore) UpdateProduct(ctx context.Context, params *ProductProfil
 		`UPDATE mkt_products SET 
 			product_name	= COALESCE ($1, product_name),
 			product_desc	= COALESCE ($2, product_desc),
-			store_name		= COALESCE ($3, store_name),
-			url				= COALESCE ($4, url),
-			product_pic		= COALESCE ($5, product_pic),
-			price			= COALESCE ($6, price),
-			category		= COALESCE ($7, category),
-			availability	= COALESCE ($8, availability),
+			url				= COALESCE ($3, url),
+			product_pic		= COALESCE ($4, product_pic),
+			price			= COALESCE ($5, price),
+			category		= COALESCE ($6, category),
+			availability	= COALESCE ($7, availability),
 			updated_at		= NOW()
-		WHERE product_id = $9
-		RETURNING product_name, product_desc, store_name, url, product_pic, price, category, availability, updated_at`,
-		params.Name, params.Desc, params.Storename, 
+		WHERE product_id = $8
+		RETURNING product_name, product_desc, store_id, url, product_pic, price, category, availability, updated_at`,
+		params.Name, params.Desc, 
 		params.Url, params.ImageUrl, params.Price, 
 		params.Category, params.Availability, params.ProductID,
 	).Scan(&product.Name, 
-		&product.Desc, &product.StoreName, &product.Url, 
+		&product.Desc, &product.StoreID, &product.Url, 
 		&product.ImageUrl, &product.Price, &product.Category, 
 		&product.Availability, &product.UpdatedAt,
 	)
@@ -134,8 +131,8 @@ func (ps *ProductStore) UpdateProduct(ctx context.Context, params *ProductProfil
 func (ps *ProductStore)RemoveProduct(ctx context.Context, params *ProductProfileParams) error {
 	results, err := ps.db.ExecContext(ctx,
 		`DELETE FROM mkt_products
-		WHERE product_id = $1 AND seller_id = $2`,
-		params.ProductID, params.SellerID,
+		WHERE product_id = $1 AND store_id = $2`,
+		params.ProductID, params.StoreId,
 	)
 
 	if err != nil {
@@ -159,11 +156,11 @@ func (ps *ProductStore)RemoveProduct(ctx context.Context, params *ProductProfile
 func (ps *ProductStore)GetProductByID(ctx context.Context, lookup *ProductProfileParams) (*models.Product, error) {
 	product := &models.Product{}
 	err := ps.db.QueryRowContext(ctx,
-		`SELECT ,product_id, product_name, product_desc, seller_id, store_name, url, product_pic, price, rating, availability, created_at, updated_at FROM mkt_products
+		`SELECT product_id, product_name, product_desc, store_id, url, product_pic, price, rating, availability, created_at, updated_at FROM mkt_products
 		WHERE product_id = $1`,
 		lookup.ProductID,
 	).Scan(&product.ProductID, &product.Name, 
-		&product.Desc, &product.SellerID, &product.StoreName, 
+		&product.Desc, &product.StoreID, 
 		&product.Url, &product.ImageUrl, &product.Price, 
 		&product.Rating, &product.Availability, &product.CreatedAt, 
 		&product.UpdatedAt,
@@ -182,11 +179,11 @@ func (ps *ProductStore)GetProductByName(ctx context.Context, lookup *ProductProf
 	product := &models.Product{}
 	
 	err := ps.db.QueryRowContext(ctx,
-		`SELECT product_id, product_name, product_desc, seller_id, store_name, url, product_pic, price, rating, availability, created_at, updated_at FROM mkt_products
+		`SELECT product_id, product_name, product_desc, store_id, url, product_pic, price, rating, availability, created_at, updated_at FROM mkt_products
 		WHERE product_name = $1`,
 		lookup.Name,
 	).Scan(&product.ProductID, &product.Name,
-		&product.Desc, &product.SellerID, &product.StoreName,
+		&product.Desc, &product.StoreID,
 		&product.Url, &product.ImageUrl, &product.Price,
 		&product.Rating, &product.Availability, &product.CreatedAt,
 		&product.UpdatedAt,
