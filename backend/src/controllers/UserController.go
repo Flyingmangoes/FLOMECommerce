@@ -4,6 +4,7 @@ import (
 	"backend/src/middlewares"
 	"backend/src/models"
 	"backend/src/repository"
+	"backend/src/services"
 	"backend/src/utils"
 	"backend/src/validators"
 	"errors"
@@ -107,7 +108,7 @@ func (uc *UserContext)Register() gin.HandlerFunc {
 			return
 		}
 
-		hashedpass, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+		hashedpass, err := services.Hashing([]byte(req.Password))
 		if err != nil {
 			utils.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrInternal("Failed to hash password"))
@@ -117,7 +118,7 @@ func (uc *UserContext)Register() gin.HandlerFunc {
 		params := &repository.UserProfileParams{
 			FirstName: &req.FirstName,
 			LastName: &req.LastName,
-			HashedPassword: utils.Stroptr(string(hashedpass)),
+			HashedPassword: hashedpass,
 			Email: &req.Email,
 			PhoneNumber: &req.PhoneNumber,
 

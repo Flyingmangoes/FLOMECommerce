@@ -4,10 +4,11 @@ import (
 	"backend/src/middlewares"
 	"backend/src/models"
 	"backend/src/repository"
+	"backend/src/utils"
 
-	"log/slog"
+	
 	"net/http"
-
+	"go.uber.org/zap"
 	"github.com/gin-gonic/gin"
 )
 
@@ -63,7 +64,7 @@ func (sc *StoreContext) CreateProduct() gin.HandlerFunc {
 		var req ProductRequest
 
 		if err := c.ShouldBindBodyWithJSON(&req); err != nil {
-			slog.Error("(1PC) [DEBUG]", "message", err)
+			utils.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrBadRequest("Failed to read client request"))
 			return
 		}
@@ -81,12 +82,12 @@ func (sc *StoreContext) CreateProduct() gin.HandlerFunc {
 
 		product, err := sc.Products.CreateProduct(c.Request.Context(), params)
 		if err != nil {
-			slog.Error("(2PC) [DEBUG]", "message", err)
+			utils.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrInternal("Failed to create product"))
 			return
 		}
 
-		slog.Info("(0) [STATUS] Success")
+		utils.Log.Info("Product created")
 		c.JSON(http.StatusCreated, gin.H{
 			"message": "Product created",
 			"detail": toStoreResponse(product),
