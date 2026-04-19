@@ -2,8 +2,10 @@ package repository
 
 import (
 	"backend/src/models"
+	"backend/src/utils"
 	"context"
 	"database/sql"
+	"fmt"
 )
 
 type StoreInterface interface {
@@ -13,21 +15,37 @@ type StoreInterface interface {
 	DeleteStore(ctx context.Context, params *StoreProfileParams) error
 
 	GetStoreByName(ctx context.Context, params *StoreProfileParams) (*models.Store, error)
+	ListStore(ctx context.Context, params *StoreProfileParams, limit int) ([]*models.Store, error)
 }
 
-type StoreProfileParams struct {	
-	StoreId 		*string 		
-	OwnerId 		*string 		
-	StoreName 		*string 		
-	StoreDesc 		*string 		
-	StorePic 		*string 		
-	IsActive 		*bool 		
-	EmailConsent	*bool
-	SmsConsent		*bool
-	ConsentSource	*string
+type StoreProfileParams struct {
+    StoreId      *string
 
-	IsAgree			*bool
-	IsVerified		*bool	
+    // Identifiers
+    OwnerId      *string
+    StoreName    *string
+    StoreDesc    *string
+    StorePic     *string
+    IsActive     *bool
+
+    // Location
+    Locale       *string
+    Country      *string
+    Address      *string
+
+    // Contact
+    PhoneNumber  *string
+    SupportEmail *string
+
+    // Social Media
+    Instagram    *string
+    Facebook     *string
+    Tiktok       *string
+    Website      *string
+}
+
+type ListStoresFilter struct {
+	utils.PagFilter
 }
 
 type StoresStore struct {
@@ -36,8 +54,8 @@ type StoresStore struct {
 
 
 
-func NewStoresStore(db *sql.DB) *UserStore {
-	return &UserStore{db: db}
+func NewStoresStore(db *sql.DB) *StoresStore {
+	return &StoresStore{db: db}
 }
 
 
@@ -53,13 +71,16 @@ func (ss *StoresStore) CreateStore(ctx context.Context, params *StoreProfilePara
 	defer tx.Rollback()
 
 	err = tx.QueryRowContext(ctx,
-		`INSERT INTO mkt_stores (owner_id, store_name, store_desc, store_pic, is_active)
-		VALUES ($1, $2, $3, $4, $5)
-		RETURNING store_id, owner_id, store_name, store_desc, store_pic, is_active, created_at`,
-		params.OwnerId, params.StoreName, params.StoreDesc, params.StorePic, params.IsActive,
+		`INSERT INTO mkt_stores (owner_id, store_name, store_desc, store_pic, is_active, store_locale, store_country, store_address, store_phone_number, store_support_email, store_instagram, store_tiktok, store_website)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+		RETURNING store_id, owner_id, store_name, store_desc, store_pic, is_active, store_locale, store_country, store_address, store_phone_number, store_support_email, store_instagram, store_tiktok, store_website, created_at`,
+		params.OwnerId, params.StoreName, params.StoreDesc, params.StorePic, params.IsActive, params.Locale, params.Country, params.Address, params.PhoneNumber, params.SupportEmail, params.Instagram, params.Tiktok, params.Website,
 	).Scan(&store.StoreId, 
 		&store.OwnerId, &store.StoreName, &store.StoreDesc, 
-		&store.StorePic, &store.IsActive, &store.CreatedAt,
+		&store.StorePic, &store.IsActive, &store.Locale, 
+		&store.Country, &store.Address, &store.PhoneNumber, 
+		&store.SupportEmail, &store.Instagram,
+		&store.Tiktok, &store.Website, &store.CreatedAt,
 	)
 
 	if err != nil {
@@ -74,13 +95,92 @@ func (ss *StoresStore) CreateStore(ctx context.Context, params *StoreProfilePara
 }
 
 func (ss *StoresStore) UpdateStore(ctx context.Context, params *StoreProfileParams) (*models.Store, error) {
+	store := &models.Store{}
 
+	err := ss.db.QueryRowContext(ctx,
+		`UPDATE mkt_stores SET
+			store_name = COALESCE ($1, store_name),
+			store_desc = COALESCE ($2, store_desc),
+			store_pic  = COALESCE ($3, store_pic),
+			is_active  = COALESCE ($4, is_active),
+			store_locale =	COALESCE ($5, store_locale),
+			store_country = COALESCE ($6, store_country),
+			store_address = COALESCE ($7, store_address),
+			store_phone_number = COALESCE ($8, store_phone_number),
+			store_support_email = COALESCE ($9, store_support_email),
+			store_instagram = COALESCE ($10, store_instagram),
+			store_tiktok = COALESCE ($11, store_tiktok),
+			store_website = COALESCE ($12, store_website),
+			updated_at = NOW()
+		WHERE store_id = $13
+		RETURNING store_id, owner_id, store_name, store_desc, store_pic, is_active, store_locale, store_country, store_address, store_phone_number, store_support_email, store_instagram, store_tiktok, store_website, created_at, updated_at`,
+		params.StoreName, params.StoreDesc, params.StorePic, params.IsActive, 
+		params.Locale, params.Country,params.Address, params.PhoneNumber, 
+		params.SupportEmail,params.Instagram, params.Tiktok, params.Website, 
+		params.StoreId,
+	).Scan(&store.StoreId, &store.OwnerId, 
+		&store.StoreName, &store.StoreDesc, &store.StorePic, 
+		&store.IsActive, &store.Locale, &store.Country,
+		&store.Address, &store.PhoneNumber, &store.SupportEmail,
+		&store.Instagram, &store.Tiktok, &store.Website,
+		&store.CreatedAt, &store.UpdatedAt,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return store, nil
 }
 
 func (ss *StoresStore) DeleteStore(ctx context.Context, params *StoreProfileParams) error {
+	result, err := ss.db.ExecContext(ctx, 
+		`DELETE FROM mkt_stores
+		WHERE store_id = $1 AND owner_id = $2`,
+		params.StoreId, params.OwnerId,
+	)
+	
+	if err != nil {
+		return err
+	}
 
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rows == 0 {
+		return fmt.Errorf("store not found or credentials do not match")
+	}
+
+	return nil
 }
 
 func (ss *StoresStore) GetStoreByName(ctx context.Context, params *StoreProfileParams) (*models.Store, error) {
+    store := &models.Store{}
 
+    err := ss.db.QueryRowContext(ctx,
+        `SELECT store_id, owner_id, store_name, store_desc, store_pic, 
+                is_active, store_locale, store_country, store_address, 
+                store_phone_number, store_support_email, store_instagram, 
+                store_tiktok, store_website, created_at, updated_at
+        FROM mkt_stores WHERE store_name = $1`,
+        params.StoreName,
+    ).Scan(
+        &store.StoreId, &store.OwnerId,
+        &store.StoreName, &store.StoreDesc, &store.StorePic,
+        &store.IsActive, &store.Locale, &store.Country,
+        &store.Address, &store.PhoneNumber, &store.SupportEmail,
+        &store.Instagram, &store.Tiktok, &store.Website,
+        &store.CreatedAt, &store.UpdatedAt,
+    )
+    if err != nil {
+        return nil, err
+    }
+
+    return store, nil
+}
+
+func (ss *StoresStore ) ListStore(ctx context.Context, params *StoreProfileParams, limit int) ([]*models.Store, error) {
+	return nil, nil
 }

@@ -12,7 +12,20 @@ import (
 var Log *zap.Logger
 
 func LoggerInit(env string) {
-	encoderCfg := zapcore.EncoderConfig{
+	ConsoleEncoderCfg := zapcore.EncoderConfig{
+		TimeKey:        "timestamp",
+		LevelKey:       "level",
+		NameKey:        "logger",
+		CallerKey:      "caller",
+		MessageKey:     "message",
+		EncodeTime:     zapcore.TimeEncoderOfLayout("2006/01/02 15:04:05"),
+		EncodeLevel:    zapcore.CapitalLevelEncoder,
+		EncodeCaller:   zapcore.ShortCallerEncoder,
+		EncodeDuration: zapcore.StringDurationEncoder,
+		ConsoleSeparator: " ",
+	}
+
+	JSONEncoderCfg := zapcore.EncoderConfig{
 		TimeKey:        "timestamp",
 		LevelKey:       "level",
 		NameKey:        "logger",
@@ -44,23 +57,23 @@ func LoggerInit(env string) {
 	)
 
 	if env == "production" {
-		encoderCfg.EncodeLevel = zapcore.CapitalColorLevelEncoder
+		ConsoleEncoderCfg.EncodeLevel = zapcore.CapitalColorLevelEncoder
 		consoleCore = zapcore.NewCore(
-			zapcore.NewJSONEncoder(encoderCfg),
+			zapcore.NewConsoleEncoder(ConsoleEncoderCfg),
 			zapcore.AddSync(os.Stderr),
 			zap.InfoLevel,
 		)
 	} else {
-		encoderCfg.EncodeLevel = zapcore.CapitalColorLevelEncoder
+		ConsoleEncoderCfg.EncodeLevel = zapcore.CapitalColorLevelEncoder
 		consoleCore = zapcore.NewCore(
-			zapcore.NewJSONEncoder(encoderCfg),
+			zapcore.NewConsoleEncoder(ConsoleEncoderCfg),
 			zapcore.AddSync(os.Stdout),
 			zap.DebugLevel,
 		)
 	}
 
 	fileCore = zapcore.NewCore(
-		zapcore.NewJSONEncoder(encoderCfg),  
+		zapcore.NewJSONEncoder(JSONEncoderCfg),  
 		zapcore.AddSync(rotation),             
 		zap.InfoLevel,
 	)

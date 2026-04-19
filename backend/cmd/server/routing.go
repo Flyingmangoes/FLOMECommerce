@@ -28,6 +28,13 @@ func registerRoutes(r *gin.Engine, s *ServerContext) {
 		auth.POST("/refresh", userCtrl.Refresh())
         auth.POST("/logout", userCtrl.Logout())
 	}
+	
+	protected := r.Group("/v1")
+    protected.Use(middlewares.AuthMiddlewares(string(s.JWTSecret)))				
+    {
+        protected.PUT("/user", userCtrl.Update())
+        protected.DELETE("/user", userCtrl.Delete())
+    }
 
 	// v1 normal searching
 	guest := r.Group("/v1/api") 
@@ -35,12 +42,7 @@ func registerRoutes(r *gin.Engine, s *ServerContext) {
 		guest.GET("/product", userCtrl.SearchProduct())
 	}
 
-	protected := r.Group("/v1")
-    protected.Use(middlewares.AuthMiddlewares(string(s.JWTSecret)))				
-    {
-        protected.PUT("/user", userCtrl.Update())
-        protected.DELETE("/user", userCtrl.Delete())
-    }
+	
 
 	s_protected := r.Group("/v1/store")
 	s_protected.Use(middlewares.AuthMiddlewares(string(s.JWTSecret)))

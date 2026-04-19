@@ -14,7 +14,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/lib/pq"
 	"go.uber.org/zap"
-	"golang.org/x/crypto/bcrypt"
 )
 
 //
@@ -39,6 +38,7 @@ type RegisterRequest struct {
     Password     string `json:"password"    binding:"required,min=8"`
     UserLocale 	 string `json:"userLocale"  binding:"required"`
 	UserCountry  string `json:"userCountry" binding:"required"`
+	UserAddress  string `json:"userAddress" binding:"required"`
 	
     UserType     string `json:"userType"    binding:"required"`
 	IsAgree		 bool 	`json:"userAgreed" binding:"required"`
@@ -54,12 +54,14 @@ type UpdateUserRequest struct {
     NewFirstname 	*string `json:"newFirstname" binding:"omitempty"`
     NewLastname  	*string `json:"newLastname"  binding:"omitempty"`
 	NewUsername  	*string `json:"newUsername"  binding:"omitempty,min=3"`
+
 	NewPhonenumber	*string	`json:"newPhonenumber" binding:"omitempty"`
 	NewEmail     	*string `json:"newEmail"     binding:"omitempty,email"`
-
     NewPassword  	*string `json:"newPassword"  binding:"omitempty,min=8"`
+
     NewLocale  		*string `json:"newLocale" binding:"omitempty"`
 	NewCountry		*string	`json:"newCountry" binding:"omitempty"`
+	NewAddress		*string `json:"newAddress" binding:"omitempty"`
 
 	NewEmailConsent *bool 	`json:"newEmailConsent" binding:"omitempty"`
 	NewSmsConsent	*bool	`json:"newSmsConsent" binding:"omitempty"`
@@ -87,6 +89,7 @@ type UserResponse struct {
     UserType     string    `json:"userType"`
     UserLocale 	 string    `json:"userLocale"`
 	UserCountry  string	   `json:"userCountry"`
+	UserAddress  string    `json:"userAddress"`
 	IsAgree		 bool 	   `json:"isAgree"`
     IsVerified   bool      `json:"isVerified"` 
     CreatedAt    time.Time `json:"createdAt"`
@@ -118,7 +121,7 @@ func (uc *UserContext)Register() gin.HandlerFunc {
 		params := &repository.UserProfileParams{
 			FirstName: &req.FirstName,
 			LastName: &req.LastName,
-			HashedPassword: hashedpass,
+			HashedPassword: utils.Stroptr(string(hashedpass)),
 			Email: &req.Email,
 			PhoneNumber: &req.PhoneNumber,
 
@@ -126,6 +129,7 @@ func (uc *UserContext)Register() gin.HandlerFunc {
 			UserType: &req.UserType,
 			Locale: &req.UserLocale,
 			Country: &req.UserCountry,
+			Address: &req.UserAddress,
 		
 			IsAgree: &req.IsAgree,
 			EmailConsent: &req.EmailConsent,
@@ -192,7 +196,7 @@ func (uc *UserContext)Update() gin.HandlerFunc {
 		if req.NewPassword != nil {
 			var pw string = *req.NewPassword
 
-			hashedpass, err := bcrypt.GenerateFromPassword([]byte(pw), bcrypt.DefaultCost)
+			hashedpass, err := services.Hashing([]byte(pw))
 			if err != nil {
 				utils.Log.Error("Error", zap.Error(err))
 				c.Error(middlewares.ErrInternal("Failed to hash password"))
@@ -218,8 +222,17 @@ func (uc *UserContext)Update() gin.HandlerFunc {
 			EmailConsent: req.NewEmailConsent,
 			SmsConsent: req.NewSmsConsent,
 		}
+		
+		existingUser, err := uc.Users.GetPassword(c.Request.Context(), params)
+		if err != nil {
+    		c.Error(middlewares.ErrInternal("Failed to fetch user"))
+    		return
+		}
 
-		// Changes userid to jwt authentication later
+		if err := validators.ValidatePassword(existingUser.PasswordHash, req.Password); err != nil {
+    		c.Error(middlewares.ErrUnauthorized("Invalid credentials"))
+    		return
+		}
 
 		user, err := uc.Users.UpdateUser(c.Request.Context(), params)
 
@@ -227,12 +240,6 @@ func (uc *UserContext)Update() gin.HandlerFunc {
 			utils.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrInternal("Failed to update user"))
 			return
-		}
-
-		if err := validators.ValidatePassword(user.PasswordHash, req.Password); err != nil {
-			utils.Log.Error("Error", zap.Error(err))
-			c.Error(middlewares.ErrUnauthorized("Invalid credentials"))
-            return
 		}
 
 		utils.Log.Info("Update process completed")
@@ -437,8 +444,11 @@ func toUserResponse(u *models.User) UserResponse {
         UserType:     u.UserType,
         UserLocale:   u.Locale,
 		UserCountry:  u.Country,
+		UserAddress:  u.Address,
         IsVerified:   u.IsVerified,
 		IsAgree: 	  u.IsAgree,
         CreatedAt:    u.CreatedAt,
+		ConsentUpdated: u.Consent_Updated,
+		UpdatedAt: u.Updatedat,
     }
 }
