@@ -18,6 +18,7 @@ import (
 
 type ServerContext struct {
 	Users 		repository.UserStoreInterface
+	Stores 		repository.StoreStoreInterface	
 	Products 	repository.ProductStoreInterface 
 	Orders 		repository.OrderStoreInterface
 	Tokens  	repository.TokenStoreInterface 
@@ -26,6 +27,7 @@ type ServerContext struct {
 
 type ServerSetupParams struct {
 	Us repository.UserStoreInterface
+	Ss repository.StoreStoreInterface
 	Ps repository.ProductStoreInterface
 	Os repository.OrderStoreInterface
 	Ts repository.TokenStoreInterface
@@ -36,6 +38,7 @@ func SetupServer(params *ServerSetupParams) *ServerContext {
 	return &ServerContext{
 		Users: params.Us,
 		Products: params.Ps,
+		Stores: params.Ss,
 		Orders: params.Os,
 		Tokens: params.Ts,
 		JWTSecret: []byte(params.Cfg.JWTSecret),

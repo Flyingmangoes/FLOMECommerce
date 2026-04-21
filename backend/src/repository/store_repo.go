@@ -8,13 +8,12 @@ import (
 	"fmt"
 )
 
-type StoreInterface interface {
+type StoreStoreInterface interface {
 	CreateStore(ctx context.Context, params *StoreProfileParams) (*models.Store, error)
-
 	UpdateStore(ctx context.Context, params *StoreProfileParams) (*models.Store, error)
 	DeleteStore(ctx context.Context, params *StoreProfileParams) error
-
 	GetStoreByName(ctx context.Context, params *StoreProfileParams) (*models.Store, error)
+	GetStoreByOwner(ctx context.Context, params *StoreProfileParams) (*models.Store, error)
 	ListStore(ctx context.Context, params *StoreProfileParams, limit int) ([]*models.Store, error)
 }
 
@@ -48,19 +47,17 @@ type ListStoresFilter struct {
 	utils.PagFilter
 }
 
-type StoresStore struct {
+type StoreStore struct {
 	db *sql.DB
 }
 
-
-
-func NewStoresStore(db *sql.DB) *StoresStore {
-	return &StoresStore{db: db}
+func NewStoresStore(db *sql.DB) *StoreStore {
+	return &StoreStore{db: db}
 }
 
 
 
-func (ss *StoresStore) CreateStore(ctx context.Context, params *StoreProfileParams) (*models.Store, error) {
+func (ss *StoreStore) CreateStore(ctx context.Context, params *StoreProfileParams) (*models.Store, error) {
 	store := &models.Store{}
 
 	tx, err := ss.db.BeginTx(ctx, nil)
@@ -71,10 +68,10 @@ func (ss *StoresStore) CreateStore(ctx context.Context, params *StoreProfilePara
 	defer tx.Rollback()
 
 	err = tx.QueryRowContext(ctx,
-		`INSERT INTO mkt_stores (owner_id, store_name, store_desc, store_pic, is_active, store_locale, store_country, store_address, store_phone_number, store_support_email, store_instagram, store_tiktok, store_website)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+		`INSERT INTO mkt_stores (owner_id, store_name, store_desc, store_pic, store_locale, store_country, store_address, store_phone_number, store_support_email, store_instagram, store_tiktok, store_website)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 		RETURNING store_id, owner_id, store_name, store_desc, store_pic, is_active, store_locale, store_country, store_address, store_phone_number, store_support_email, store_instagram, store_tiktok, store_website, created_at`,
-		params.OwnerId, params.StoreName, params.StoreDesc, params.StorePic, params.IsActive, params.Locale, params.Country, params.Address, params.PhoneNumber, params.SupportEmail, params.Instagram, params.Tiktok, params.Website,
+		params.OwnerId, params.StoreName, params.StoreDesc, params.StorePic, params.Locale, params.Country, params.Address, params.PhoneNumber, params.SupportEmail, params.Instagram, params.Tiktok, params.Website,
 	).Scan(&store.StoreId, 
 		&store.OwnerId, &store.StoreName, &store.StoreDesc, 
 		&store.StorePic, &store.IsActive, &store.Locale, 
@@ -94,7 +91,7 @@ func (ss *StoresStore) CreateStore(ctx context.Context, params *StoreProfilePara
 	return store, nil
 }
 
-func (ss *StoresStore) UpdateStore(ctx context.Context, params *StoreProfileParams) (*models.Store, error) {
+func (ss *StoreStore) UpdateStore(ctx context.Context, params *StoreProfileParams) (*models.Store, error) {
 	store := &models.Store{}
 
 	err := ss.db.QueryRowContext(ctx,
@@ -102,28 +99,27 @@ func (ss *StoresStore) UpdateStore(ctx context.Context, params *StoreProfilePara
 			store_name = COALESCE ($1, store_name),
 			store_desc = COALESCE ($2, store_desc),
 			store_pic  = COALESCE ($3, store_pic),
-			is_active  = COALESCE ($4, is_active),
-			store_locale =	COALESCE ($5, store_locale),
-			store_country = COALESCE ($6, store_country),
-			store_address = COALESCE ($7, store_address),
-			store_phone_number = COALESCE ($8, store_phone_number),
-			store_support_email = COALESCE ($9, store_support_email),
-			store_instagram = COALESCE ($10, store_instagram),
-			store_tiktok = COALESCE ($11, store_tiktok),
-			store_website = COALESCE ($12, store_website),
+			store_locale =	COALESCE ($4, store_locale),
+			store_country = COALESCE ($5, store_country),
+			store_address = COALESCE ($6, store_address),
+			store_phone_number = COALESCE ($7, store_phone_number),
+			store_support_email = COALESCE ($8, store_support_email),
+			store_instagram = COALESCE ($9, store_instagram),
+			store_tiktok = COALESCE ($10, store_tiktok),
+			store_website = COALESCE ($11, store_website),
 			updated_at = NOW()
-		WHERE store_id = $13
-		RETURNING store_id, owner_id, store_name, store_desc, store_pic, is_active, store_locale, store_country, store_address, store_phone_number, store_support_email, store_instagram, store_tiktok, store_website, created_at, updated_at`,
-		params.StoreName, params.StoreDesc, params.StorePic, params.IsActive, 
-		params.Locale, params.Country,params.Address, params.PhoneNumber, 
-		params.SupportEmail,params.Instagram, params.Tiktok, params.Website, 
-		params.StoreId,
+		WHERE store_id = $12
+		RETURNING store_id, owner_id, store_name, store_desc, store_pic, store_locale, store_country, store_address, store_phone_number, store_support_email, store_instagram, store_tiktok, store_website, created_at, updated_at`,
+		params.StoreName, params.StoreDesc, params.StorePic, params.Locale, 
+		params.Country,params.Address, params.PhoneNumber, 
+		params.SupportEmail,params.Instagram, params.Tiktok, 
+		params.Website, params.StoreId,
 	).Scan(&store.StoreId, &store.OwnerId, 
 		&store.StoreName, &store.StoreDesc, &store.StorePic, 
-		&store.IsActive, &store.Locale, &store.Country,
-		&store.Address, &store.PhoneNumber, &store.SupportEmail,
-		&store.Instagram, &store.Tiktok, &store.Website,
-		&store.CreatedAt, &store.UpdatedAt,
+		&store.Locale, &store.Country, &store.Address, 
+		&store.PhoneNumber, &store.SupportEmail, &store.Instagram,
+		&store.Tiktok, &store.Website, &store.CreatedAt, 
+		&store.UpdatedAt,
 	)
 
 	if err != nil {
@@ -133,7 +129,7 @@ func (ss *StoresStore) UpdateStore(ctx context.Context, params *StoreProfilePara
 	return store, nil
 }
 
-func (ss *StoresStore) DeleteStore(ctx context.Context, params *StoreProfileParams) error {
+func (ss *StoreStore) DeleteStore(ctx context.Context, params *StoreProfileParams) error {
 	result, err := ss.db.ExecContext(ctx, 
 		`DELETE FROM mkt_stores
 		WHERE store_id = $1 AND owner_id = $2`,
@@ -156,7 +152,7 @@ func (ss *StoresStore) DeleteStore(ctx context.Context, params *StoreProfilePara
 	return nil
 }
 
-func (ss *StoresStore) GetStoreByName(ctx context.Context, params *StoreProfileParams) (*models.Store, error) {
+func (ss *StoreStore) GetStoreByName(ctx context.Context, params *StoreProfileParams) (*models.Store, error) {
     store := &models.Store{}
 
     err := ss.db.QueryRowContext(ctx,
@@ -181,6 +177,12 @@ func (ss *StoresStore) GetStoreByName(ctx context.Context, params *StoreProfileP
     return store, nil
 }
 
-func (ss *StoresStore ) ListStore(ctx context.Context, params *StoreProfileParams, limit int) ([]*models.Store, error) {
+func (ss *StoreStore) GetStoreByOwner(ctx context.Context, params *StoreProfileParams) (*models.Store, error) {
+	store := &models.Store{}
+
+	return store, nil
+}
+
+func (ss *StoreStore ) ListStore(ctx context.Context, params *StoreProfileParams, limit int) ([]*models.Store, error) {
 	return nil, nil
 }

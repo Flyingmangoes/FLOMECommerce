@@ -29,12 +29,14 @@ func main() {
 	db := database.NewDatabaseConnection(cfg.DBConf.DBAddr)
 
 	userStore := repository.NewUserStore(db)
+	storeStore := repository.NewStoresStore(db)
 	productStore := repository.NewProductStore(db)
 	orderStore := repository.NewOrderStore(db)
 	tokenStore := repository.NewTokenStore(db)
 
 	params := &server.ServerSetupParams{
 		Us: userStore,
+		Ss: storeStore,
 		Ps: productStore,
 		Os: orderStore,
 		Ts: tokenStore,

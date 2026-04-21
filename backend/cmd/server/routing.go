@@ -8,48 +8,56 @@ import (
 
 func registerRoutes(r *gin.Engine, s *ServerContext) {
 	userCtrl := &controllers.UserContext{
-        Users: s.Users,
-        Products:s.Products,
-        Orders: s.Orders,
-		Tokens: s.Tokens,
-		JWTSecret: s.JWTSecret,
+        Users:     s.Users,
+        Tokens:    s.Tokens,
+        JWTSecret: s.JWTSecret,
     }
 
-	storeCtrl := &controllers.StoreContext{
-        Products:s.Products,
-        Orders: s.Orders,
-	}
+    storeCtrl := &controllers.StoreContext{
+		Users: s.Users,
+        Stores: s.Stores,
+        JWTSecret: s.JWTSecret,
+    }
 
-	// v1 auth
-	auth := r.Group("/v1/auth" ) 
-	{
-		auth.GET("/user", userCtrl.Login())
-		auth.POST("/user", userCtrl.Register())
-		auth.POST("/refresh", userCtrl.Refresh())
-        auth.POST("/logout", userCtrl.Logout())
-	}
-	
-	protected := r.Group("/v1")
-    protected.Use(middlewares.AuthMiddlewares(string(s.JWTSecret)))				
+    // productCtrl := &controllers.ProductContext{
+    //     Products:  s.Products,
+    //     JWTSecret: s.JWTSecret,
+    // }
+
+    // public auth routes
+    auth := r.Group("/v1/auth")
     {
-        protected.PUT("/user", userCtrl.Update())
-        protected.DELETE("/user", userCtrl.Delete())
+        auth.GET("/users",     userCtrl.LoginUser())
+        auth.POST("/users",    userCtrl.RegisterUser())
+        auth.POST("/refresh", userCtrl.Refresh())
+        auth.POST("/logout",  userCtrl.LogoutUser())
     }
 
-	// v1 normal searching
-	guest := r.Group("/v1/api") 
-	{
-		guest.GET("/product", userCtrl.SearchProduct())
-	}
+    // protected user routes
+    protected := r.Group("/v1")
+    protected.Use(middlewares.AuthMiddlewares(string(s.JWTSecret)))
+    {
+        protected.PUT("/users", userCtrl.UpdateUser())
+        protected.DELETE("/users", userCtrl.DeleteUser())
 
-	
+        protected.POST("/auth/stores",   storeCtrl.RegisterStore())
+		protected.GET("/auth/stores", storeCtrl.LoginStore())
+        protected.PUT("/stores",    storeCtrl.UpdateStore())
+        protected.DELETE("/stores", storeCtrl.DeleteStore())
+    }
 
-	s_protected := r.Group("/v1/store")
-	s_protected.Use(middlewares.AuthMiddlewares(string(s.JWTSecret)))
-	s_protected.Use(middlewares.CheckForStore())
-	{
-		s_protected.POST("/product", storeCtrl.CreateProduct())
-		s_protected.PUT("/product", storeCtrl.UpdateProduct())
-		s_protected.DELETE("/product", storeCtrl.RemoveProduct())
-	}
+    // guest := r.Group("/v1/api")
+    // {
+    //     guest.GET("/products", productCtrl.SearchProducts())
+    //     guest.GET("/stores",   storeCtrl.SearchStores())
+    // }
+
+    s_protected := r.Group("/v1/store")
+    s_protected.Use(middlewares.AuthMiddlewares(string(s.JWTSecret)))
+    s_protected.Use(middlewares.CheckForStore(s.Stores))
+    {
+        //s_protected.POST("/products",   productCtrl.CreateProducts())
+        //s_protected.PUT("/products",    productCtrl.UpdateProducts())
+        //s_protected.DELETE("/products", productCtrl.DeleteProducts())
+    }
 }

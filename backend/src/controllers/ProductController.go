@@ -1,14 +1,9 @@
 package controllers
 
 import (
-	"backend/src/middlewares"
 	"backend/src/models"
 	"backend/src/repository"
-	"backend/src/utils"
 
-	
-	"net/http"
-	"go.uber.org/zap"
 	"github.com/gin-gonic/gin"
 )
 
@@ -16,9 +11,9 @@ import (
 // PRODUCT AND STORE ONLY STRUCTURE DECLARATION
 //
 
-type StoreContext struct {
-    Products 	repository.ProductStoreInterface
-    Orders      repository.OrderStoreInterface
+type ProductContext struct {
+	Products   repository.ProductStoreInterface
+	JWTSecret []byte
 }
 
 type ProductRequest struct {
@@ -61,37 +56,7 @@ type StoreResponse struct {
 
 func (sc *StoreContext) CreateProduct() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req ProductRequest
 
-		if err := c.ShouldBindBodyWithJSON(&req); err != nil {
-			utils.Log.Error("Error", zap.Error(err))
-			c.Error(middlewares.ErrBadRequest("Failed to read client request"))
-			return
-		}
-
-		params := &repository.ProductProfileParams{
-				ProductID: req.ProductId,
-				Name: req.ProductName,
-				Desc: req.Desc,
-				Url: req.Url,
-				ImageUrl: req.ImageUrl,
-				Price: req.Price,
-				Category: req.Category,
-				Availability: req.Availability,
-		}
-
-		product, err := sc.Products.CreateProduct(c.Request.Context(), params)
-		if err != nil {
-			utils.Log.Error("Error", zap.Error(err))
-			c.Error(middlewares.ErrInternal("Failed to create product"))
-			return
-		}
-
-		utils.Log.Info("Product created")
-		c.JSON(http.StatusCreated, gin.H{
-			"message": "Product created",
-			"detail": toStoreResponse(product),
-		})
 	}
 }
 

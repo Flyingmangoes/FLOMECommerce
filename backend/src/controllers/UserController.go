@@ -22,13 +22,11 @@ import (
 
 type UserContext struct {
     Users    	repository.UserStoreInterface
-    Products 	repository.ProductStoreInterface
-    Orders   	repository.OrderStoreInterface
     Tokens   	repository.TokenStoreInterface
 	JWTSecret 	[]byte
 }
 
-type RegisterRequest struct {
+type UserRegisterRequest struct {
     FirstName    string `json:"firstName"   binding:"required"`
     LastName     string `json:"lastName"    binding:"required"`
     Username     string `json:"username"    binding:"required"`
@@ -101,9 +99,9 @@ type UserResponse struct {
 // USER HANDLER IMPLEMENTATION
 //
 
-func (uc *UserContext)Register() gin.HandlerFunc {
+func (uc *UserContext)RegisterUser() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req RegisterRequest
+		var req UserRegisterRequest
 
 		if err := c.ShouldBindBodyWithJSON(&req); err != nil {
 			utils.Log.Error("Error", zap.Error(err))
@@ -183,7 +181,7 @@ func (uc *UserContext)Register() gin.HandlerFunc {
 
 
 
-func (uc *UserContext)Update() gin.HandlerFunc {
+func (uc *UserContext)UpdateUser() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req UpdateUserRequest
 		if err := c.ShouldBindBodyWithJSON(&req); err != nil {
@@ -251,7 +249,7 @@ func (uc *UserContext)Update() gin.HandlerFunc {
 
 
 
-func (uc *UserContext)Delete() gin.HandlerFunc {
+func (uc *UserContext)DeleteUser() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req RemoveUserRequest
 		if err := c.ShouldBindBodyWithJSON(&req); err != nil {
@@ -293,7 +291,7 @@ func (uc *UserContext)Delete() gin.HandlerFunc {
 
 
 
-func (uc *UserContext)Login() gin.HandlerFunc {
+func (uc *UserContext)LoginUser() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req LoginRequest
 		if err := c.ShouldBindBodyWithJSON(&req); err != nil {
@@ -421,8 +419,19 @@ func (uc *UserContext)Refresh() gin.HandlerFunc {
 
 
 
-func (uc *UserContext)Logout() gin.HandlerFunc {
+func (uc *UserContext)LogoutUser() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		var id string;
+		var err error;
+
+		id = c.GetString("userId")
+
+		err = uc.Tokens.DeleteAllUserTokens(c.Request.Context(), id)
+		if err != nil {
+			utils.Log.Error("Error", zap.Error(err))
+			c.Error(middlewares.ErrInternal("Failed to remove user token"))
+			return
+		}
 
 		utils.Log.Info("Logout process completed")
 		c.JSON(http.StatusOK, gin.H{"response": "success"})
