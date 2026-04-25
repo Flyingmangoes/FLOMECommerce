@@ -53,9 +53,14 @@ type StoreUpdateRequest struct {
 	NewWebsite 		*string `json:"newWebsite" binding:"omitempty"`
 }
 
+type StoreLoginRequest struct {
+	OwnerEmail string `json:"ownerEmail" binding:"required,email"`
+	Password string `json:"password" binding:"required"`
+}
+
 type StoreRemoveRequest struct {
-	OwnerId      string  `json:"userId"      binding:"required"`
-	Password    string  `json:"password"     binding:"required"`
+	OwnerId		string  `json:"userId"      binding:"required"`
+	Password	string  `json:"password"     binding:"required"`
 }
 
 func (sc *StoreContext) RegisterStore() gin.HandlerFunc {
@@ -93,12 +98,6 @@ func (sc *StoreContext) RegisterStore() gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusCreated, gin.H{"store": store})
-	}
-}
-               
-func (sc *StoreContext) LoginStore() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		
 	}
 }
 
@@ -160,7 +159,7 @@ func (sc *StoreContext) UpdateStore() gin.HandlerFunc {
 
 func (sc *StoreContext) DeleteStore() gin.HandlerFunc {
 	return func(c *gin.Context) {
-
+		
 	}
 }
 

@@ -309,7 +309,7 @@ func (uc *UserContext)LoginUser() gin.HandlerFunc {
 			Email: req.Email,
 		}
 
-		user, err := uc.Users.GetUserByEmail(c.Request.Context(), params)
+		user, err := uc.Users.LoginByUserEmail(c.Request.Context(), params)
         if err != nil {
 			utils.Log.Error("Error", zap.Error(err))
             c.Error(middlewares.ErrUnauthorized("Invalid credentials"))

@@ -14,7 +14,7 @@ type UserStoreInterface interface {
 	UpdateUser(ctx context.Context, params *UserProfileParams) (*models.User, error)
 	DeleteUser(ctx context.Context, params *UserProfileParams) (error)
 	
-	GetUserByEmail(ctx context.Context, lookup *UserProfileParams) (*models.User, error)
+	LoginByUserEmail(ctx context.Context, lookup *UserProfileParams) (*models.User, error)
 	GetUserByUsername(ctx context.Context, lookup *UserProfileParams) (*models.User, error)
 
 	GetPassword(ctx context.Context, params *UserProfileParams) (*models.User, error)
@@ -176,7 +176,7 @@ func (us *UserStore)DeleteUser(ctx context.Context, params *UserProfileParams) e
 
 
 
-func (us *UserStore)GetUserByEmail(ctx context.Context, lookup *UserProfileParams) (*models.User, error) {
+func (us *UserStore)LoginByUserEmail(ctx context.Context, lookup *UserProfileParams) (*models.User, error) {
 	user := &models.User{}
 
 	err := us.db.QueryRowContext(ctx,
