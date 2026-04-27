@@ -11,6 +11,10 @@ import (
 	"go.uber.org/zap"
 )
 
+//
+// STORE HANDLER DECLARATION
+//
+
 type StoreContext struct {
 	Users 		repository.UserStoreInterface
 	Stores    	repository.StoreStoreInterface
@@ -63,6 +67,10 @@ type StoreRemoveRequest struct {
 	Password	string  `json:"password"     binding:"required"`
 }
 
+//
+// STORE HANDLER IMPLEMENTATION
+//
+
 func (sc *StoreContext) RegisterStore() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req StoreRegisterRequest
@@ -97,7 +105,7 @@ func (sc *StoreContext) RegisterStore() gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusCreated, gin.H{"store": store})
+		c.JSON(http.StatusCreated, gin.H{"response": store})
 	}
 }
 
@@ -153,7 +161,7 @@ func (sc *StoreContext) UpdateStore() gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusCreated, gin.H{"store": store})
+		c.JSON(http.StatusCreated, gin.H{"response": store})
 	}	
 }
 

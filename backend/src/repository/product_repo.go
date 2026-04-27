@@ -16,7 +16,7 @@ type ProductStoreInterface interface {
 	GetProductByID(ctx context.Context, lookup *ProductProfileParams) (*models.Product, error)
 	GetProductByName(ctx context.Context, lookup *ProductProfileParams) (*models.Product, error)
 
-	GetProductList(ctx context.Context, params *ProductProfileParams, limit int) (*models.Product, error)
+	GetProductByBulk(ctx context.Context, params *ProductProfileParams, limit int) (*models.Product, error)
 
 	UpdateRating(ctx context.Context, params *ProductProfileParams) (*models.Product, error)
 	UpdateAvailability(ctx context.Context, params *ProductProfileParams) (*models.Product, error)
@@ -31,22 +31,22 @@ type ProductProfileParams struct {
 	// keep that in mind for whoever find this usefull
 
 	// Identifier Section
-	ProductID string
-	StoreId string
-	Name string
+	ProductID *string
+	StoreId *string
+	Name *string
 
 	// Profile Section
-	Url string
-	ImageUrl string
-	Price float64
-	Rating float64
-	Desc string
-	Category string
-	Availability int
+	Url *string
+	ImageUrl *string
+	Price *float64
+	Rating *float64
+	Desc *string
+	Category *string
+	Availability *int
 
 	// Extra Section
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	CreatedAt *time.Time
+	UpdatedAt *time.Time
 }
 
 type ProductStore struct {
@@ -69,11 +69,10 @@ func (ps *ProductStore) CreateProduct(ctx context.Context, params *ProductProfil
 	defer tx.Rollback()
 
 	err = tx.QueryRowContext(ctx,
-		`INSERT INTO mkt_products (product_id, product_name, product_desc, store_id, url, product_pic, price, category, availability)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		`INSERT INTO mkt_products (product_name, product_desc, store_id, url, product_pic, price, category, availability)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		RETURNING product_id, product_name, product_desc, store_id, url, product_pic, price, category, rating, availability, created_at`,
-		params.ProductID, params.Name, 
-		params.Desc, params.StoreId, params.Url, 
+		params.Name, params.Desc, params.StoreId, params.Url, 
 		params.ImageUrl, params.Price, params.Category,
 		params.Availability,
 	).Scan(&product.ProductID, 
@@ -98,7 +97,11 @@ func (ps *ProductStore) CreateProduct(ctx context.Context, params *ProductProfil
 func (ps *ProductStore) UpdateProduct(ctx context.Context, params *ProductProfileParams) (*models.Product, error) {
 	product := &models.Product{}
 
-	err := ps.db.QueryRowContext(ctx,
+	tx, _ := ps.db.BeginTx(ctx, nil)
+
+	defer tx.Rollback()
+
+	err := tx.QueryRowContext(ctx,
 		`UPDATE mkt_products SET 
 			product_name	= COALESCE ($1, product_name),
 			product_desc	= COALESCE ($2, product_desc),
@@ -108,18 +111,23 @@ func (ps *ProductStore) UpdateProduct(ctx context.Context, params *ProductProfil
 			category		= COALESCE ($6, category),
 			availability	= COALESCE ($7, availability),
 			updated_at		= NOW()
-		WHERE product_id = $8
-		RETURNING product_name, product_desc, store_id, url, product_pic, price, category, availability, updated_at`,
+		WHERE product_id = $8 AND store_id = $9
+		RETURNING product_id, product_name, product_desc, store_id, url, product_pic, price, category, availability, updated_at`,
 		params.Name, params.Desc, 
 		params.Url, params.ImageUrl, params.Price, 
 		params.Category, params.Availability, params.ProductID,
-	).Scan(&product.Name, 
+		params.StoreId,
+	).Scan(&params.ProductID, &product.Name, 
 		&product.Desc, &product.StoreID, &product.Url, 
 		&product.ImageUrl, &product.Price, &product.Category, 
 		&product.Availability, &product.UpdatedAt,
 	)
 
 	if err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
 
@@ -198,20 +206,48 @@ func (ps *ProductStore)GetProductByName(ctx context.Context, lookup *ProductProf
 
 
 
-func (ps *ProductStore) GetProductList(ctx context.Context, params *ProductProfileParams, limit int) (*models.Product, error) {
+func (ps *ProductStore) GetProductByBulk(ctx context.Context, params *ProductProfileParams, limit int) (*models.Product, error) {
 	return nil, nil
 }
 
 
 
 func (ps *ProductStore) UpdateRating(ctx context.Context, params *ProductProfileParams) (*models.Product, error) {
-	return nil, nil
+	product := &models.Product{}
+	
+	err := ps.db.QueryRow(
+		`UPDATE mkt_products SET
+		rating = COALESCE($1, rating)
+		WHERE product_id = $2
+		RETURNING product_id, rating`,
+		params.Rating, params.ProductID,
+	).Scan(&product.ProductID, &product.Rating)	
+
+	if err != nil {
+		return nil, err
+	}
+
+	return product, nil
 }
 
 
 
 func (ps *ProductStore) UpdateAvailability(ctx context.Context, params *ProductProfileParams) (*models.Product, error) {
-	return nil, nil
+	product := &models.Product{}
+	
+	err := ps.db.QueryRow(
+		`UPDATE mkt_products SET
+		availability = COALESCE($1, availability)
+		WHERE product_id = $2
+		RETURNING product_id, availability`,
+		params.Availability, params.ProductID,
+	).Scan(&product.ProductID, &product.Availability)	
+
+	if err != nil {
+		return nil, err
+	}
+
+	return product, nil
 }
 
 
