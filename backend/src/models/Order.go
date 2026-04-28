@@ -9,7 +9,7 @@ type Order struct {
     TotalPrice  float64     `db:"price_total"`
     Location    string      `db:"location"`
     Status      string      `db:"status"`
-    ETA         time.Time   `db:"ETA"`
+    ETA         time.Time   `db:"eta"`
     CreatedAt   time.Time   `db:"created_at"`
     FulfilledAt time.Time   `db:"fulfilled_at"`
     OrderItems  []OrderItem

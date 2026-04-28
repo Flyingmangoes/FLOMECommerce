@@ -250,4 +250,3 @@ func (ps *ProductStore) UpdateAvailability(ctx context.Context, params *ProductP
 	return product, nil
 }
 
-
