@@ -4,17 +4,19 @@ import (
 	"backend/src/models"
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 )
 
 type OrderStoreInterface interface {
 	CreateOrder(ctx context.Context, tx *sql.Tx, params *OrderStoreParams) (*models.Order, []*models.OrderItem, error)
+	RemoveOrder(ctx context.Context, tx *sql.Tx, params *OrderStoreParams) error
 }
 
 type OrderItemInput struct {
-    ProductID string
-    Price     float64
-    Quantity  int
+    ProductID *string
+    Price     *float64
+    Quantity  *int
 }
 
 type OrderStoreParams struct {
@@ -36,7 +38,6 @@ func NewOrderStore(db *sql.DB) *OrderStore{
 	return &OrderStore{db: db}
 }
 
-
 func (os *OrderStore)CreateOrder(ctx context.Context, tx *sql.Tx, params *OrderStoreParams) (*models.Order, []*models.OrderItem, error) {
 	order := &models.Order{}
 	items := make([]*models.OrderItem, 0)
@@ -45,13 +46,12 @@ func (os *OrderStore)CreateOrder(ctx context.Context, tx *sql.Tx, params *OrderS
 	err = tx.QueryRowContext(ctx,
 	`INSERT INTO mkt_orders(buyer_id, buyer_email, price_total, location, status, eta)
 	VALUES($1, $2, $3, $4, $5, $6)
-	RETURNING order_id, buyer_id, buyer_email, price_total, location, status, eta, created_at`,
+	RETURNING order_id, buyer_id, buyer_email, price_total, location, status, created_at`,
 	params.BuyerID, params.BuyerEmail, params.TotalPrice, 
 	params.Location, params.Status, params.ETA,
-	).Scan(&order.OrderID, 
-		&order.BuyerID, &order.BuyerEmail,&order.TotalPrice,
-		&order.Location, &order.Status, &order.ETA,
-		&order.CreatedAt,
+	).Scan(&order.ID, 
+		&order.BuyerID, &order.BuyerEmail, &order.TotalPrice,
+		&order.Location, &order.Status, &order.CreatedAt,
 	)
 
 	if err != nil {
@@ -65,9 +65,9 @@ func (os *OrderStore)CreateOrder(ctx context.Context, tx *sql.Tx, params *OrderS
         	`INSERT INTO mkt_orders_item(order_id, product_id, quantity, price)
         	VALUES($1, $2, $3, $4)
         	RETURNING order_item_id, order_id, product_id, quantity, price`,
-        	order.OrderID, item.ProductID, item.Quantity, item.Price,
+        	order.ID, item.ProductID, item.Quantity, item.Price,
     	).Scan(
-			&order_item.OrderItemID, &order_item.OrderID, &order_item.ProductID,
+			&order_item.ID, &order_item.OrderID, &order_item.ProductID,
 			&order_item.Quantity, &order_item.Price,
 		)
 
@@ -79,4 +79,27 @@ func (os *OrderStore)CreateOrder(ctx context.Context, tx *sql.Tx, params *OrderS
 	}	
 
 	return order, items, nil
+}
+
+func (os *OrderStore)RemoveOrder(ctx context.Context, tx *sql.Tx, params *OrderStoreParams) error {
+	results, err := tx.ExecContext(ctx,
+		`DELETE FROM mkt_orders
+		WHERE order_id = $1 AND buyer_id = $2`,
+		params.OrderID, params.BuyerID,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	rows, err := results.RowsAffected()
+	if err != nil {
+		return err
+	}
+	
+	if rows == 0 {
+		return fmt.Errorf("orders not found or orders id is not match")
+	}
+
+	return nil
 }

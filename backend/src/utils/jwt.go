@@ -15,8 +15,8 @@ var (
 )
 
 type Claims struct {
-    UserID   string `json:"user_id"`
-    UserType string `json:"user_type"`
+    UserID      string `json:"user_id"`
+    UserType    string `json:"user_type"`
     jwt.RegisteredClaims
 }
 

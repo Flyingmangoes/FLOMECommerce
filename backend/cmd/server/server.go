@@ -4,7 +4,8 @@ import (
 	"backend/src/config"
 	"backend/src/middlewares"
 	"backend/src/repository"
-	"backend/src/utils"
+	"backend/src/services"
+	Logger "backend/src/utils/logger"
 	"net"
 
 	"github.com/gin-gonic/gin"
@@ -16,37 +17,17 @@ import (
 // to make it more readable and added the new variable
 // in SetupServer
 
-type ServerContext struct {
+type ServerManager struct {
 	Users 		repository.UserStoreInterface
 	Stores 		repository.StoreStoreInterface	
 	Products 	repository.ProductStoreInterface 
 	Orders 		repository.OrderStoreInterface
 	Tokens  	repository.TokenStoreInterface 
+	Tx			*services.TxManager
 	JWTSecret	[]byte
 }
 
-type ServerSetupParams struct {
-	Us repository.UserStoreInterface
-	Ss repository.StoreStoreInterface
-	Ps repository.ProductStoreInterface
-	Os repository.OrderStoreInterface
-	Ts repository.TokenStoreInterface
-	Cfg *config.ServerConfig
-}
-
-func SetupServer(params *ServerSetupParams) *ServerContext {
-	return &ServerContext{
-		Users: params.Us,
-		Products: params.Ps,
-		Stores: params.Ss,
-		Orders: params.Os,
-		Tokens: params.Ts,
-		JWTSecret: []byte(params.Cfg.JWTSecret),
-	}
-}
-
-
-func (s *ServerContext)StartLoop(cfg *config.Application) {
+func (sm *ServerManager)Start(cfg *config.Application) {
 	router := gin.Default()
 	iRate := middlewares.NewIPRateLimit(rate.Limit(cfg.RateConf.RequestPerMinute), cfg.RateConf.Burst)
 
@@ -54,13 +35,13 @@ func (s *ServerContext)StartLoop(cfg *config.Application) {
 	router.Use(iRate.RateLimiting())
 	router.Use(middlewares.JSONAppErrorReporter())
 
-	registerRoutes(router, s)
+	registerRoutes(router, sm)
 
 	addr := net.JoinHostPort(cfg.ServConf.Host, cfg.ServConf.Port)
 	router.SetTrustedProxies([]string{addr})
 
-	utils.Log.Info("Server starting", zap.String("addr", addr))
+	Logger.Log.Info("Server starting", zap.String("addr", addr))
 	if err := router.Run(addr); err != nil {      
-		utils.Log.Error("Server Failed to Start", zap.Error(err))
+		Logger.Log.Error("Server Failed to Start", zap.Error(err))
 	}
 }

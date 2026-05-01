@@ -3,8 +3,8 @@ package controllers
 import (
 	"backend/src/middlewares"
 	"backend/src/models"
-	"backend/src/repository"
-	"backend/src/utils"
+	"backend/src/repository"	
+	Logger "backend/src/utils/logger"
 	"net/http"
 	"time"
 
@@ -16,58 +16,63 @@ import (
 // PRODUCT STRUCTURE DECLARATION
 //
 
-type ProductContext struct {
+type ProductManager struct {
+	Stores	   repository.StoreStoreInterface
 	Products   repository.ProductStoreInterface
 	JWTSecret []byte
 }
 
 type RegisterProductRequest struct {
-	// Basic params required for the service
-	StoreName 		string 	`json:"storeName"`
 	ProductName 	string 	`json:"productName"`
 	ImageUrl 		string 	`json:"imageUrl"`
 	Price 			float64 `json:"price"`
-	Rating 			float64 `json:"rating"`
 	Desc 			string  `json:"desc"`
 	Category 		string	`json:"category"`
 	Availability 	int		`json:"availability"`
 }
 
 type UpdateProductRequest struct {
-	NewProductName 	string 	`json:"newProductName"`
-	NewProductDesc 	string	`json:"newProductDesc"`
-	NewStorename 	string	`json:"newStoreName"`
-	NewImageUrl 	string 	`json:"newImageUrl"`
-	NewPrice 		float64 `json:"newPrice"`
-	NewCategory 	string	`json:"newCategory"`
-	NewAvailability int		`json:"newAvailability"`
+	ProductID		string 	`json:"productId" binding:"required"`
+	NewProductName 	string 	`json:"newProductName" binding:"omitempty"`
+	NewProductDesc 	string	`json:"newProductDesc" binding:"omitempty"`
+	NewStorename 	string	`json:"newStoreName" binding:"omitempty"`
+	NewImageUrl 	string 	`json:"newImageUrl" binding:"omitempty"`
+	NewPrice 		float64 `json:"newPrice" binding:"omitempty"`
+	NewCategory 	string	`json:"newCategory" binding:"omitempty"`
+	NewAvailability int		`json:"newAvailability" binding:"omitempty"`
+	Confirmation 	bool	`json:"confirmation" binding:"required"`
 }
 
-type ProductResponse struct {
-	ProductId string 
-	StoreId string
-	StoreName string
-	StoreDesc string		
-	ProductUrl string
-	ProductPic string
-	Price float64
-	Category string
-	Rating float64
-	Availability int
-	CreatedAt time.Time 
-    UpdatedAt *time.Time  
+type RemoveProductRequest struct {
+	ProductID 		string	`json:"productId" binding:"required"`
+	Confirmation	bool 	`json:"Confirmation" binding:"required"`
+}
+
+type productResponse struct {
+	ProductId 		string 
+	StoreId 		string
+	StoreName 		string
+	StoreDesc 		string		
+	ProductUrl 		string
+	ProductPic 		string
+	Price 			float64
+	Category 		string
+	Rating 			float64
+	Availability	int
+	CreatedAt 		time.Time 
+    UpdatedAt 		*time.Time  
 }
 
 //
 // PRODUCT HANDLER IMPLEMENTATION
 //
 
-func (pc *ProductContext) RegisterProduct() gin.HandlerFunc {
+func (pm *ProductManager) RegisterProduct() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req RegisterProductRequest
 
 		if err := c.ShouldBindBodyWithJSON(&req); err != nil {
-			utils.Log.Error("detail", zap.Error(err))
+			Logger.Log.Error("detail", zap.Error(err))
 			c.Error(middlewares.ErrBadRequest("Failed to read client request"))
 			return
 		}
@@ -79,69 +84,101 @@ func (pc *ProductContext) RegisterProduct() gin.HandlerFunc {
 			Name: &req.ProductName,
 			ImageUrl: &req.ImageUrl,
 			Price: &req.Price,
-			Rating: &req.Rating,
 			Desc: &req.Desc,
 			Category: &req.Category,
 			Availability: &req.Availability,
 		}
 
-		product, err := pc.Products.CreateProduct(c.Request.Context(), params)
+		product, err := pm.Products.CreateProduct(c.Request.Context(), params)
 		if err != nil {
-			utils.Log.Error("detail", zap.Error(err))
+			Logger.Log.Error("detail", zap.Error(err))
 			c.Error(middlewares.ErrInternal("Failed to register product"))
 			return
 		}
 
 		c.JSON(http.StatusCreated, gin.H{
-			"response": toProductResponse(product),
+			"response": "product created",
+			"detail": toProductResponse(product),
 		})
 	}
 }
 
 
 
-func (pc *ProductContext) UpdateProduct() gin.HandlerFunc {
+func (pm *ProductManager) UpdateProduct() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req UpdateProductRequest
 
 		if err := c.ShouldBindBodyWithJSON(&req); err != nil {
-			utils.Log.Error("detail", zap.Error(err))
+			Logger.Log.Error("detail", zap.Error(err))
 			c.Error(middlewares.ErrBadRequest("Failed to read client request"))
 			return
 		}
 
-		params := &repository.ProductProfileParams{
+		storeId := c.GetString("storeId")
 
+		params := &repository.ProductProfileParams{
+			ProductID:  &req.ProductID,
+			StoreId: &storeId,
+			Name: &req.NewProductName,	
+			Desc: &req.NewProductDesc,
+			ImageUrl: &req.NewImageUrl,
+			Price: &req.NewPrice,
+			Category: &req.NewCategory,
+			Availability: &req.NewAvailability,
 		}
 
-		store, err := pc.Products.UpdateProduct(c.Request.Context(), params)
+		product, err := pm.Products.UpdateProduct(c.Request.Context(), params)
 		if err != nil {
-			utils.Log.Error("detail", zap.Error(err))
+			Logger.Log.Error("detail", zap.Error(err))
+			c.Error(middlewares.ErrInternal("Failed to update product"))
 			return
 		}
 
-		c.JSON(http.StatusCreated, gin.H{"response": toProductResponse(store)})
+		c.JSON(http.StatusCreated, gin.H{
+			"response": "product updated",
+			"detail": toProductResponse(product),
+		})
 	}
 }
 
 
 
-func (pc *ProductContext) RemoveProduct() gin.HandlerFunc {
+func (pm *ProductManager) RemoveProduct() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		var req RemoveProductRequest
+		if err := c.ShouldBindBodyWithJSON(&req); err != nil {
+			Logger.Log.Error("detail", zap.Error(err))
+			c.Error(middlewares.ErrBadRequest("Failed to read client request"))
+			return
+		}
 
+		if req.Confirmation != true {
+			c.Error(middlewares.ErrUnauthorized("Action need confirmation "))
+			return
+		}
+
+		storeId := c.GetString("storeId")
+
+		err := pm.Products.RemoveProduct(c.Request.Context(), &repository.ProductProfileParams{
+			ProductID: &req.ProductID,
+			StoreId: &storeId,
+		})
+
+		if err != nil {
+			Logger.Log.Error("detail", zap.Error(err))
+			c.Error(middlewares.ErrInternal("Failed to remove product"))
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"response": "product removed"})
 	}
 }
 
 
 
-func (pc *ProductContext) SearchProduct() gin.HandlerFunc {
-	return func(c *gin.Context) {
-
-	}
-}
-
-func toProductResponse(p *models.Product) ProductResponse {
-	return ProductResponse{
+func toProductResponse(p *models.Product) productResponse {
+	return productResponse{
 		ProductId: p.ProductID,
 		StoreId: p.StoreID,
 		StoreName: p.Name,

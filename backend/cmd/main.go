@@ -5,7 +5,8 @@ import (
 	"backend/src/config"
 	"backend/src/database"
 	"backend/src/repository"
-	"backend/src/utils"
+	"backend/src/services"
+	Logger "backend/src/utils/logger"
 	"log/slog"
 	"os"
 
@@ -14,17 +15,17 @@ import (
 
 func main() {
 	if err := gotenv.Load(); err != nil {
-		slog.Warn("[WARN]", "Failed to find .env file", err)
+		slog.Warn("DEBUG", "detail", err)
 	}
 
 	cfg := config.NewConfig()
 	if err := cfg.Validate(); err != nil {
-		slog.Error("[ERROR]", "error", err)
+		slog.Error("DEBUG", "detail", err)
 		os.Exit(1)
 	}
 
-	utils.LoggerInit(cfg.Env)
-	defer utils.Log.Sync()
+	Logger.LoggerInit(cfg.Env)
+	defer Logger.Log.Sync()
 
 	db := database.NewDatabaseConnection(cfg.DBConf.DBAddr)
 
@@ -34,16 +35,17 @@ func main() {
 	orderStore := repository.NewOrderStore(db)
 	tokenStore := repository.NewTokenStore(db)
 
-	params := &server.ServerSetupParams{
-		Us: userStore,
-		Ss: storeStore,
-		Ps: productStore,
-		Os: orderStore,
-		Ts: tokenStore,
-		Cfg: cfg.ServConf,
+	txManager := services.NewTxManager(db, productStore, orderStore, storeStore)
+
+	serv := &server.ServerManager{
+		Users: userStore,
+		Stores: storeStore,
+		Products: productStore,
+		Orders: orderStore,
+		Tokens: tokenStore,
+		Tx: txManager,
+		JWTSecret: []byte(cfg.ServConf.JWTSecret),
 	}
 
-	serv := server.SetupServer(params)
-
-	serv.StartLoop(cfg)
+	serv.Start(cfg)
 }

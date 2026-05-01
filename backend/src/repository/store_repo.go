@@ -19,7 +19,7 @@ type StoreStoreInterface interface {
 
 type StoreProfileParams struct {
     StoreId      *string
-
+	
     // Identifiers
     OwnerId      *string
     StoreName    *string

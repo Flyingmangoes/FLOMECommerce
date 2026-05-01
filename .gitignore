@@ -28,3 +28,6 @@ dist-ssr
 database.env
 /web/.env
 /backend/cmd/.env
+
+out
+out/*

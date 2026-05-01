@@ -2,7 +2,7 @@ package middlewares
 
 import (
 	"backend/src/repository"
-	"backend/src/utils"
+	Logger "backend/src/utils/logger"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -26,7 +26,7 @@ func CheckForStore(stores repository.StoreStoreInterface) gin.HandlerFunc {
 		ownerId := c.GetString("userId")
 		store, err := stores.GetStoreByOwner(c.Request.Context(), &repository.StoreProfileParams{OwnerId: &ownerId})
 		if err != nil {
-			utils.Log.Error("Error", zap.Error(err))
+			Logger.Log.Error("detail", zap.Error(err))
 			c.Abort()
 			return
 		}

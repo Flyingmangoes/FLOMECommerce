@@ -3,11 +3,12 @@ package controllers
 import (
 	"backend/src/middlewares"
 	"backend/src/repository"
-	"backend/src/utils"
+	Logger "backend/src/utils/logger"
 	"backend/src/validators"
 
-	"github.com/gin-gonic/gin"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
@@ -15,7 +16,7 @@ import (
 // STORE HANDLER DECLARATION
 //
 
-type StoreContext struct {
+type StoreManager struct {
 	Users 		repository.UserStoreInterface
 	Stores    	repository.StoreStoreInterface
     Tokens   	repository.TokenStoreInterface
@@ -71,12 +72,12 @@ type StoreRemoveRequest struct {
 // STORE HANDLER IMPLEMENTATION
 //
 
-func (sc *StoreContext) RegisterStore() gin.HandlerFunc {
+func (sm *StoreManager) RegisterStore() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req StoreRegisterRequest
 
 		if err := c.ShouldBindBodyWithJSON(&req); err != nil {
-			utils.Log.Error("Error", zap.Error(err))
+			Logger.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrBadRequest("Failed to read client request:"))
 			return
 		}
@@ -98,9 +99,9 @@ func (sc *StoreContext) RegisterStore() gin.HandlerFunc {
 			Website: &req.Website,
 		}
 
-		store, err := sc.Stores.CreateStore(c.Request.Context(), params)
+		store, err := sm.Stores.CreateStore(c.Request.Context(), params)
 		if err != nil {
-			utils.Log.Error("Error", zap.Error(err))
+			Logger.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrInternal("Failed to create stores"))
 			return
 		}
@@ -109,12 +110,14 @@ func (sc *StoreContext) RegisterStore() gin.HandlerFunc {
 	}
 }
 
-func (sc *StoreContext) UpdateStore() gin.HandlerFunc {
+
+
+func (sm *StoreManager) UpdateStore() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req StoreUpdateRequest
 
 		if err := c.ShouldBindBodyWithJSON(&req); err != nil {
-			utils.Log.Error("Error", zap.Error(err))
+			Logger.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrBadRequest("Failed to read client request"))
 			return
 		}
@@ -126,15 +129,15 @@ func (sc *StoreContext) UpdateStore() gin.HandlerFunc {
 			UserId: &ownerid,
 		}
 
-		userpass, err := sc.Users.GetPassword(c.Request.Context(), up)
+		userpass, err := sm.Users.GetPassword(c.Request.Context(), up)
 		if err != nil {
-			utils.Log.Error("Error", zap.Error(err))
+			Logger.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrInternal("Failed to compare credentials"))
 			return
 		}
 
 		if err = validators.ValidatePassword(userpass.PasswordHash, req.OwnerPassword); err != nil {
-			utils.Log.Error("Error", zap.Error(err))
+			Logger.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrUnauthorized("Invalid credentials"))
 			return
 		}
@@ -154,9 +157,9 @@ func (sc *StoreContext) UpdateStore() gin.HandlerFunc {
 			StoreId: &storeid,
 		}
 
-		store, err := sc.Stores.UpdateStore(c.Request.Context(), params)
+		store, err := sm.Stores.UpdateStore(c.Request.Context(), params)
 		if err != nil {
-			utils.Log.Error("Error", zap.Error(err))
+			Logger.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrInternal("Failed to update store"))
 			return
 		}
@@ -165,7 +168,9 @@ func (sc *StoreContext) UpdateStore() gin.HandlerFunc {
 	}	
 }
 
-func (sc *StoreContext) DeleteStore() gin.HandlerFunc {
+
+
+func (sm *StoreManager) DeleteStore() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		
 	}

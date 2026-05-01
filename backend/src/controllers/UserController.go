@@ -6,6 +6,7 @@ import (
 	"backend/src/repository"
 	"backend/src/services"
 	"backend/src/utils"
+	Logger "backend/src/utils/logger"
 	"backend/src/validators"
 	"errors"
 	"net/http"
@@ -77,7 +78,7 @@ type LoginRequest struct {
 	Password 	 string	`json:"password" binding:"required"`
 }
 
-type UserResponse struct {
+type userResponse struct {
 	UserID       string    `json:"userId"`
     FirstName    string    `json:"firstName"`
     LastName     string    `json:"lastName"`
@@ -104,14 +105,14 @@ func (uc *UserContext)RegisterUser() gin.HandlerFunc {
 		var req UserRegisterRequest
 
 		if err := c.ShouldBindBodyWithJSON(&req); err != nil {
-			utils.Log.Error("Error", zap.Error(err))
+			Logger.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrBadRequest("Failed to read client request:"))
 			return
 		}
 
 		hashedpass, err := services.Hashing([]byte(req.Password))
 		if err != nil {
-			utils.Log.Error("Error", zap.Error(err))
+			Logger.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrInternal("Failed to hash password"))
 			return
 		}
@@ -137,7 +138,7 @@ func (uc *UserContext)RegisterUser() gin.HandlerFunc {
 
 		user, err := uc.Users.CreateUser(c.Request.Context(), params)
 		if err != nil {
-			utils.Log.Error("Error", zap.Error(err))
+			Logger.Log.Error("Error", zap.Error(err))
 			var PgErr *pq.Error
 			if errors.As(err, &PgErr) && PgErr.Code == "23505" {
 				c.Error(middlewares.ErrConflict("User already exists"))
@@ -150,27 +151,28 @@ func (uc *UserContext)RegisterUser() gin.HandlerFunc {
 
 		accessToken, err := utils.GenerateAccessToken(user.UserID, user.UserType, uc.JWTSecret)
 		if err != nil {
-			utils.Log.Error("Error", zap.Error(err))
+			Logger.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrInternal("Failed to generate token"))
 			return
 		}
 
 		refreshToken, expiresAt, err := utils.GenerateRefreshToken(user.UserID, user.UserType, uc.JWTSecret)
 		if err != nil {
-			utils.Log.Error("Error", zap.Error(err))
+			Logger.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrInternal("Failed to generate refresh token"))
 			return 
 		}
 
 		if err := uc.Tokens.SaveRefreshToken(c.Request.Context(), user.UserID, refreshToken, expiresAt); err != nil {
- 	   		utils.Log.Error("Error", zap.Error(err))
+ 	   		Logger.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrInternal("Failed to save session"))
     		return
 		}
 
-		utils.Log.Info("Register process completed")
+		Logger.Log.Info("Register process completed")
 		c.JSON(http.StatusCreated, gin.H{
-			"response": toUserResponse(user),
+			"response": "user created",
+			"detail": toUserResponse(user),
 			"token": gin.H{
 				"access_token": accessToken,
 				"refresh_token": refreshToken,
@@ -185,7 +187,7 @@ func (uc *UserContext)UpdateUser() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req UpdateUserRequest
 		if err := c.ShouldBindBodyWithJSON(&req); err != nil {
-			utils.Log.Error("Error", zap.Error(err))
+			Logger.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrBadRequest("Failed to read client request"))
 			return
 		}
@@ -196,7 +198,7 @@ func (uc *UserContext)UpdateUser() gin.HandlerFunc {
 
 			hashedpass, err := services.Hashing([]byte(pw))
 			if err != nil {
-				utils.Log.Error("Error", zap.Error(err))
+				Logger.Log.Error("Error", zap.Error(err))
 				c.Error(middlewares.ErrInternal("Failed to hash password"))
 				return
 			}
@@ -235,14 +237,15 @@ func (uc *UserContext)UpdateUser() gin.HandlerFunc {
 		user, err := uc.Users.UpdateUser(c.Request.Context(), params)
 
 		if err != nil {
-			utils.Log.Error("Error", zap.Error(err))
+			Logger.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrInternal("Failed to update user"))
 			return
 		}
 
-		utils.Log.Info("Update process completed")
+		Logger.Log.Info("Update process completed")
 		c.JSON(http.StatusOK, gin.H{
-			"user updated": toUserResponse(user),
+			"response": "user updated",
+			"detail": toUserResponse(user),
 		}) 
 	}
 }
@@ -253,7 +256,7 @@ func (uc *UserContext)DeleteUser() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req RemoveUserRequest
 		if err := c.ShouldBindBodyWithJSON(&req); err != nil {
-			utils.Log.Error("Error", zap.Error(err))
+			Logger.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrBadRequest("Failed to read client request"))
 			return
 		}
@@ -267,25 +270,25 @@ func (uc *UserContext)DeleteUser() gin.HandlerFunc {
 
 		stored, err := uc.Users.GetPassword(c.Request.Context(), params)
         if err != nil {
-            utils.Log.Error("Error", zap.Error(err))
+            Logger.Log.Error("Error", zap.Error(err))
             c.Error(middlewares.ErrUnauthorized("Invalid credentials"))
             return
         }
 
 		if err := validators.ValidatePassword(stored.PasswordHash, req.Password); err != nil {
-			utils.Log.Error("Error", zap.Error(err))
+			Logger.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrUnauthorized("Invalid credentials"))
 			return
 		}
 
 		if err := uc.Users.DeleteUser(c.Request.Context(), params); err != nil {
-			utils.Log.Error("Error", zap.Error(err))
+			Logger.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrInternal("Failed to remove user"))
 			return
 		}
 
-		utils.Log.Info("Delete process completed")
-		c.JSON(http.StatusOK, gin.H{"status": "success"})
+		Logger.Log.Info("Delete process completed")
+		c.JSON(http.StatusOK, gin.H{"status": "user removed"})
 	}
 }
 
@@ -295,7 +298,7 @@ func (uc *UserContext)LoginUser() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req LoginRequest
 		if err := c.ShouldBindBodyWithJSON(&req); err != nil {
-			utils.Log.Error("Error", zap.Error(err))
+			Logger.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrBadRequest("Failed to read client request"))
 			return
 		}
@@ -311,40 +314,41 @@ func (uc *UserContext)LoginUser() gin.HandlerFunc {
 
 		user, err := uc.Users.LoginByUserEmail(c.Request.Context(), params)
         if err != nil {
-			utils.Log.Error("Error", zap.Error(err))
+			Logger.Log.Error("Error", zap.Error(err))
             c.Error(middlewares.ErrUnauthorized("Invalid credentials"))
             return
         }
 
 		if err := validators.ValidatePassword(user.PasswordHash, req.Password); err != nil {
-			utils.Log.Error("Error", zap.Error(err))
+			Logger.Log.Error("Error", zap.Error(err))
             c.Error(middlewares.ErrUnauthorized("Invalid credentials"))
             return
         }
 
 		accessToken, err := utils.GenerateAccessToken(user.UserID, user.UserType, uc.JWTSecret)
 		if err != nil {
-			utils.Log.Error("Error", zap.Error(err))
+			Logger.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrInternal("Failed to generate token"))
 			return
 		}
 
 		refreshToken, expiresAt, err := utils.GenerateRefreshToken(user.UserID, user.UserType, uc.JWTSecret)
 		if err != nil {
-			utils.Log.Error("Error", zap.Error(err))
+			Logger.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrInternal("Failed to generate refresh token"))
 			return 
 		}
 
 		if err := uc.Tokens.SaveRefreshToken(c.Request.Context(), user.UserID, refreshToken, expiresAt); err != nil {
-			utils.Log.Error("Error", zap.Error(err))
+			Logger.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrInternal("Failed to save session"))
     		return
 		}
 		
-		utils.Log.Info("Login process completed")
+		Logger.Log.Info("Login process completed")
 		c.JSON(http.StatusOK, gin.H{
-			"response": toUserResponse(user),
+			"response": "login success",
+			"detail": toUserResponse(user),
 			"token": gin.H{
 				"access_token": accessToken,
 				"refresh_token": refreshToken,
@@ -362,53 +366,54 @@ func (uc *UserContext)Refresh() gin.HandlerFunc {
 		}
 
 		if err := c.ShouldBindBodyWithJSON(&req); err != nil {
-			utils.Log.Error("Error", zap.Error(err))
+			Logger.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrInternal("Failed to read request"))
 			return
 		}
 
 		claims, err := utils.VerifyToken(req.RefreshToken, uc.JWTSecret)
 		if err != nil {
-			utils.Log.Error("Error", zap.Error(err))
+			Logger.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrUnauthorized("Invalid or expired refresh token"))
 			return
 		}
 
 		stored, err := uc.Tokens.GetRefreshToken(c.Request.Context(), req.RefreshToken)
 		if err != nil {
-			utils.Log.Error("Error", zap.Error(err))
+			Logger.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrUnauthorized("Refresh token not found"))
 			return
 		}
 
 		if err := uc.Tokens.DeleteRefreshToken(c.Request.Context(), stored.Token); err != nil {
-			utils.Log.Error("Error", zap.Error(err))
+			Logger.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrInternal("Failed to rotate token"))
 			return
 		}
 
 		newAccess, err := utils.GenerateAccessToken(claims.UserID, claims.UserType, uc.JWTSecret)
 		if err != nil {
-			utils.Log.Error("Error", zap.Error(err))
+			Logger.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrInternal("Failed to create token"))
 			return
 		}
 
 		newRefresh, expiresAt, err := utils.GenerateRefreshToken(claims.UserID, claims.UserType, uc.JWTSecret)
 		if err != nil {
-			utils.Log.Error("Error", zap.Error(err))
+			Logger.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrInternal("Failed to create refresh token"))
 			return
 		}
 
 		if err := uc.Tokens.SaveRefreshToken(c.Request.Context(), claims.UserID, newRefresh, expiresAt); err != nil {
-			utils.Log.Error("Error", zap.Error(err))
+			Logger.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrInternal("Failed to save refresh token"))
 			return
 		}
 
-		utils.Log.Info("Refresh process completed")
+		Logger.Log.Info("Refresh process completed")
 		c.JSON(http.StatusOK, gin.H{
+			"response": "success",
 			"token": gin.H{
 				"access_token": newAccess,
 				"refresh_token": newRefresh,
@@ -428,12 +433,12 @@ func (uc *UserContext)LogoutUser() gin.HandlerFunc {
 
 		err = uc.Tokens.DeleteAllUserTokens(c.Request.Context(), id)
 		if err != nil {
-			utils.Log.Error("Error", zap.Error(err))
+			Logger.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrInternal("Failed to remove user token"))
 			return
 		}
 
-		utils.Log.Info("Logout process completed")
+		Logger.Log.Info("Logout process completed")
 		c.JSON(http.StatusOK, gin.H{"response": "success"})
 	}	
 }
@@ -442,8 +447,8 @@ func (uc *UserContext)LogoutUser() gin.HandlerFunc {
 // HELPER FUNCTION SECTION
 //
 
-func toUserResponse(u *models.User) UserResponse {
-    return UserResponse{
+func toUserResponse(u *models.User) userResponse {
+    return userResponse{
         UserID:       u.UserID,
         FirstName:    u.FirstName,
         LastName:     u.LastName,
