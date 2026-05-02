@@ -29,7 +29,7 @@ type ServerManager struct {
 
 func (sm *ServerManager)Start(cfg *config.Application) {
 	router := gin.Default()
-	iRate := middlewares.NewIPRateLimit(rate.Limit(cfg.RateConf.RequestPerMinute), cfg.RateConf.Burst)
+	iRate := middlewares.NewIPRateLimit(rate.Limit(cfg.RATE_CONF.RPM), cfg.RATE_CONF.BURST)
 
 	router.Use(middlewares.CORSMiddleware())
 	router.Use(iRate.RateLimiting())
@@ -37,8 +37,10 @@ func (sm *ServerManager)Start(cfg *config.Application) {
 
 	registerRoutes(router, sm)
 
-	addr := net.JoinHostPort(cfg.ServConf.Host, cfg.ServConf.Port)
-	router.SetTrustedProxies([]string{addr})
+	addr := net.JoinHostPort(cfg.SERV_CONF.HOST, cfg.SERV_CONF.PORT)
+	accept_addr := net.JoinHostPort(cfg.SERV_CONF.ACCEPT_HOST, cfg.SERV_CONF.PORT)
+	
+	router.SetTrustedProxies([]string{addr, accept_addr})
 
 	Logger.Log.Info("Server starting", zap.String("addr", addr))
 	if err := router.Run(addr); err != nil {      

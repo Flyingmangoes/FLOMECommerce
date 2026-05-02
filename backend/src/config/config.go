@@ -7,50 +7,60 @@ import (
 
 
 type Application struct {
-	DBConf *DBConfig
-	ServConf *ServerConfig
-	AppConf *AppConfig
-	RateConf *RateLimitingConfig
-	Env string
+	DB_CONF *DBConfig
+	SERV_CONF *ServerConfig
+	APP_CONF *AppConfig
+	RATE_CONF *RateLimitingConfig
+	ENVIRONMENT_STATUS string
 }
 
 type AppConfig struct {
-	CustomAliasLength int
+	CUSTOM_ALIAS_LENGTH int
 }
 
 type ServerConfig struct {
-	Host string
-	Port string
-	JWTSecret string
+	HOST 		string
+	PORT 		string
+	ACCEPT_HOST string
+	ACCEPT_PORT string
+	JWT_SECRET 	string
 }
 
 type DBConfig struct {
-	DBAddr string
+	DB_ADDR string
 }
 
 type RateLimitingConfig struct {
-	RequestPerMinute int
-	Burst int
+	RPM int
+	BURST int
 }
 
 func (a *Application) Validate() error {
-	if a.DBConf.DBAddr == ""{
+	if a.DB_CONF.DB_ADDR == ""{
 		return errors.New("DB_URL is required")
 	}
 
-	if a.ServConf.Host == "" {
+	if a.SERV_CONF.HOST == "" {
 		return errors.New("SERV_HOST is required")
 	}
 
-	if a.ServConf.Port == "" {
+	if a.SERV_CONF.PORT == "" {
 		return errors.New("SERV_PORT is required")
 	}
 
-	if a.ServConf.JWTSecret == "" {
+	if a.SERV_CONF.ACCEPT_HOST == "" {
+		return errors.New("ACCEPT_HOST is required")
+	}
+
+	if a.SERV_CONF.ACCEPT_PORT == "" {
+		return errors.New("ACCEPT_PORT is required")
+	}
+
+	if a.SERV_CONF.JWT_SECRET == "" {
 		return errors.New("SECRET is required")
 	}
 
-	if a.Env == "" {
+	if a.ENVIRONMENT_STATUS == "" {
 		return errors.New("ENV_STATUS is required")
 	}
 
@@ -59,22 +69,24 @@ func (a *Application) Validate() error {
 
 func NewConfig() *Application {
 	return &Application{
-		DBConf: &DBConfig{
-			DBAddr: os.Getenv("DB_URL"),
+		DB_CONF: &DBConfig{
+			DB_ADDR: os.Getenv("DB_URL"),
 		},
-		ServConf: &ServerConfig{
-			Host: os.Getenv("SERV_HOST"),
-			Port: os.Getenv("SERV_PORT"),
-			JWTSecret: os.Getenv("JWT_SECRET"),
+		SERV_CONF: &ServerConfig{
+			HOST: os.Getenv("SERV_HOST"),
+			PORT: os.Getenv("SERV_PORT"),
+			ACCEPT_HOST: os.Getenv("ACCEPT_HOST"),
+			ACCEPT_PORT: os.Getenv("ACCEPT_PORT"),
+			JWT_SECRET: os.Getenv("JWT_SECRET"),
 		},
-		AppConf: &AppConfig{
-			CustomAliasLength: 6,
+		APP_CONF: &AppConfig{
+			CUSTOM_ALIAS_LENGTH: 6,
 		},
-		RateConf: &RateLimitingConfig{
-			RequestPerMinute: 30,
-			Burst: 3,
+		RATE_CONF: &RateLimitingConfig{
+			RPM: 30,
+			BURST: 3,
 		},
-		Env: os.Getenv("ENV_STATUS"),
+		ENVIRONMENT_STATUS: os.Getenv("ENV_STATUS"),
 	}
 }
 	

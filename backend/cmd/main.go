@@ -24,10 +24,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	Logger.LoggerInit(cfg.Env)
+	Logger.LoggerInit(cfg.ENVIRONMENT_STATUS)
 	defer Logger.Log.Sync()
 
-	db := database.NewDatabaseConnection(cfg.DBConf.DBAddr)
+	db := database.NewDatabaseConnection(cfg.DB_CONF.DB_ADDR)
 
 	userStore := repository.NewUserStore(db)
 	storeStore := repository.NewStoresStore(db)
@@ -44,7 +44,7 @@ func main() {
 		Orders: orderStore,
 		Tokens: tokenStore,
 		Tx: txManager,
-		JWTSecret: []byte(cfg.ServConf.JWTSecret),
+		JWTSecret: []byte(cfg.SERV_CONF.JWT_SECRET),
 	}
 
 	serv.Start(cfg)
