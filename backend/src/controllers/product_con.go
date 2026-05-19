@@ -32,15 +32,15 @@ type RegisterProductRequest struct {
 }
 
 type UpdateProductRequest struct {
-	ProductID		string 	`json:"productId" binding:"required"`
-	NewProductName 	string 	`json:"newProductName" binding:"omitempty"`
-	NewProductDesc 	string	`json:"newProductDesc" binding:"omitempty"`
-	NewStorename 	string	`json:"newStoreName" binding:"omitempty"`
-	NewImageUrl 	string 	`json:"newImageUrl" binding:"omitempty"`
-	NewPrice 		float64 `json:"newPrice" binding:"omitempty"`
-	NewCategory 	string	`json:"newCategory" binding:"omitempty"`
-	NewAvailability int		`json:"newAvailability" binding:"omitempty"`
-	Confirmation 	bool	`json:"confirmation" binding:"required"`
+	ProductID		string 		`json:"productId" binding:"required"`
+	NewProductName 	*string 	`json:"newProductName" binding:"omitempty"`
+	NewProductDesc 	*string		`json:"newProductDesc" binding:"omitempty"`
+	NewStorename 	*string		`json:"newStoreName" binding:"omitempty"`
+	NewImage 		*string 	`json:"newImage" binding:"omitempty"`
+	NewPrice 		*float64 	`json:"newPrice" binding:"omitempty"`
+	NewCategory 	*string		`json:"newCategory" binding:"omitempty"`
+	NewAvailability *int		`json:"newAvailability" binding:"omitempty"`
+	Confirmation 	bool		`json:"confirmation" binding:"required"`
 }
 
 type RemoveProductRequest struct {
@@ -54,7 +54,7 @@ type productResponse struct {
 	StoreName 		string
 	StoreDesc 		string		
 	ProductUrl 		string
-	ProductPic 		string
+	ProductIMG 		string
 	Price 			float64
 	Category 		string
 	Rating 			float64
@@ -120,12 +120,12 @@ func (pm *ProductManager) UpdateProduct() gin.HandlerFunc {
 		params := &repository.ProductProfileParams{
 			ProductID:  &req.ProductID,
 			StoreId: &storeId,
-			Name: &req.NewProductName,	
-			Desc: &req.NewProductDesc,
-			ImageUrl: &req.NewImageUrl,
-			Price: &req.NewPrice,
-			Category: &req.NewCategory,
-			Availability: &req.NewAvailability,
+			Name: req.NewProductName,	
+			Desc: req.NewProductDesc,
+			ImageUrl: req.NewImage,
+			Price: req.NewPrice,
+			Category: req.NewCategory,
+			Availability: req.NewAvailability,
 		}
 
 		product, err := pm.Products.UpdateProduct(c.Request.Context(), params)
@@ -183,8 +183,7 @@ func toProductResponse(p *models.Product) productResponse {
 		StoreId: p.StoreID,
 		StoreName: p.Name,
 		StoreDesc: p.Desc,		
-		ProductUrl: p.Url,
-		ProductPic: p.ImageUrl,
+		ProductIMG: p.ProductIMG,
 		Price: p.Price,
 		Category: p.Category,
 		Rating: p.Rating,

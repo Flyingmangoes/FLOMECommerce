@@ -30,7 +30,8 @@ func registerRoutes(r *gin.Engine, sm *ServerManager) {
     orderCtrl := &controllers.OrderManager{
         Orders: sm.Orders,
         Products: sm.Products,
-        OrdrSvc: services.OrderService{Tx: sm.Tx},
+        Users: sm.Users,
+        Service: services.OrderService{Tx: sm.Tx},
     }
 
     // public auth routes
@@ -72,7 +73,7 @@ func registerRoutes(r *gin.Engine, sm *ServerManager) {
     order.Use(middlewares.AuthMiddlewares(string(sm.JWTSecret)))
     {
         order.POST("", orderCtrl.CreateOrder())
-        order.DELETE("")
+        order.DELETE("", orderCtrl.CancelOrder())
     }
 
 }

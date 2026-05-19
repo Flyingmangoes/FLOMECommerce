@@ -18,17 +18,13 @@ type ProductStoreInterface interface {
 
 	UpdateRating(ctx context.Context, params *ProductProfileParams) (*models.Product, error)
 
-	GetProductForUpdate(ctx context.Context, tx *sql.Tx, lookup []OrderItemInput) ([]models.Product, error)
+	GetProductForUpdate(ctx context.Context, tx *sql.Tx, orderInput []OrderItemInput) ([]models.Product, error)
     DeductStock(ctx context.Context, tx *sql.Tx, items []OrderItemInput) error
 }
 
 type ProductProfileParams struct {
-	// Use the same structure for updating a product,
-	// product id cannot be updated, it stay forever like 
-	// how it supposed to be, when updating product id used 
-	// for specified which product to update
-	//
-	// keep that in mind for whoever find this usefull
+	// For update request need a confirmation which a bool type that sended from 
+	// client side confirmation
 
 	// Identifier Section
 	ProductID *string
@@ -77,7 +73,7 @@ func (ps *ProductStore) CreateProduct(ctx context.Context, params *ProductProfil
 		params.Availability,
 	).Scan(&product.ProductID, 
 		&product.Name, &product.Desc, &product.StoreID, 
-		&product.ImageUrl, &product.Price, &product.Category, &product.Rating, 
+		&product.ProductIMG, &product.Price, &product.Category, &product.Rating, 
 		&product.Availability, &product.CreatedAt,
 	)
 
@@ -117,7 +113,7 @@ func (ps *ProductStore) UpdateProduct(ctx context.Context, params *ProductProfil
 		params.Category, params.Availability, params.ProductID,
 		params.StoreId,
 	).Scan(&params.ProductID, &product.Name, 
-		&product.Desc, &product.StoreID, &product.ImageUrl, 
+		&product.Desc, &product.StoreID, &product.ProductIMG, 
 		&product.Price, &product.Category, 
 		&product.Availability, &product.UpdatedAt,
 	)
@@ -160,19 +156,19 @@ func (ps *ProductStore)RemoveProduct(ctx context.Context, params *ProductProfile
 
 
 
-func (ps *ProductStore)GetProductForUpdate(ctx context.Context, tx *sql.Tx, lookup []OrderItemInput) ([]models.Product, error) {
+func (ps *ProductStore)GetProductForUpdate(ctx context.Context, tx *sql.Tx, orderInput []OrderItemInput) ([]models.Product, error) {
 	products := []models.Product{}
 
-	for _, p := range lookup {
+	for _, p := range orderInput {
 		product := &models.Product{}
 
 		err := tx.QueryRowContext(ctx,
-			`SELECT product_id, product_name, product_desc, store_id, url, product_pic, price, rating, availability, created_at, updated_at FROM mkt_products
+			`SELECT product_id, product_name, product_desc, store_id, product_pic, price, rating, availability, created_at, updated_at FROM mkt_products
 			WHERE product_id = $1`,
 			p.ProductID,
 		).Scan(&product.ProductID, &product.Name, 
 			&product.Desc, &product.StoreID, 
-			&product.Url, &product.ImageUrl, &product.Price, 
+			&product.ProductIMG, &product.Price, 
 			&product.Rating, &product.Availability, &product.CreatedAt, 
 			&product.UpdatedAt,
 		)
@@ -189,16 +185,16 @@ func (ps *ProductStore)GetProductForUpdate(ctx context.Context, tx *sql.Tx, look
 
 
 
-func (ps *ProductStore)GetProductByName(ctx context.Context, lookup *ProductProfileParams) (*models.Product, error) {
+func (ps *ProductStore)GetProductByName(ctx context.Context, params *ProductProfileParams) (*models.Product, error) {
 	product := &models.Product{}
 	
 	err := ps.db.QueryRowContext(ctx,
-		`SELECT product_id, product_name, product_desc, store_id, url, product_pic, price, rating, availability, created_at, updated_at FROM mkt_products
+		`SELECT product_id, product_name, product_desc, store_id, product_pic, price, rating, availability, created_at, updated_at FROM mkt_products
 		WHERE product_name = $1`,
-		lookup.Name,
+		params.Name,
 	).Scan(&product.ProductID, &product.Name,
 		&product.Desc, &product.StoreID,
-		&product.Url, &product.ImageUrl, &product.Price,
+		&product.ProductIMG, &product.Price,
 		&product.Rating, &product.Availability, &product.CreatedAt,
 		&product.UpdatedAt,
 	)

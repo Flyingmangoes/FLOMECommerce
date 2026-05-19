@@ -26,7 +26,7 @@ type StoreManager struct {
 type StoreRegisterRequest struct {	
 	StoreName 	 string `json:"storeName"`
 	StoreDesc 	 string `json:"storeDesc"`
-	StorePic 	 string `json:"storePic"`
+	StoreIMG 	 string `json:"storeIMG"`
 
 	Locale 		 string	`json:"storeLocale"`
 	Country		 string	`json:"storeCountry"`
@@ -42,10 +42,11 @@ type StoreRegisterRequest struct {
 
 type StoreUpdateRequest struct {
 	OwnerPassword 	string `json:"password" binding:"required"`
+	Confirmation 	bool   `json:"confirmation" binding:"required"`
 
-	NewStoreName    *string `json:"newStoreName" binding:"omitempty"`
-	NewStoreDesc 	*string `json:"newStoreDesc" binding:"omitempty"`
-	NewStorePic		*string `json:"newStorePic" binding:"omitempty"`
+	NewName    *string `json:"newStoreName" binding:"omitempty"`
+	NewDesc 	*string `json:"newStoreDesc" binding:"omitempty"`
+	NewImage		*string `json:"newStorePic" binding:"omitempty"`
 	NewPhoneNumber  *string `json:"newPhoneNumber" binding:"omitempty"`
 	NewSupportEmail *string `json:"newSupportEmail" binding:"omitempty, email"`
 
@@ -53,8 +54,8 @@ type StoreUpdateRequest struct {
 	NewCountry		*string `json:"newCountry" binding:"omitempty"`
 	NewAddress		*string `json:"newAddress" binding:"omitempty"`
 
-	NewTiktokAcc    *string `json:"newTiktokAcc" binding:"omitempty"`
-	NewInstagramAcc *string `json:"newInstagramAcc" binding:"omitempty"`
+	NewTiktok    	*string `json:"newTiktokAcc" binding:"omitempty"`
+	NewInstagram 	*string `json:"newInstagramAcc" binding:"omitempty"`
 	NewWebsite 		*string `json:"newWebsite" binding:"omitempty"`
 }
 
@@ -88,7 +89,7 @@ func (sm *StoreManager) RegisterStore() gin.HandlerFunc {
 			OwnerId: &ownerid,
 			StoreName: &req.StoreName,
 			StoreDesc: &req.StoreDesc,
-			StorePic: &req.StorePic,
+			StorePic: &req.StoreIMG,
 			Locale: &req.Locale,
 			Country: &req.Country,
 			Address: &req.Address,
@@ -122,11 +123,11 @@ func (sm *StoreManager) UpdateStore() gin.HandlerFunc {
 			return
 		}
 
-		ownerid := c.GetString("userId")
-        storeid := c.GetString("storeId") 
+		ownerId := c.GetString("userId")
+        storeId := c.GetString("storeId") 
 
 		up := &repository.UserProfileParams{
-			UserId: &ownerid,
+			UserId: &ownerId,
 		}
 
 		userpass, err := sm.Users.GetPassword(c.Request.Context(), up)
@@ -143,18 +144,19 @@ func (sm *StoreManager) UpdateStore() gin.HandlerFunc {
 		}
 
 		params:= &repository.StoreProfileParams{	
-			StoreName: req.NewStoreName,
-			StoreDesc: req.NewStoreDesc,
-			StorePic:  req.NewStorePic,
+			StoreId: &storeId,
+			StoreName: req.NewName,
+			StoreDesc: req.NewDesc,
+			StorePic:  req.NewImage,
 			Locale: req.NewLocale,
 			Country: req.NewCountry,
 			Address: req.NewAddress,
 			PhoneNumber: req.NewPhoneNumber,
 			SupportEmail: req.NewSupportEmail,
-			Instagram: req.NewInstagramAcc,
-			Tiktok: req.NewTiktokAcc,
+			Instagram: req.NewInstagram,
+			Tiktok: req.NewTiktok,
 			Website: req.NewWebsite,
-			StoreId: &storeid,
+			Confirmation: req.Confirmation,
 		}
 
 		store, err := sm.Stores.UpdateStore(c.Request.Context(), params)

@@ -38,7 +38,7 @@ func (sm *ServerManager)Start(cfg *config.Application) {
 	registerRoutes(router, sm)
 
 	addr := net.JoinHostPort(cfg.SERV_CONF.HOST, cfg.SERV_CONF.PORT)
-	accept_addr := net.JoinHostPort(cfg.SERV_CONF.ACCEPT_HOST, cfg.SERV_CONF.PORT)
+	accept_addr := net.JoinHostPort(cfg.SERV_CONF.ACCEPT_HOST, cfg.SERV_CONF.ACCEPT_PORT)
 	
 	router.SetTrustedProxies([]string{addr, accept_addr})
 

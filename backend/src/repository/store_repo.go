@@ -41,6 +41,9 @@ type StoreProfileParams struct {
     Facebook     *string
     Tiktok       *string
     Website      *string
+
+	// Update purpose
+	Confirmation bool
 }
 
 type ListStoresFilter struct {

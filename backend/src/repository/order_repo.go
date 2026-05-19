@@ -5,7 +5,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"time"
 )
 
 type OrderStoreInterface interface {
@@ -26,7 +25,6 @@ type OrderStoreParams struct {
     TotalPrice *float64
     Status     *string
     Location   *string
-	ETA 	   *time.Time
     ProductList []OrderItemInput
 }
 
@@ -44,11 +42,11 @@ func (os *OrderStore)CreateOrder(ctx context.Context, tx *sql.Tx, params *OrderS
 	var err error
 
 	err = tx.QueryRowContext(ctx,
-	`INSERT INTO mkt_orders(buyer_id, buyer_email, price_total, location, status, eta)
-	VALUES($1, $2, $3, $4, $5, $6)
+	`INSERT INTO mkt_orders(buyer_id, buyer_email, price_total, location, status)
+	VALUES($1, $2, $3, $4, $5)
 	RETURNING order_id, buyer_id, buyer_email, price_total, location, status, created_at`,
 	params.BuyerID, params.BuyerEmail, params.TotalPrice, 
-	params.Location, params.Status, params.ETA,
+	params.Location, params.Status,
 	).Scan(&order.ID, 
 		&order.BuyerID, &order.BuyerEmail, &order.TotalPrice,
 		&order.Location, &order.Status, &order.CreatedAt,
@@ -62,7 +60,7 @@ func (os *OrderStore)CreateOrder(ctx context.Context, tx *sql.Tx, params *OrderS
 		order_item := &models.OrderItem{}
 
     	err = tx.QueryRowContext(ctx,
-        	`INSERT INTO mkt_orders_item(order_id, product_id, quantity, price)
+        	`INSERT INTO mkt_order_items(order_id, product_id, quantity, price)
         	VALUES($1, $2, $3, $4)
         	RETURNING order_item_id, order_id, product_id, quantity, price`,
         	order.ID, item.ProductID, item.Quantity, item.Price,

@@ -181,13 +181,13 @@ func (us *UserStore)LoginByUserEmail(ctx context.Context, lookup *UserProfilePar
 	user := &models.User{}
 
 	err := us.db.QueryRowContext(ctx,
-		`SELECT user_id, firstname, lastname, username, email, phone_number, passwordhashed, user_locale, user_country, user_type, is_verified, is_agree, email_consent, sms_consent, consent_src, created_at, updated_at, consent_updated_at FROM mkt_users
+		`SELECT user_id, firstname, lastname, username, email, phone_number, passwordhashed, user_locale, user_country, user_address, user_type, is_verified, is_agree, email_consent, sms_consent, consent_src, created_at, updated_at, consent_updated_at FROM mkt_users
 		WHERE email = $1`,
 		lookup.Email,
 	).Scan(&user.UserID, 
 		&user.FirstName, &user.LastName, &user.Username, 
 		&user.Email, &user.PhoneNumber, &user.PasswordHash, 
-		&user.Locale, &user.Country, &user.UserType, 
+		&user.Locale, &user.Country, &user.Address, &user.UserType, 
 		&user.IsVerified, &user.IsAgree, &user.EmailConsent, &user.SmsConsent, 
 		&user.Consent_src, &user.CreatedAt, &user.Updatedat, 
 		&user.Consent_Updated,
@@ -206,13 +206,13 @@ func (us *UserStore) GetUserByUsername(ctx context.Context, lookup *UserProfileP
 	user := &models.User{}
 
 	err := us.db.QueryRowContext(ctx,
-		`SELECT user_id, firstname, lastname, username, email, phone_number, passwordhashed, user_locale, user_country, user_type, is_verified, is_agree, email_consent, sms_consent, consent_src, created_at, updated_at, consent_updated_at FROM mkt_users 
+		`SELECT user_id, firstname, lastname, username, email, phone_number, passwordhashed, user_locale, user_country, user_address, user_type, is_verified, is_agree, email_consent, sms_consent, consent_src, created_at, updated_at, consent_updated_at FROM mkt_users 
 		WHERE username = $1`,
 		lookup.Username,
 	).Scan(&user.UserID, 
 		&user.FirstName, &user.LastName, &user.Username, 
 		&user.Email, &user.PhoneNumber, &user.PasswordHash, 
-		&user.Locale, &user.Country, &user.UserType, 
+		&user.Locale, &user.Country, &user.Address, &user.UserType, 
 		&user.IsVerified, &user.IsAgree, &user.EmailConsent, &user.SmsConsent, 
 		&user.Consent_src, &user.CreatedAt, &user.Updatedat, 
 		&user.Consent_Updated,
@@ -229,13 +229,13 @@ func (us *UserStore) GetUserByID(ctx context.Context, lookup *UserProfileParams)
 	user := &models.User{}
 
 	err := us.db.QueryRowContext(ctx,
-		`SELECT user_id, firstname, lastname, username, email, phone_number, passwordhashed, user_locale, user_country, user_type, is_verified, is_agree, email_consent, sms_consent, consent_src, created_at, updated_at, consent_updated_at FROM mkt_users 
+		`SELECT user_id, firstname, lastname, username, email, phone_number, passwordhashed, user_locale, user_country, user_address, user_type, is_verified, is_agree, email_consent, sms_consent, consent_src, created_at, updated_at, consent_updated_at FROM mkt_users 
 		WHERE user_id = $1`,
 		lookup.UserId,
 	).Scan(&user.UserID, 
 		&user.FirstName, &user.LastName, &user.Username, 
 		&user.Email, &user.PhoneNumber, &user.PasswordHash, 
-		&user.Locale, &user.Country, &user.UserType, 
+		&user.Locale, &user.Country, &user.Address, &user.UserType, 
 		&user.IsVerified, &user.IsAgree, &user.EmailConsent, &user.SmsConsent, 
 		&user.Consent_src, &user.CreatedAt, &user.Updatedat, 
 		&user.Consent_Updated,

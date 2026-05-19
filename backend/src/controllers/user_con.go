@@ -169,10 +169,14 @@ func (uc *UserContext)RegisterUser() gin.HandlerFunc {
     		return
 		}
 
+		c.Header("Authorization", "Bearer" + accessToken)
+		c.Header("X-Refresh-Token", refreshToken)
+
 		Logger.Log.Info("Register process completed")
 		c.JSON(http.StatusCreated, gin.H{
 			"response": "user created",
 			"detail": toUserResponse(user),
+
 			"token": gin.H{
 				"access_token": accessToken,
 				"refresh_token": refreshToken,
@@ -344,11 +348,16 @@ func (uc *UserContext)LoginUser() gin.HandlerFunc {
 			c.Error(middlewares.ErrInternal("Failed to save session"))
     		return
 		}
-		
+
+		c.Header("Authorization", "Bearer" + accessToken)
+		c.Header("X-Refresh-Token", refreshToken)
+
 		Logger.Log.Info("Login process completed")
 		c.JSON(http.StatusOK, gin.H{
 			"response": "login success",
 			"detail": toUserResponse(user),
+
+			// for postman remove after make frontend
 			"token": gin.H{
 				"access_token": accessToken,
 				"refresh_token": refreshToken,
@@ -410,6 +419,9 @@ func (uc *UserContext)Refresh() gin.HandlerFunc {
 			c.Error(middlewares.ErrInternal("Failed to save refresh token"))
 			return
 		}
+
+		c.Header("Authorization", "Bearer" + newAccess)
+		c.Header("X-Refresh-Token", newRefresh)
 
 		Logger.Log.Info("Refresh process completed")
 		c.JSON(http.StatusOK, gin.H{

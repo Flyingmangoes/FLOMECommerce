@@ -16,6 +16,7 @@ type Application struct {
 
 type AppConfig struct {
 	CUSTOM_ALIAS_LENGTH int
+	MAX_RETRY_LOGIN int
 }
 
 type ServerConfig struct {
@@ -80,7 +81,8 @@ func NewConfig() *Application {
 			JWT_SECRET: os.Getenv("JWT_SECRET"),
 		},
 		APP_CONF: &AppConfig{
-			CUSTOM_ALIAS_LENGTH: 6,
+			CUSTOM_ALIAS_LENGTH: 5,
+			MAX_RETRY_LOGIN: 3,
 		},
 		RATE_CONF: &RateLimitingConfig{
 			RPM: 30,

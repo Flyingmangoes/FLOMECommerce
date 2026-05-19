@@ -9,8 +9,7 @@ type Product struct {
     StoreID         string       `db:"store_id"`
     Name            string      `db:"product_name"`
     Desc            string      `db:"product_desc"`
-    Url             string      `db:"url"`
-    ImageUrl        string      `db:"product_pic"`  
+    ProductIMG      string      `db:"product_pic"`  
     Price           float64     `db:"price"`
     Category        string      `db:"category"`
     Rating          float64     `db:"rating"`

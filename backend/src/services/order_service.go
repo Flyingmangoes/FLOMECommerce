@@ -4,7 +4,6 @@ import (
 	"backend/src/models"
 	"backend/src/repository"
 	"context"
-	"time"
 	"database/sql"
 	"fmt"
 )
@@ -18,7 +17,6 @@ type PlaceOrderParams struct {
     BuyerEmail  string
     CombinedLocation 	string
     Status      string
-    ETA         *time.Time
     ProductList []repository.OrderItemInput
 }
 
@@ -37,7 +35,7 @@ func (os *OrderService)PlaceOrder(ctx context.Context, params *PlaceOrderParams)
 
 		for _, p := range products {
 			for _, req := range params.ProductList {
-				if *req.ProductID == p.ProductID && p.Availability < *req.Quantity {
+				if req.ProductID == &p.ProductID && p.Availability < *req.Quantity {
 					return fmt.Errorf("insufficient stock: %s", p.ProductID)
 				}
 			}
@@ -64,7 +62,6 @@ func (os *OrderService)PlaceOrder(ctx context.Context, params *PlaceOrderParams)
             TotalPrice:  &total,
             Location:    &params.CombinedLocation,
             Status:      &params.Status,
-            ETA:         params.ETA,
             ProductList: orderItems,
 		})
 

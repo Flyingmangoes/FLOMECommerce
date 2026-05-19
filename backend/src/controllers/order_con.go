@@ -18,7 +18,7 @@ type OrderManager struct {
 	Orders 		repository.OrderStoreInterface
 	Users 		repository.UserStoreInterface
 	Products 	repository.ProductStoreInterface	 
-	OrdrSvc 	services.OrderService
+	Service 	services.OrderService
 }
 
 //
@@ -26,32 +26,18 @@ type OrderManager struct {
 //
 
 type OrderItemRequest struct {
-    ProductID string `json:"productId" binding:"required"`
-    Quantity  int    `json:"quantity"  binding:"required,min=1"`
+    ProductID 	string `json:"productId" binding:"required"`
+	ProductName string `json:"productName" binding:"required"`
+	StoreName 	string `json:"storeName" binding:"required"`
+    Quantity  	int    `json:"quantity"  binding:"required,min=1"`
 }
 
 type OrderRequest struct {
-	Items    []OrderItemRequest `json:"items" binding:"required"`
-    Location string             `json:"location" binding:"omitempty"`
+	Items []OrderItemRequest `json:"items" binding:"required"`
+    BuyerLocation *string       `json:"location" binding:"omitempty"`
 }	
 
 type CancelOrderRequest struct {
-
-}
-
-//
-// Cart Structure
-//
-
-type CreateCartRequest struct {
-
-}
-
-type UpdateCartRequest struct {
-
-}
-
-type RemoveCartRequest struct {
 
 }
 
@@ -63,7 +49,6 @@ type orderResponse struct {
 	Location string
 	Status string
 	CreatedAt time.Time
-
 }
 
 //
@@ -80,6 +65,11 @@ func (om *OrderManager) CreateOrder() gin.HandlerFunc {
 			return
 		}
 
+		//debug
+		for _, i := range req.Items {
+			Logger.Log.Debug("detail", zap.String("anjing",i.ProductID))
+		}
+
 		buyerId := c.GetString("userId")
 
 		user, err := om.Users.GetUserByID(c.Request.Context(), &repository.UserProfileParams{
@@ -93,10 +83,11 @@ func (om *OrderManager) CreateOrder() gin.HandlerFunc {
 
 		buyerEmail := user.Email
 
-		location := req.Location
-        if location == "" {
+		var location string;
+
+        if req.BuyerLocation == nil {
             location = fmt.Sprintf("%s, %s", user.Country, user.Address)
-        }
+		}
 
 		items := make([]repository.OrderItemInput, 0)
 		for _, item := range req.Items {
@@ -105,8 +96,8 @@ func (om *OrderManager) CreateOrder() gin.HandlerFunc {
 				Quantity: &item.Quantity,
 			})
 		}
-
-		order, err := om.OrdrSvc.PlaceOrder(c.Request.Context(), &services.PlaceOrderParams{
+		
+		order, err := om.Service.PlaceOrder(c.Request.Context(), &services.PlaceOrderParams{
 			BuyerID: buyerId,
             BuyerEmail: buyerEmail,
             CombinedLocation: location,
@@ -118,15 +109,20 @@ func (om *OrderManager) CreateOrder() gin.HandlerFunc {
             Logger.Log.Error("detail", zap.Error(err))
             c.Error(middlewares.ErrInternal("Failed to place order"))
             return
-        }
+		}
 
 		c.JSON(http.StatusCreated, gin.H{
 			"response": "order created",
 			"detail": gin.H{
 				"order": toOrderResponse(order),
-				"item": order.OrderItems,
 			},
 		})
+	}
+}
+
+func (om *OrderManager) CancelOrder() gin.HandlerFunc {
+	return func (c *gin.Context) {
+
 	}
 }
 
