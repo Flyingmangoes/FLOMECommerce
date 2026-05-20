@@ -44,8 +44,8 @@ type StoreUpdateRequest struct {
 	OwnerPassword 	string `json:"password" binding:"required"`
 	Confirmation 	bool   `json:"confirmation" binding:"required"`
 
-	NewName    *string `json:"newStoreName" binding:"omitempty"`
-	NewDesc 	*string `json:"newStoreDesc" binding:"omitempty"`
+	NewName    		*string `json:"newStoreName" binding:"omitempty"`
+	NewDesc 		*string `json:"newStoreDesc" binding:"omitempty"`
 	NewImage		*string `json:"newStorePic" binding:"omitempty"`
 	NewPhoneNumber  *string `json:"newPhoneNumber" binding:"omitempty"`
 	NewSupportEmail *string `json:"newSupportEmail" binding:"omitempty, email"`

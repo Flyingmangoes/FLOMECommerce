@@ -21,7 +21,9 @@ type PlaceOrderParams struct {
 }
 
 type CancelOrderParams struct {
-
+	OrderId string
+	BuyerId string
+	Confirmation bool
 }
 
 func (os *OrderService)PlaceOrder(ctx context.Context, params *PlaceOrderParams) (*models.Order, error) {
@@ -82,6 +84,27 @@ func (os *OrderService)PlaceOrder(ctx context.Context, params *PlaceOrderParams)
 }
 
 func (os *OrderService)CancelOrder(ctx context.Context, params *CancelOrderParams) error {
+	err := os.Tx.WithTx(ctx, func(tx *sql.Tx) error {
+		if params.Confirmation != true {
+			return fmt.Errorf("Confirmation needed")
+		}
+
+		err := os.Tx.Orders.RemoveOrder(ctx, tx, &repository.OrderStoreParams{
+			OrderID: &params.OrderId,
+			BuyerID: &params.BuyerId,
+		})
+		
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return err;
+	}
+
 	return nil
 }
 

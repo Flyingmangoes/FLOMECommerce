@@ -38,7 +38,8 @@ type OrderRequest struct {
 }	
 
 type CancelOrderRequest struct {
-
+	OID string `json:"orderId" binding:"required"`
+	Confirmation bool `json:"confirmation" binding:"required"`
 }
 
 type orderResponse struct {
@@ -66,8 +67,8 @@ func (om *OrderManager) CreateOrder() gin.HandlerFunc {
 		}
 
 		//debug
-		for _, i := range req.Items {
-			Logger.Log.Debug("detail", zap.String("anjing",i.ProductID))
+		for idx, p := range req.Items {
+			Logger.Log.Debug("detail", zap.String(fmt.Sprintf("No: %d", idx),p.ProductID))
 		}
 
 		buyerId := c.GetString("userId")
@@ -122,7 +123,29 @@ func (om *OrderManager) CreateOrder() gin.HandlerFunc {
 
 func (om *OrderManager) CancelOrder() gin.HandlerFunc {
 	return func (c *gin.Context) {
+		var req CancelOrderRequest
 
+		if err := c.ShouldBindBodyWithJSON(req); err != nil {
+			Logger.Log.Error("detail", zap.Error((err)))
+			c.Error(middlewares.ErrBadRequest("Failed to read client request"))
+			return
+		}
+
+		buyerId := c.GetString("userId")
+
+		err := om.Service.CancelOrder(c.Request.Context(), &services.CancelOrderParams{
+			BuyerId: buyerId,
+			OrderId: req.OID,
+			Confirmation: req.Confirmation,
+		})
+
+		if err != nil {
+			Logger.Log.Error("detail", zap.Error(err))
+			c.Error(middlewares.ErrInternal("Failed to remove order"))
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"response": "order removed"})
 	}
 }
 

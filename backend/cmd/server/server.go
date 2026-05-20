@@ -27,8 +27,17 @@ type ServerManager struct {
 	JWTSecret	[]byte
 }
 
+var RELEASE string = "RELEASE"
+var DEVELOPMENT string = "DEV"
+
 func (sm *ServerManager)Start(cfg *config.Application) {
 	router := gin.Default()
+
+	gin.SetMode(gin.DebugMode)
+	if cfg.ENVIRONMENT_STATUS == RELEASE {
+		gin.SetMode(gin.ReleaseMode)
+	}
+
 	iRate := middlewares.NewIPRateLimit(rate.Limit(cfg.RATE_CONF.RPM), cfg.RATE_CONF.BURST)
 
 	router.Use(middlewares.CORSMiddleware())
@@ -38,7 +47,7 @@ func (sm *ServerManager)Start(cfg *config.Application) {
 	registerRoutes(router, sm)
 
 	addr := net.JoinHostPort(cfg.SERV_CONF.HOST, cfg.SERV_CONF.PORT)
-	accept_addr := net.JoinHostPort(cfg.SERV_CONF.ACCEPT_HOST, cfg.SERV_CONF.ACCEPT_PORT)
+	accept_addr := net.JoinHostPort(cfg.SERV_CONF.PrivateH, cfg.SERV_CONF.PrivateP)
 	
 	router.SetTrustedProxies([]string{addr, accept_addr})
 

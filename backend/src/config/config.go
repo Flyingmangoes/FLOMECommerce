@@ -5,7 +5,6 @@ import (
 	"os"
 )
 
-
 type Application struct {
 	DB_CONF *DBConfig
 	SERV_CONF *ServerConfig
@@ -22,8 +21,8 @@ type AppConfig struct {
 type ServerConfig struct {
 	HOST 		string
 	PORT 		string
-	ACCEPT_HOST string
-	ACCEPT_PORT string
+	PrivateH string
+	PrivateP string
 	JWT_SECRET 	string
 }
 
@@ -49,11 +48,11 @@ func (a *Application) Validate() error {
 		return errors.New("SERV_PORT is required")
 	}
 
-	if a.SERV_CONF.ACCEPT_HOST == "" {
+	if a.SERV_CONF.PrivateH == "" {
 		return errors.New("ACCEPT_HOST is required")
 	}
 
-	if a.SERV_CONF.ACCEPT_PORT == "" {
+	if a.SERV_CONF.PrivateP == "" {
 		return errors.New("ACCEPT_PORT is required")
 	}
 
@@ -76,8 +75,8 @@ func NewConfig() *Application {
 		SERV_CONF: &ServerConfig{
 			HOST: os.Getenv("SERV_HOST"),
 			PORT: os.Getenv("SERV_PORT"),
-			ACCEPT_HOST: os.Getenv("ACCEPT_HOST"),
-			ACCEPT_PORT: os.Getenv("ACCEPT_PORT"),
+			PrivateH: os.Getenv("PROXY_H"),
+			PrivateP: os.Getenv("PROXY_P"),
 			JWT_SECRET: os.Getenv("JWT_SECRET"),
 		},
 		APP_CONF: &AppConfig{
