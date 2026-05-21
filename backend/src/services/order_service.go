@@ -26,7 +26,7 @@ type CancelOrderParams struct {
 	Confirmation bool
 }
 
-func (os *OrderService)PlaceOrder(ctx context.Context, params *PlaceOrderParams) (*models.Order, error) {
+func (os *OrderService) PlaceOrder(ctx context.Context, params *PlaceOrderParams) (*models.Order, error) {
 	var results *models.Order
 
 	err := os.Tx.WithTx(ctx, func(tx *sql.Tx) error {

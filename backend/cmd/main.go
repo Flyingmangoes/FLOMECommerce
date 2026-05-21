@@ -27,13 +27,14 @@ func main() {
 	Logger.LoggerInit(cfg.ENVIRONMENT_STATUS)
 	defer Logger.Log.Sync()
 
-	db := database.NewDatabaseConnection(cfg.DB_CONF.DB_ADDR)
+	db := database.NewDatabaseConnection(cfg.DB_CONF.DATABASE)
 
 	userStore := repository.NewUserStore(db)
 	storeStore := repository.NewStoresStore(db)
 	productStore := repository.NewProductStore(db)
 	orderStore := repository.NewOrderStore(db)
 	tokenStore := repository.NewTokenStore(db)
+	payment := services.SetupPayment(cfg)
 
 	txManager := services.NewTxManager(db, productStore, orderStore, storeStore)
 
@@ -43,6 +44,7 @@ func main() {
 		Products: productStore,
 		Orders: orderStore,
 		Tokens: tokenStore,
+		Payment: payment,
 		Tx: txManager,
 		JWTSecret: []byte(cfg.SERV_CONF.JWT_SECRET),
 	}

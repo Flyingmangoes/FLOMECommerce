@@ -16,7 +16,7 @@ type Order struct {
 type OrderItem struct {
     ID          string  `db:"order_item_id"`
     OrderID     string  `db:"order_id"`
-    ProductID   string  `db:"product_id"`   
+    ProductID   string  `db:"product_id"`
     Quantity    int     `db:"quantity"`
     Price       float64 `db:"price"`     
 }

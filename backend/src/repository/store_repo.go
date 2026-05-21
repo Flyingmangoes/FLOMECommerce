@@ -12,8 +12,11 @@ type StoreStoreInterface interface {
 	CreateStore(ctx context.Context, params *StoreProfileParams) (*models.Store, error)
 	UpdateStore(ctx context.Context, params *StoreProfileParams) (*models.Store, error)
 	DeleteStore(ctx context.Context, params *StoreProfileParams) error
+
 	GetStoreByName(ctx context.Context, params *StoreProfileParams) (*models.Store, error)	
 	GetStoreByOwner(ctx context.Context, params *StoreProfileParams) (*models.Store, error)
+	GetStoreByID(ctx context.Context, params *StoreProfileParams) (*models.Store, error)
+
 	ListStore(ctx context.Context, params *StoreProfileParams, limit int) ([]*models.Store, error)
 }
 
@@ -193,6 +196,32 @@ func (ss *StoreStore) GetStoreByOwner(ctx context.Context, params *StoreProfileP
 		params.OwnerId,
 	).Scan(
 		&store.StoreId, &store.OwnerId,
+        &store.StoreName, &store.StoreDesc, &store.StorePic,
+        &store.IsActive, &store.Locale, &store.Country,
+        &store.Address, &store.PhoneNumber, &store.SupportEmail,
+        &store.Instagram, &store.Tiktok, &store.Website,
+        &store.CreatedAt, &store.UpdatedAt,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return store, nil
+}
+
+func (ss *StoreStore) GetStoreByID(ctx context.Context, params *StoreProfileParams) (*models.Store, error) {
+	store := &models.Store{}
+	var err error
+	
+	err = ss.db.QueryRowContext(ctx,
+		`SELECT store_id, owner_id, store_name, store_desc, store_pic, 
+                is_active, store_locale, store_country, store_address, 
+                store_phone_number, store_support_email, store_instagram, 
+                store_tiktok, store_website, creatLoginByOwnerEmailed_at, updated_at
+		 FROM mkt_ecommerce.mkt_stores WHERE store_id = $1`,
+		params.StoreId,
+	).Scan(&store.StoreId, &store.OwnerId,
         &store.StoreName, &store.StoreDesc, &store.StorePic,
         &store.IsActive, &store.Locale, &store.Country,
         &store.Address, &store.PhoneNumber, &store.SupportEmail,

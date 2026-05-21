@@ -10,6 +10,7 @@ import (
 type OrderStoreInterface interface {
 	CreateOrder(ctx context.Context, tx *sql.Tx, params *OrderStoreParams) (*models.Order, []*models.OrderItem, error)
 	RemoveOrder(ctx context.Context, tx *sql.Tx, params *OrderStoreParams) error
+	GetOrders(ctx context.Context, params *OrderStoreParams) ([]*models.Order, []*models.OrderItem, error)
 }
 
 type OrderItemInput struct {
@@ -101,3 +102,70 @@ func (os *OrderStore)RemoveOrder(ctx context.Context, tx *sql.Tx, params *OrderS
 
 	return nil
 }
+
+
+func (os *OrderStore) GetOrders(ctx context.Context, params *OrderStoreParams) ([]*models.Order, []*models.OrderItem, error) {
+	orders := make([]*models.Order, 0)
+	items := make([]*models.OrderItem, 0)
+
+	rows, err := os.db.QueryContext(ctx,
+		`SELECT order_id, buyer_id, buyer_email, price_total, location, status, created_at
+        FROM mkt_ecommerce.mkt_orders
+        WHERE buyer_id = $1
+        ORDER BY created_at DESC`,
+		params.BuyerID,
+	)
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		order := &models.Order{}
+		if err := rows.Scan(
+			&order.ID, &order.BuyerID, &order.BuyerEmail,
+			&order.TotalPrice, &order.Location, &order.Status,
+			&order.CreatedAt,
+		); err != nil {
+			return nil, nil, err
+		}
+
+		orders = append(orders, order)
+	}
+
+	if err := rows.Err();err != nil {
+		return nil, nil, err
+	}
+
+	for _, order := range orders {
+		itemRows, err := os.db.QueryContext(ctx,
+			``,
+			order.ID,
+		)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		defer itemRows.Close()
+
+		for itemRows.Next(){
+			item := &models.OrderItem{}
+			if err := itemRows.Scan(
+
+			); err != nil {
+				return nil, nil, err
+			}
+
+			items = append(items, item)
+		}
+
+		if err := itemRows.Err(); err != nil {
+			return nil, nil, err
+		}
+	}
+	
+	return orders, items, nil
+}
+ 

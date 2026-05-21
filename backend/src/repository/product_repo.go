@@ -13,7 +13,8 @@ type ProductStoreInterface interface {
 	UpdateProduct(ctx context.Context, params *ProductProfileParams) (*models.Product, error)
 	RemoveProduct(ctx context.Context, params *ProductProfileParams) error
 
-	GetProductByName(ctx context.Context, lookup *ProductProfileParams) (*models.Product, error)
+	GetProductByName(ctx context.Context, params *ProductProfileParams) (*models.Product, error)
+	GetProductByID(ctx context.Context, params *ProductProfileParams) (*models.Product, error)
 	GetProductByBulk(ctx context.Context, params *ProductProfileParams, limit int) (*models.Product, error)
 
 	UpdateRating(ctx context.Context, params *ProductProfileParams) (*models.Product, error)
@@ -27,18 +28,18 @@ type ProductProfileParams struct {
 	// client side confirmation
 
 	// Identifier Section
-	ProductID *string
-	StoreId *string
-	Name *string
+	ProductID 		*string
+	StoreId 		*string
+	Name 			*string
 
 	// Profile Section
-	Url *string
-	ImageUrl *string
-	Price *float64
-	Rating *float64
-	Desc *string
-	Category *string
-	Availability *int
+	Url 			*string
+	ImageUrl 		*string
+	Price 			*float64
+	Rating 			*float64
+	Desc 			*string
+	Category 		*string
+	Availability 	*int
 
 	// Extra Section
 	CreatedAt *time.Time
@@ -204,6 +205,29 @@ func (ps *ProductStore)GetProductByName(ctx context.Context, params *ProductProf
 	}
 
 	return product, nil 
+}
+
+
+
+func (ps *ProductStore) GetProductByID(ctx context.Context, params *ProductProfileParams) (*models.Product, error) {
+	product := &models.Product{}
+	
+	err := ps.db.QueryRowContext(ctx,
+		`SELECT product_id, product_name, product_desc, store_id, product_pic, price, rating, availability, created_at, updated_at FROM mkt_products
+		WHERE product_name = $1`,
+		params.ProductID,
+	).Scan(&product.ProductID, &product.Name,
+		&product.Desc, &product.StoreID,
+		&product.ProductIMG, &product.Price,
+		&product.Rating, &product.Availability, &product.CreatedAt,
+		&product.UpdatedAt,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return product, nil
 }
 
 

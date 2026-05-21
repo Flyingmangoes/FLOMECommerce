@@ -67,6 +67,22 @@ type productResponse struct {
 // PRODUCT HANDLER IMPLEMENTATION
 //
 
+func toProductResponse(p *models.Product) productResponse {
+	return productResponse{
+		ProductId: p.ProductID,
+		StoreId: p.StoreID,
+		StoreName: p.Name,
+		StoreDesc: p.Desc,		
+		ProductIMG: p.ProductIMG,
+		Price: p.Price,
+		Category: p.Category,
+		Rating: p.Rating,
+		Availability: p.Availability,
+		CreatedAt: p.CreatedAt,
+    	UpdatedAt: p.UpdatedAt,
+	}
+}
+
 func (pm *ProductManager) RegisterProduct() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req RegisterProductRequest
@@ -172,23 +188,5 @@ func (pm *ProductManager) RemoveProduct() gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusOK, gin.H{"response": "product removed"})
-	}
-}
-
-
-
-func toProductResponse(p *models.Product) productResponse {
-	return productResponse{
-		ProductId: p.ProductID,
-		StoreId: p.StoreID,
-		StoreName: p.Name,
-		StoreDesc: p.Desc,		
-		ProductIMG: p.ProductIMG,
-		Price: p.Price,
-		Category: p.Category,
-		Rating: p.Rating,
-		Availability: p.Availability,
-		CreatedAt: p.CreatedAt,
-    	UpdatedAt: p.UpdatedAt,
 	}
 }

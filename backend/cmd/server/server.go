@@ -23,6 +23,7 @@ type ServerManager struct {
 	Products 	repository.ProductStoreInterface 
 	Orders 		repository.OrderStoreInterface
 	Tokens  	repository.TokenStoreInterface 
+	Payment 	*services.PaymentService
 	Tx			*services.TxManager
 	JWTSecret	[]byte
 }
@@ -47,7 +48,7 @@ func (sm *ServerManager)Start(cfg *config.Application) {
 	registerRoutes(router, sm)
 
 	addr := net.JoinHostPort(cfg.SERV_CONF.HOST, cfg.SERV_CONF.PORT)
-	accept_addr := net.JoinHostPort(cfg.SERV_CONF.PrivateH, cfg.SERV_CONF.PrivateP)
+	accept_addr := net.JoinHostPort(cfg.SERV_CONF.ProxyHOST, cfg.SERV_CONF.ProxyPORT)
 	
 	router.SetTrustedProxies([]string{addr, accept_addr})
 

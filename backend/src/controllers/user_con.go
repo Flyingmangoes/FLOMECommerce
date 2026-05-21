@@ -100,6 +100,26 @@ type userResponse struct {
 // USER HANDLER IMPLEMENTATION
 //
 
+func toUserResponse(u *models.User) userResponse {
+    return userResponse{
+        UserID:       u.UserID,
+        FirstName:    u.FirstName,
+        LastName:     u.LastName,
+        Username:     u.Username,
+        Email:        u.Email,
+		PhoneNumber:  u.PhoneNumber,
+        UserType:     u.UserType,
+        UserLocale:   u.Locale,
+		UserCountry:  u.Country,
+		UserAddress:  u.Address,
+        IsVerified:   u.IsVerified,
+		IsAgree: 	  u.IsAgree,
+        CreatedAt:    u.CreatedAt,
+		ConsentUpdated: u.Consent_Updated,
+		UpdatedAt: u.Updatedat,
+    }
+}
+
 func (uc *UserContext)RegisterUser() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req UserRegisterRequest
@@ -120,7 +140,7 @@ func (uc *UserContext)RegisterUser() gin.HandlerFunc {
 		params := &repository.UserProfileParams{
 			FirstName: &req.FirstName,
 			LastName: &req.LastName,
-			HashedPassword: utils.Stroptr(string(hashedpass)),
+			HashedPassword: utils.STRtoptr(string(hashedpass)),
 			Email: &req.Email,
 			PhoneNumber: &req.PhoneNumber,
 
@@ -207,7 +227,7 @@ func (uc *UserContext)UpdateUser() gin.HandlerFunc {
 				return
 			}
 
-			newPassword = utils.Stroptr(string(hashedpass))
+			newPassword = utils.STRtoptr(string(hashedpass))
 		}
 
 		id := c.GetString("userId")
@@ -453,28 +473,4 @@ func (uc *UserContext)LogoutUser() gin.HandlerFunc {
 		Logger.Log.Info("Logout process completed")
 		c.JSON(http.StatusOK, gin.H{"response": "success"})
 	}	
-}
-
-//
-// HELPER FUNCTION SECTION
-//
-
-func toUserResponse(u *models.User) userResponse {
-    return userResponse{
-        UserID:       u.UserID,
-        FirstName:    u.FirstName,
-        LastName:     u.LastName,
-        Username:     u.Username,
-        Email:        u.Email,
-		PhoneNumber:  u.PhoneNumber,
-        UserType:     u.UserType,
-        UserLocale:   u.Locale,
-		UserCountry:  u.Country,
-		UserAddress:  u.Address,
-        IsVerified:   u.IsVerified,
-		IsAgree: 	  u.IsAgree,
-        CreatedAt:    u.CreatedAt,
-		ConsentUpdated: u.Consent_Updated,
-		UpdatedAt: u.Updatedat,
-    }
 }

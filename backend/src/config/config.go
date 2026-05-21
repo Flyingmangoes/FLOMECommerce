@@ -10,6 +10,7 @@ type Application struct {
 	SERV_CONF *ServerConfig
 	APP_CONF *AppConfig
 	RATE_CONF *RateLimitingConfig
+	STRIPE_CONF *StripeConfig
 	ENVIRONMENT_STATUS string
 }
 
@@ -19,15 +20,17 @@ type AppConfig struct {
 }
 
 type ServerConfig struct {
-	HOST 		string
-	PORT 		string
-	PrivateH string
-	PrivateP string
-	JWT_SECRET 	string
+	HOST 			string
+	PORT 			string
+	ProxyHOST 		string
+	ProxyPORT 		string
+	FrontendHOST 	string
+	FrontendPORT 	string
+	JWT_SECRET 		string
 }
 
 type DBConfig struct {
-	DB_ADDR string
+	DATABASE string
 }
 
 type RateLimitingConfig struct {
@@ -35,33 +38,30 @@ type RateLimitingConfig struct {
 	BURST int
 }
 
+type StripeConfig struct {
+	STRIPE_PUBLIC_KEY string
+	STRIPE_SECRET_KEY string
+}
+
 func (a *Application) Validate() error {
-	if a.DB_CONF.DB_ADDR == ""{
-		return errors.New("DB_URL is required")
-	}
-
-	if a.SERV_CONF.HOST == "" {
-		return errors.New("SERV_HOST is required")
-	}
-
-	if a.SERV_CONF.PORT == "" {
-		return errors.New("SERV_PORT is required")
-	}
-
-	if a.SERV_CONF.PrivateH == "" {
-		return errors.New("ACCEPT_HOST is required")
-	}
-
-	if a.SERV_CONF.PrivateP == "" {
-		return errors.New("ACCEPT_PORT is required")
+	if a.DB_CONF.DATABASE == ""{
+		return errors.New("Database detail not found")
 	}
 
 	if a.SERV_CONF.JWT_SECRET == "" {
-		return errors.New("SECRET is required")
+		return errors.New("jwt secret not found")
+	}
+
+	if a.STRIPE_CONF.STRIPE_PUBLIC_KEY == "" {
+		return errors.New("Stripe key not found")
+	}
+
+	if a.STRIPE_CONF.STRIPE_SECRET_KEY == "" {
+		return errors.New("Stripe key not found")
 	}
 
 	if a.ENVIRONMENT_STATUS == "" {
-		return errors.New("ENV_STATUS is required")
+		return errors.New("ENV_STATUS not found")
 	}
 
     return nil
@@ -70,13 +70,15 @@ func (a *Application) Validate() error {
 func NewConfig() *Application {
 	return &Application{
 		DB_CONF: &DBConfig{
-			DB_ADDR: os.Getenv("DB_URL"),
+			DATABASE: os.Getenv("DATABASE"),
 		},
 		SERV_CONF: &ServerConfig{
-			HOST: os.Getenv("SERV_HOST"),
-			PORT: os.Getenv("SERV_PORT"),
-			PrivateH: os.Getenv("PROXY_H"),
-			PrivateP: os.Getenv("PROXY_P"),
+			HOST: os.Getenv("SERVER_HOST"),
+			PORT: os.Getenv("SERVER_PORT"),
+			ProxyHOST: os.Getenv("PROXY_HOST"),
+			ProxyPORT: os.Getenv("PROXY_PORT"),
+			FrontendHOST: os.Getenv("FRONTEND_HOST"),
+			FrontendPORT: os.Getenv("FRONTEND_PORT"),
 			JWT_SECRET: os.Getenv("JWT_SECRET"),
 		},
 		APP_CONF: &AppConfig{
@@ -87,7 +89,12 @@ func NewConfig() *Application {
 			RPM: 30,
 			BURST: 3,
 		},
-		ENVIRONMENT_STATUS: os.Getenv("ENV_STATUS"),
+
+		STRIPE_CONF: &StripeConfig{
+			STRIPE_PUBLIC_KEY: os.Getenv("STRIPE_PUBLISHABLE_KEY"),
+			STRIPE_SECRET_KEY: os.Getenv("STRIPE_SECRET_KEY"),
+		},
+		ENVIRONMENT_STATUS: os.Getenv("ENVIRONMENT"),
 	}
 }
 	
