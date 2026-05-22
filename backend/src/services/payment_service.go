@@ -46,9 +46,7 @@ func(payment *PaymentService) CreateCheckoutSession(ctx context.Context, items *
 	var params *stripe.CheckoutSessionCreateParams
 
 	for _, item := range *items{
-		price, err := payment.Product_repo.GetProductByID(ctx, &repository.ProductProfileParams{
-			ProductID: &item.ProductID,
-		})
+		price, err := payment.Product_repo.GetProductByID(ctx, item.ProductID)
 		
 		if err != nil {
 			Logger.Log.Error("detail", zap.Error(err))

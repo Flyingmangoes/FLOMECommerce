@@ -13,11 +13,10 @@ type UserStoreInterface interface {
 	CreateUser(ctx context.Context, params *UserProfileParams) (*models.User, error)
 	UpdateUser(ctx context.Context, params *UserProfileParams) (*models.User, error)
 	DeleteUser(ctx context.Context, params *UserProfileParams) (error)
-	
-	LoginByUserEmail(ctx context.Context, lookup *UserProfileParams) (*models.User, error)
-	GetUserByUsername(ctx context.Context, lookup *UserProfileParams) (*models.User, error)
-	GetUserByID(ctx context.Context, lookup *UserProfileParams) (*models.User, error)
+	LoginByUserEmail(ctx context.Context, params *UserProfileParams) (*models.User, error)
 
+	GetUserByUsername(ctx context.Context, username string) (*models.User, error)
+	GetUserByID(ctx context.Context, uid string) (*models.User, error)
 	GetPassword(ctx context.Context, params *UserProfileParams) (*models.User, error)
 }
 
@@ -202,13 +201,13 @@ func (us *UserStore)LoginByUserEmail(ctx context.Context, lookup *UserProfilePar
 
 
 
-func (us *UserStore) GetUserByUsername(ctx context.Context, lookup *UserProfileParams) (*models.User, error) {
+func (us *UserStore) GetUserByUsername(ctx context.Context, username string) (*models.User, error) {
 	user := &models.User{}
 
 	err := us.db.QueryRowContext(ctx,
 		`SELECT user_id, firstname, lastname, username, email, phone_number, passwordhashed, user_locale, user_country, user_address, user_type, is_verified, is_agree, email_consent, sms_consent, consent_src, created_at, updated_at, consent_updated_at FROM mkt_users 
 		WHERE username = $1`,
-		lookup.Username,
+		username,
 	).Scan(&user.UserID, 
 		&user.FirstName, &user.LastName, &user.Username, 
 		&user.Email, &user.PhoneNumber, &user.PasswordHash, 
@@ -225,13 +224,13 @@ func (us *UserStore) GetUserByUsername(ctx context.Context, lookup *UserProfileP
 	return user, nil
 }
 
-func (us *UserStore) GetUserByID(ctx context.Context, lookup *UserProfileParams) (*models.User, error) {
+func (us *UserStore) GetUserByID(ctx context.Context, uid string) (*models.User, error) {
 	user := &models.User{}
 
 	err := us.db.QueryRowContext(ctx,
 		`SELECT user_id, firstname, lastname, username, email, phone_number, passwordhashed, user_locale, user_country, user_address, user_type, is_verified, is_agree, email_consent, sms_consent, consent_src, created_at, updated_at, consent_updated_at FROM mkt_users 
 		WHERE user_id = $1`,
-		lookup.UserId,
+		uid,
 	).Scan(&user.UserID, 
 		&user.FirstName, &user.LastName, &user.Username, 
 		&user.Email, &user.PhoneNumber, &user.PasswordHash, 

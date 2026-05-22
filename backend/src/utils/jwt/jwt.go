@@ -1,4 +1,4 @@
-package utils
+package jwt
 
 import (
 	"errors"
@@ -15,13 +15,39 @@ var (
 )
 
 type Claims struct {
-    UserID      string `json:"user_id"`
-    UserType    string `json:"user_type"`
+    UserID      string `json:"userId"`
+    UserType    string `json:"userType"`
     jwt.RegisteredClaims
 }
 
-func GenerateAccessToken(userID, userType string, secret []byte) (string, error) {
-	claims := Claims{
+type ConfirmClaims struct {
+    UserID string `json:"userId"`
+    Action string `json:"action"`
+    jwt.RegisteredClaims
+}
+
+func GenerateAnyToken(userID, userType, usage string, action *string, secret []byte) (string, error) {
+    if usage == "confirm" && action != nil {
+        claims := ConfirmClaims{
+            UserID: userID,
+            Action: *action,
+            RegisteredClaims: jwt.RegisteredClaims{
+                ExpiresAt: jwt.NewNumericDate(time.Now().Add(2 * time.Minute)),
+                IssuedAt: jwt.NewNumericDate(time.Now()),
+            },
+        }
+
+        token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+    	tokenString, err := token.SignedString(secret)
+    	if err != nil {
+    		return "", err
+	    }
+
+	    return tokenString, nil
+    }
+
+    claims := Claims{
         UserID:   userID,
         UserType: userType,
         RegisteredClaims: jwt.RegisteredClaims{
@@ -57,14 +83,13 @@ func GenerateRefreshToken(userID, userType string, secret []byte) (string, time.
     return signed, expiresAt, err
 }
 
-func VerifyToken(tokenString string, secret []byte) (*Claims, error) {
+func VerifyAccessToken(tokenString string, secret []byte) (*Claims, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, ErrInvalidToken
 		} 
 			return secret, nil 
 	})
-
 	
     if err != nil {
         if errors.Is(err, jwt.ErrTokenExpired) {
@@ -80,4 +105,28 @@ func VerifyToken(tokenString string, secret []byte) (*Claims, error) {
     }
 
 	return claims, nil
+}
+
+func VerifyConfirmToken(tokenString string, secret []byte) (*ConfirmClaims, error) {
+    token, err := jwt.ParseWithClaims(tokenString, &ConfirmClaims{}, func(t *jwt.Token) (interface{}, error) {
+        if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+            return nil, ErrInvalidToken
+        }
+        return secret, nil
+    })
+
+    if err != nil {
+        if errors.Is(err, jwt.ErrTokenExpired) {
+            return nil, ErrExpiredToken
+        }
+
+        return nil, ErrInvalidToken
+    }
+
+    claims, ok := token.Claims.(*ConfirmClaims) 
+    if !ok || !token.Valid {
+        return nil, ErrInvalidToken
+    }
+
+    return claims, nil
 }

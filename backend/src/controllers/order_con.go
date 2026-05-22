@@ -68,6 +68,20 @@ func toOrderResponse(o *models.Order) orderResponse {
 	}
 }
 
+/* ORDER DOCUMENTATION
+* 1. CreateOrder
+*	create order is a function that used by gin.IRoutes and used OrderRequest struct
+*	as the parameter that then be  binded using gin.Context.ShouldBindBodyWithJSON
+*
+*	for buyer id aka user id we use GetString(), because the user id already set 
+*	in the auth middleware which used for retrieve the user data which will be 
+*	used to fill an array of OrderItemInput that used in-- 
+*	OrderStoreInterface.PlaceOrder that require PlaceOrderParams to work.
+*	
+* 2. CheckoutOrder
+* 3. CancelOrder
+*/
+
 func (om *OrderManager) CreateOrder() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req OrderRequest
@@ -78,16 +92,9 @@ func (om *OrderManager) CreateOrder() gin.HandlerFunc {
 			return
 		}
 
-		//debug
-		for idx, p := range req.Items {
-			Logger.Log.Debug("detail", zap.String(fmt.Sprintf("No: %d", idx),p.ProductID))
-		}
-
 		buyerId := c.GetString("userId")
 
-		user, err := om.Users.GetUserByID(c.Request.Context(), &repository.UserProfileParams{
-			UserId: &buyerId,
-		})
+		user, err := om.Users.GetUserByID(c.Request.Context(), buyerId)
 
 		if err != nil {
     		c.Error(middlewares.ErrInternal("Failed to fetch user"))
@@ -151,14 +158,14 @@ func (om *OrderManager) CheckoutOrder() gin.HandlerFunc {
 		}
 
 		for i := 0;i < len(order_items); i++{
-			product, err := om.Products.GetProductByID(c.Request.Context(), &repository.ProductProfileParams{ProductID: &order_items[i].ProductID})
+			product, err := om.Products.GetProductByID(c.Request.Context(), order_items[i].ProductID)
 			if err != nil {
 				Logger.Log.Error("Failed to retrieve product data", zap.Error(err))
 				c.Error(middlewares.ErrInternal("Failed to retrieve product data"))
 				return
 			}
 
-			store, err := om.Store.GetStoreByID(c.Request.Context(), &repository.StoreProfileParams{StoreId: &product.StoreID})
+			store, err := om.Store.GetStoreByID(c.Request.Context(), product.StoreID)
 			if err != nil {
 				Logger.Log.Error("Failed to retrieve store data", zap.Error(err))
 				c.Error(middlewares.ErrInternal("Failed to retrieve store data"))

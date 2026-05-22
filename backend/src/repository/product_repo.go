@@ -13,13 +13,12 @@ type ProductStoreInterface interface {
 	UpdateProduct(ctx context.Context, params *ProductProfileParams) (*models.Product, error)
 	RemoveProduct(ctx context.Context, params *ProductProfileParams) error
 
-	GetProductByName(ctx context.Context, params *ProductProfileParams) (*models.Product, error)
-	GetProductByID(ctx context.Context, params *ProductProfileParams) (*models.Product, error)
+	GetProductByName(ctx context.Context, product_name string) (*models.Product, error)
+	GetProductByID(ctx context.Context, product_id string) (*models.Product, error)
 	GetProductByBulk(ctx context.Context, params *ProductProfileParams, limit int) (*models.Product, error)
+	GetProductForUpdate(ctx context.Context, tx *sql.Tx, orderInput []OrderItemInput) ([]models.Product, error)
 
 	UpdateRating(ctx context.Context, params *ProductProfileParams) (*models.Product, error)
-
-	GetProductForUpdate(ctx context.Context, tx *sql.Tx, orderInput []OrderItemInput) ([]models.Product, error)
     DeductStock(ctx context.Context, tx *sql.Tx, items []OrderItemInput) error
 }
 
@@ -186,13 +185,13 @@ func (ps *ProductStore)GetProductForUpdate(ctx context.Context, tx *sql.Tx, orde
 
 
 
-func (ps *ProductStore)GetProductByName(ctx context.Context, params *ProductProfileParams) (*models.Product, error) {
+func (ps *ProductStore)GetProductByName(ctx context.Context, product_name string) (*models.Product, error) {
 	product := &models.Product{}
 	
 	err := ps.db.QueryRowContext(ctx,
 		`SELECT product_id, product_name, product_desc, store_id, product_pic, price, rating, availability, created_at, updated_at FROM mkt_products
 		WHERE product_name = $1`,
-		params.Name,
+		product_name,
 	).Scan(&product.ProductID, &product.Name,
 		&product.Desc, &product.StoreID,
 		&product.ProductIMG, &product.Price,
@@ -209,13 +208,13 @@ func (ps *ProductStore)GetProductByName(ctx context.Context, params *ProductProf
 
 
 
-func (ps *ProductStore) GetProductByID(ctx context.Context, params *ProductProfileParams) (*models.Product, error) {
+func (ps *ProductStore) GetProductByID(ctx context.Context, product_id string) (*models.Product, error) {
 	product := &models.Product{}
 	
 	err := ps.db.QueryRowContext(ctx,
 		`SELECT product_id, product_name, product_desc, store_id, product_pic, price, rating, availability, created_at, updated_at FROM mkt_products
 		WHERE product_name = $1`,
-		params.ProductID,
+		product_id,
 	).Scan(&product.ProductID, &product.Name,
 		&product.Desc, &product.StoreID,
 		&product.ProductIMG, &product.Price,

@@ -5,8 +5,10 @@ import (
 	"backend/src/middlewares"
 	"backend/src/repository"
 	"backend/src/services"
+	"backend/src/utils"
 	Logger "backend/src/utils/logger"
 	"net"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -28,24 +30,22 @@ type ServerManager struct {
 	JWTSecret	[]byte
 }
 
-var RELEASE string = "RELEASE"
-var DEVELOPMENT string = "DEV"
-
 func (sm *ServerManager)Start(cfg *config.Application) {
 	router := gin.Default()
 
 	gin.SetMode(gin.DebugMode)
-	if cfg.ENVIRONMENT_STATUS == RELEASE {
+	if cfg.ENVIRONMENT_STATUS == utils.PRODUCTION {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
 	iRate := middlewares.NewIPRateLimit(rate.Limit(cfg.RATE_CONF.RPM), cfg.RATE_CONF.BURST)
+	prison := middlewares.NewLoginPrison(cfg.APP_CONF.MAX_RETRY_LOGIN, time.Duration(cfg.APP_CONF.RETRY_LOGIN_COOLDOWN * int(time.Minute)))
 
 	router.Use(middlewares.CORSMiddleware())
 	router.Use(iRate.RateLimiting())
 	router.Use(middlewares.JSONAppErrorReporter())
 
-	registerRoutes(router, sm)
+	registerRoutes(router, sm, prison)
 
 	addr := net.JoinHostPort(cfg.SERV_CONF.HOST, cfg.SERV_CONF.PORT)
 	accept_addr := net.JoinHostPort(cfg.SERV_CONF.ProxyHOST, cfg.SERV_CONF.ProxyPORT)

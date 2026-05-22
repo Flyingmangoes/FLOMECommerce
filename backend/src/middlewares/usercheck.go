@@ -24,7 +24,7 @@ func CheckForStore(stores repository.StoreStoreInterface) gin.HandlerFunc {
 		}
 
 		ownerId := c.GetString("userId")
-		store, err := stores.GetStoreByOwner(c.Request.Context(), &repository.StoreProfileParams{OwnerId: &ownerId})
+		store, err := stores.GetStoreByOwner(c.Request.Context(), ownerId)
 		if err != nil {
 			Logger.Log.Error("detail", zap.Error(err))
 			c.Abort()

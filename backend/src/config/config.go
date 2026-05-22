@@ -15,7 +15,7 @@ type Application struct {
 }
 
 type AppConfig struct {
-	CUSTOM_ALIAS_LENGTH int
+	RETRY_LOGIN_COOLDOWN int
 	MAX_RETRY_LOGIN int
 }
 
@@ -82,14 +82,13 @@ func NewConfig() *Application {
 			JWT_SECRET: os.Getenv("JWT_SECRET"),
 		},
 		APP_CONF: &AppConfig{
-			CUSTOM_ALIAS_LENGTH: 5,
+			RETRY_LOGIN_COOLDOWN: 10,
 			MAX_RETRY_LOGIN: 3,
 		},
 		RATE_CONF: &RateLimitingConfig{
 			RPM: 30,
 			BURST: 3,
 		},
-
 		STRIPE_CONF: &StripeConfig{
 			STRIPE_PUBLIC_KEY: os.Getenv("STRIPE_PUBLISHABLE_KEY"),
 			STRIPE_SECRET_KEY: os.Getenv("STRIPE_SECRET_KEY"),

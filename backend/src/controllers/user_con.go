@@ -6,6 +6,7 @@ import (
 	"backend/src/repository"
 	"backend/src/services"
 	"backend/src/utils"
+	"backend/src/utils/jwt"
 	Logger "backend/src/utils/logger"
 	"backend/src/validators"
 	"errors"
@@ -169,14 +170,14 @@ func (uc *UserContext)RegisterUser() gin.HandlerFunc {
 			return
 		}
 
-		accessToken, err := utils.GenerateAccessToken(user.UserID, user.UserType, uc.JWTSecret)
+		accessToken, err := jwt.GenerateAnyToken(user.UserID, user.UserType, utils.ACCESS_TOKEN, nil, uc.JWTSecret)
 		if err != nil {
 			Logger.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrInternal("Failed to generate token"))
 			return
 		}
 
-		refreshToken, expiresAt, err := utils.GenerateRefreshToken(user.UserID, user.UserType, uc.JWTSecret)
+		refreshToken, expiresAt, err := jwt.GenerateRefreshToken(user.UserID, user.UserType, uc.JWTSecret)
 		if err != nil {
 			Logger.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrInternal("Failed to generate refresh token"))
@@ -318,8 +319,10 @@ func (uc *UserContext)DeleteUser() gin.HandlerFunc {
 
 
 
-func (uc *UserContext)LoginUser() gin.HandlerFunc {
+func (uc *UserContext)LoginUser(prison *middlewares.LoginPrison) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		key := c.ClientIP()
+
 		var req LoginRequest
 		if err := c.ShouldBindBodyWithJSON(&req); err != nil {
 			Logger.Log.Error("Error", zap.Error(err))
@@ -328,7 +331,7 @@ func (uc *UserContext)LoginUser() gin.HandlerFunc {
 		}
 
 		if req.Email == nil && req.Username == nil {
-            c.Error(middlewares.ErrBadRequest("Email or username is required"))
+            c.Error(middlewares.ErrBadRequest("Email or username is missing"))
             return
         }
 
@@ -343,20 +346,32 @@ func (uc *UserContext)LoginUser() gin.HandlerFunc {
             return
         }
 
+		locked, remaining := prison.IsLocked(key)
+		if locked {
+			c.JSON(http.StatusTooManyRequests, gin.H{
+                "error":      "too many failed attempts",
+                "retry_after": remaining.String(),
+            })
+            return
+		}
+
 		if err := validators.ValidatePassword(user.PasswordHash, req.Password); err != nil {
 			Logger.Log.Error("Error", zap.Error(err))
+			prison.RecordFailure(key)
             c.Error(middlewares.ErrUnauthorized("Invalid credentials"))
             return
         }
 
-		accessToken, err := utils.GenerateAccessToken(user.UserID, user.UserType, uc.JWTSecret)
+		prison.Release(key)
+
+		accessToken, err := jwt.GenerateAnyToken(user.UserID, user.UserType, utils.ACCESS_TOKEN, nil, uc.JWTSecret)
 		if err != nil {
 			Logger.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrInternal("Failed to generate token"))
 			return
 		}
 
-		refreshToken, expiresAt, err := utils.GenerateRefreshToken(user.UserID, user.UserType, uc.JWTSecret)
+		refreshToken, expiresAt, err := jwt.GenerateRefreshToken(user.UserID, user.UserType, uc.JWTSecret)
 		if err != nil {
 			Logger.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrInternal("Failed to generate refresh token"))
@@ -400,7 +415,7 @@ func (uc *UserContext)Refresh() gin.HandlerFunc {
 			return
 		}
 
-		claims, err := utils.VerifyToken(req.RefreshToken, uc.JWTSecret)
+		claims, err := jwt.VerifyAccessToken(req.RefreshToken, uc.JWTSecret)
 		if err != nil {
 			Logger.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrUnauthorized("Invalid or expired refresh token"))
@@ -420,14 +435,14 @@ func (uc *UserContext)Refresh() gin.HandlerFunc {
 			return
 		}
 
-		newAccess, err := utils.GenerateAccessToken(claims.UserID, claims.UserType, uc.JWTSecret)
+		newAccess, err := jwt.GenerateAnyToken(claims.UserID, claims.UserType, utils.ACCESS_TOKEN, nil, uc.JWTSecret)
 		if err != nil {
 			Logger.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrInternal("Failed to create token"))
 			return
 		}
 
-		newRefresh, expiresAt, err := utils.GenerateRefreshToken(claims.UserID, claims.UserType, uc.JWTSecret)
+		newRefresh, expiresAt, err := jwt.GenerateRefreshToken(claims.UserID, claims.UserType, uc.JWTSecret)
 		if err != nil {
 			Logger.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrInternal("Failed to create refresh token"))

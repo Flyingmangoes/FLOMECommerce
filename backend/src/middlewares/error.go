@@ -41,6 +41,10 @@ func JSONAppErrorReporter() gin.HandlerFunc {
     return jsonAppErrorReporterT(gin.ErrorTypeAny)
 }
 
+func ErrPreconditionRequired(msg string) *AppError {
+    return &AppError{Code: http.StatusPreconditionRequired, Message: msg}
+}
+
 //
 // Middleware Error Handler in server package
 //

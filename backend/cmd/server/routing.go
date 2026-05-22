@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func registerRoutes(r *gin.Engine, sm *ServerManager) {
+func registerRoutes(r *gin.Engine, sm *ServerManager, lp *middlewares.LoginPrison) {
 	userCtrl := &controllers.UserContext{
         Users:     sm.Users,
         Tokens:    sm.Tokens,
@@ -38,7 +38,7 @@ func registerRoutes(r *gin.Engine, sm *ServerManager) {
     // public auth routes
     auth := r.Group("/v2/auth")
     {
-        auth.GET("/users",     userCtrl.LoginUser())
+        auth.GET("/users",     userCtrl.LoginUser(lp))
         auth.POST("/users",    userCtrl.RegisterUser())
         auth.POST("/refresh", userCtrl.Refresh())
         auth.POST("/logout",  userCtrl.LogoutUser())
@@ -49,6 +49,7 @@ func registerRoutes(r *gin.Engine, sm *ServerManager) {
     user.Use(middlewares.AuthMiddlewares(string(sm.JWTSecret)))
     {
         user.POST("/store", storeCtrl.RegisterStore())
+        user.Use(middlewares.ConfirmationMiddleware(string(sm.JWTSecret)))
         user.PUT("", userCtrl.UpdateUser())
         user.DELETE("", userCtrl.DeleteUser())
     }
@@ -56,6 +57,7 @@ func registerRoutes(r *gin.Engine, sm *ServerManager) {
     store := r.Group("/v1/store")
     store.Use(middlewares.AuthMiddlewares(string(sm.JWTSecret)))
     store.Use(middlewares.CheckForStore(sm.Stores))
+    store.Use(middlewares.ConfirmationMiddleware(string(sm.JWTSecret)))
     {
         store.PUT("",    storeCtrl.UpdateStore())
         store.DELETE("", storeCtrl.DeleteStore())
@@ -66,6 +68,7 @@ func registerRoutes(r *gin.Engine, sm *ServerManager) {
     product.Use(middlewares.CheckForStore(sm.Stores))
     {
         product.POST("/products", prdctCtrl.RegisterProduct())
+        product.Use(middlewares.ConfirmationMiddleware(string(sm.JWTSecret)))
         product.PUT("/products", prdctCtrl.UpdateProduct())
         product.DELETE("/products", prdctCtrl.RemoveProduct())
     }
@@ -75,6 +78,7 @@ func registerRoutes(r *gin.Engine, sm *ServerManager) {
     {
         order.POST("", orderCtrl.CreateOrder())
         order.POST("/checkout", orderCtrl.CheckoutOrder())
+        order.Use(middlewares.ConfirmationMiddleware(string(sm.JWTSecret)))
         order.DELETE("", orderCtrl.CancelOrder())
     }
 

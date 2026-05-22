@@ -13,10 +13,9 @@ type StoreStoreInterface interface {
 	UpdateStore(ctx context.Context, params *StoreProfileParams) (*models.Store, error)
 	DeleteStore(ctx context.Context, params *StoreProfileParams) error
 
-	GetStoreByName(ctx context.Context, params *StoreProfileParams) (*models.Store, error)	
-	GetStoreByOwner(ctx context.Context, params *StoreProfileParams) (*models.Store, error)
-	GetStoreByID(ctx context.Context, params *StoreProfileParams) (*models.Store, error)
-
+	GetStoreByName(ctx context.Context, store_name string) (*models.Store, error)	
+	GetStoreByOwner(ctx context.Context, owner_id string) (*models.Store, error)
+	GetStoreByID(ctx context.Context, store_id string) (*models.Store, error)
 	ListStore(ctx context.Context, params *StoreProfileParams, limit int) ([]*models.Store, error)
 }
 
@@ -158,7 +157,7 @@ func (ss *StoreStore) DeleteStore(ctx context.Context, params *StoreProfileParam
 	return nil
 }
 
-func (ss *StoreStore) GetStoreByName(ctx context.Context, params *StoreProfileParams) (*models.Store, error) {
+func (ss *StoreStore) GetStoreByName(ctx context.Context, store_name string) (*models.Store, error) {
     store := &models.Store{}
 
     err := ss.db.QueryRowContext(ctx,
@@ -167,7 +166,7 @@ func (ss *StoreStore) GetStoreByName(ctx context.Context, params *StoreProfilePa
                 store_phone_number, store_support_email, store_instagram, 
                 store_tiktok, store_website, creatLoginByOwnerEmailed_at, updated_at
         FROM mkt_stores WHERE store_name = $1`,
-        params.StoreName,
+        store_name,
     ).Scan(
         &store.StoreId, &store.OwnerId,
         &store.StoreName, &store.StoreDesc, &store.StorePic,
@@ -184,7 +183,7 @@ func (ss *StoreStore) GetStoreByName(ctx context.Context, params *StoreProfilePa
     return store, nil
 }
 
-func (ss *StoreStore) GetStoreByOwner(ctx context.Context, params *StoreProfileParams) (*models.Store, error) {
+func (ss *StoreStore) GetStoreByOwner(ctx context.Context, owner_id string) (*models.Store, error) {
 	store := &models.Store{}
 
 	err := ss.db.QueryRowContext(ctx,
@@ -193,7 +192,7 @@ func (ss *StoreStore) GetStoreByOwner(ctx context.Context, params *StoreProfileP
                 store_phone_number, store_support_email, store_instagram, 
                 store_tiktok, store_website, created_at, updated_at
         FROM mkt_stores WHERE owner_id = $1`,
-		params.OwnerId,
+		owner_id,
 	).Scan(
 		&store.StoreId, &store.OwnerId,
         &store.StoreName, &store.StoreDesc, &store.StorePic,
@@ -210,7 +209,7 @@ func (ss *StoreStore) GetStoreByOwner(ctx context.Context, params *StoreProfileP
 	return store, nil
 }
 
-func (ss *StoreStore) GetStoreByID(ctx context.Context, params *StoreProfileParams) (*models.Store, error) {
+func (ss *StoreStore) GetStoreByID(ctx context.Context, store_id string) (*models.Store, error) {
 	store := &models.Store{}
 	var err error
 	
@@ -220,7 +219,7 @@ func (ss *StoreStore) GetStoreByID(ctx context.Context, params *StoreProfilePara
                 store_phone_number, store_support_email, store_instagram, 
                 store_tiktok, store_website, creatLoginByOwnerEmailed_at, updated_at
 		 FROM mkt_ecommerce.mkt_stores WHERE store_id = $1`,
-		params.StoreId,
+		store_id,
 	).Scan(&store.StoreId, &store.OwnerId,
         &store.StoreName, &store.StoreDesc, &store.StorePic,
         &store.IsActive, &store.Locale, &store.Country,
