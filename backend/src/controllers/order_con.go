@@ -16,11 +16,8 @@ import (
 
 type OrderManager struct {
 	Orders 		repository.OrderStoreInterface
-	Store 		repository.StoreStoreInterface
 	Users 		repository.UserStoreInterface
-	Products 	repository.ProductStoreInterface	 
 	OrderService 	*services.OrderService
-	Payment			*services.PaymentService
 }
 
 //
@@ -138,73 +135,7 @@ func (om *OrderManager) CreateOrder() gin.HandlerFunc {
 			},
 		})
 
-		c.Redirect(http.StatusFound, "/checkout")
-	}
-}
-
-func (om *OrderManager) CheckoutOrder() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		buyerId := c.GetString("userId")
-		items := make([]services.ItemDetail, 0)
-
-		orders, order_items, err := om.Orders.GetOrders(c.Request.Context(), &repository.OrderStoreParams{
-			BuyerID: &buyerId,
-		})
-
-		if err != nil {
-			Logger.Log.Error("Failed retrieve order data",zap.Error(err))
-			c.Error(middlewares.ErrInternal("Retrieve order data failed"))
-			return
-		}
-
-		for i := 0;i < len(order_items); i++{
-			product, err := om.Products.GetProductByID(c.Request.Context(), order_items[i].ProductID)
-			if err != nil {
-				Logger.Log.Error("Failed to retrieve product data", zap.Error(err))
-				c.Error(middlewares.ErrInternal("Failed to retrieve product data"))
-				return
-			}
-
-			store, err := om.Store.GetStoreByID(c.Request.Context(), product.StoreID)
-			if err != nil {
-				Logger.Log.Error("Failed to retrieve store data", zap.Error(err))
-				c.Error(middlewares.ErrInternal("Failed to retrieve store data"))
-				return
-			}
-
-			item_detail := services.ItemDetail{
-				ProductID: order_items[i].ProductID,
-				ProductName: product.Name,
-				ProductDesc: product.Desc,
-				StoreName: store.StoreName,
-				Quantity: order_items[i].Quantity,
-			}
-
-			items = append(items, item_detail)
-		}
-
-		order_details := make([]services.OrderDetail, 0)
-		for _, value := range orders {
-			od := services.OrderDetail{
-				OrderID: value.ID,
-				BuyerID: value.BuyerID,
-				BuyerEmail: value.BuyerEmail,
-				Location: value.Location,
-			}
-
-			order_details = append(order_details, od)
-		}
-
-		sc, err := om.Payment.CreateCheckoutSession(c.Request.Context(), &items, &order_details)
-
-		if err != nil {
-			Logger.Log.Error("Failed to create checkout session", zap.Error(err))
-			c.Error(middlewares.ErrInternal("Create checkout failed"))
-			return
-		}
-
-		Logger.Log.Debug(fmt.Sprintf("Client redirected to: %s", sc.URL))
-		c.Redirect(http.StatusFound, sc.URL)
+		c.Redirect(http.StatusFound, "v1/payment/stripe")
 	}
 }
 

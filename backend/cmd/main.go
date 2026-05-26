@@ -1,26 +1,31 @@
 package main
 
 import (
-	"backend/cmd/server"
 	"backend/src/config"
 	"backend/src/database"
 	"backend/src/repository"
+	"backend/src/server"
 	"backend/src/services"
+	"backend/src/services/payment"
 	Logger "backend/src/utils/logger"
+	"fmt"
 	"log/slog"
+	"net"
 	"os"
+	"path/filepath"
 
 	"github.com/subosito/gotenv"
 )
 
 func main() {
-	if err := gotenv.Load(); err != nil {
-		slog.Warn("DEBUG", "detail", err)
+	envDir := filepath.Dir("/home/yakutsk/Public/E-Commerce/backend/cmd/.env")
+	if err := gotenv.Load(filepath.Join(envDir, ".env")); err != nil {
+		slog.Warn(fmt.Sprintf("detail: %v", err))
 	}
 
 	cfg := config.NewConfig()
 	if err := cfg.Validate(); err != nil {
-		slog.Error("DEBUG", "detail", err)
+		slog.Error(fmt.Sprintf("detail: %v", err))
 		os.Exit(1)
 	}
 
@@ -34,7 +39,12 @@ func main() {
 	productStore := repository.NewProductStore(db)
 	orderStore := repository.NewOrderStore(db)
 	tokenStore := repository.NewTokenStore(db)
-	payment := services.SetupPayment(cfg)
+
+	payment := payment.NewPaymentService(cfg.STRIPE_CONF.STRIPE_SECRET_KEY, 
+	 	cfg.STRIPE_CONF.STRIPE_WEBHOOK_SECRET,
+		net.JoinHostPort(cfg.SERV_CONF.FrontendHOST, cfg.SERV_CONF.FrontendPORT) + "/success",
+    	net.JoinHostPort(cfg.SERV_CONF.FrontendHOST, cfg.SERV_CONF.FrontendPORT) + "/cancel", 
+	)
 
 	txManager := services.NewTxManager(db, productStore, orderStore, storeStore)
 

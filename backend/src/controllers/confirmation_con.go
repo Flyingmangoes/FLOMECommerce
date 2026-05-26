@@ -11,16 +11,16 @@ import (
 	"go.uber.org/zap"
 )
 
-type ConfirmContext struct {
+type SudoContext struct {
 	JWTSecret string
 }
 
-func(cc *ConfirmContext) GenerateConfirmation() gin.HandlerFunc {
+func (sc *SudoContext) GenerateConfirmation() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userId := c.GetString("userId")
 		userType := c.GetString("userType")
 
-		access, err := jwt.GenerateAnyToken(userId, userType, utils.CONFIRM_TOKEN, nil, []byte(cc.JWTSecret))
+		access, err := jwt.GenerateAnyToken(userId, userType, utils.CONFIRM_TOKEN, nil, []byte(sc.JWTSecret))
 		if err != nil {
 			Logger.Log.Error("Failed to generate token", zap.Error(err))
 			c.Error(middlewares.ErrInternal("Failed to generate token"))

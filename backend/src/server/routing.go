@@ -29,13 +29,21 @@ func registerRoutes(r *gin.Engine, sm *ServerManager, lp *middlewares.LoginPriso
 
     orderCtrl := &controllers.OrderManager{
         Orders: sm.Orders,
-        Products: sm.Products,
         Users: sm.Users,
         OrderService: &services.OrderService{Tx: sm.Tx},
+    }
+
+    paymentCtrl := &controllers.PaymentManager{
+        Orders: sm.Orders,
+        Products: sm.Products,
+        Store: sm.Stores,
         Payment: sm.Payment,
     }
 
-    // public auth routes
+    sudoCtrl := &controllers.SudoContext{
+        JWTSecret: string(sm.JWTSecret),
+    }
+
     auth := r.Group("/v2/auth")
     {
         auth.GET("/users",     userCtrl.LoginUser(lp))
@@ -44,12 +52,14 @@ func registerRoutes(r *gin.Engine, sm *ServerManager, lp *middlewares.LoginPriso
         auth.POST("/logout",  userCtrl.LogoutUser())
     }
 
-    // protected user routes
     user := r.Group("/v2/user")
     user.Use(middlewares.AuthMiddlewares(string(sm.JWTSecret)))
     {
         user.POST("/store", storeCtrl.RegisterStore())
-        user.Use(middlewares.ConfirmationMiddleware(string(sm.JWTSecret)))
+    }
+
+    user.Use(middlewares.ConfirmationMiddleware(string(sm.JWTSecret)))
+    {
         user.PUT("", userCtrl.UpdateUser())
         user.DELETE("", userCtrl.DeleteUser())
     }
@@ -68,7 +78,10 @@ func registerRoutes(r *gin.Engine, sm *ServerManager, lp *middlewares.LoginPriso
     product.Use(middlewares.CheckForStore(sm.Stores))
     {
         product.POST("/products", prdctCtrl.RegisterProduct())
-        product.Use(middlewares.ConfirmationMiddleware(string(sm.JWTSecret)))
+    }
+
+    product.Use(middlewares.ConfirmationMiddleware(string(sm.JWTSecret)))
+    {
         product.PUT("/products", prdctCtrl.UpdateProduct())
         product.DELETE("/products", prdctCtrl.RemoveProduct())
     }
@@ -77,9 +90,27 @@ func registerRoutes(r *gin.Engine, sm *ServerManager, lp *middlewares.LoginPriso
     order.Use(middlewares.AuthMiddlewares(string(sm.JWTSecret)))
     {
         order.POST("", orderCtrl.CreateOrder())
-        order.POST("/checkout", orderCtrl.CheckoutOrder())
-        order.Use(middlewares.ConfirmationMiddleware(string(sm.JWTSecret)))
+    }
+
+    order.Use(middlewares.ConfirmationMiddleware(string(sm.JWTSecret)))
+    {
         order.DELETE("", orderCtrl.CancelOrder())
     }
 
+    payment := r.Group("/v1/payment")
+    payment.Use(middlewares.AuthMiddlewares(string(sm.JWTSecret)))
+    {
+        payment.POST("/stripe", paymentCtrl.CheckoutOrder())
+    }
+
+    webhook:= r.Group("/v1/webhook")
+    {
+        webhook.POST("/stripe", paymentCtrl.HandleWebhooks())
+    }
+
+    sudo := r.Group("v1/confirmation")
+    sudo.Use(middlewares.AuthMiddlewares(string(sm.JWTSecret)))
+    {
+        sudo.POST("", sudoCtrl.GenerateConfirmation())
+    }
 }

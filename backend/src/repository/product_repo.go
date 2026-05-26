@@ -212,8 +212,8 @@ func (ps *ProductStore) GetProductByID(ctx context.Context, product_id string) (
 	product := &models.Product{}
 	
 	err := ps.db.QueryRowContext(ctx,
-		`SELECT product_id, product_name, product_desc, store_id, product_pic, price, rating, availability, created_at, updated_at FROM mkt_products
-		WHERE product_name = $1`,
+		`SELECT product_id, product_name, product_desc, store_id, product_pic, price, rating, availability, created_at, updated_at 
+		FROM mkt_products WHERE product_id = $1`,
 		product_id,
 	).Scan(&product.ProductID, &product.Name,
 		&product.Desc, &product.StoreID,

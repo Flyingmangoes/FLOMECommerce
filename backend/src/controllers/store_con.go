@@ -48,7 +48,7 @@ type StoreUpdateRequest struct {
 	NewDesc 		*string `json:"newStoreDesc" binding:"omitempty"`
 	NewImage		*string `json:"newStorePic" binding:"omitempty"`
 	NewPhoneNumber  *string `json:"newPhoneNumber" binding:"omitempty"`
-	NewSupportEmail *string `json:"newSupportEmail" binding:"omitempty, email"`
+	NewSupportEmail *string `json:"newSupportEmail" binding:"omitempty"`
 
     NewLocale  		*string `json:"newLocale" binding:"omitempty"`
 	NewCountry		*string `json:"newCountry" binding:"omitempty"`
@@ -57,11 +57,6 @@ type StoreUpdateRequest struct {
 	NewTiktok    	*string `json:"newTiktokAcc" binding:"omitempty"`
 	NewInstagram 	*string `json:"newInstagramAcc" binding:"omitempty"`
 	NewWebsite 		*string `json:"newWebsite" binding:"omitempty"`
-}
-
-type StoreLoginRequest struct {
-	OwnerEmail string `json:"ownerEmail" binding:"required,email"`
-	Password string `json:"password" binding:"required"`
 }
 
 type StoreRemoveRequest struct {

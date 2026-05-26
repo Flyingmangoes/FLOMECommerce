@@ -23,7 +23,7 @@ func ConfirmationMiddleware(secret string) gin.HandlerFunc {
 			return 
 		}
 
-		_, err := jwt.VerifyAccessToken(parts[1], []byte(secret))
+		_, err := jwt.VerifyConfirmToken(parts[1], []byte(secret))
 		if err != nil {
 			c.Error(ErrUnauthorized(err.Error()))
 			c.Abort()

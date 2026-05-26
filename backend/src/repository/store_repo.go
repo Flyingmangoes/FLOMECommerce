@@ -164,7 +164,7 @@ func (ss *StoreStore) GetStoreByName(ctx context.Context, store_name string) (*m
         `SELECT store_id, owner_id, store_name, store_desc, store_pic, 
                 is_active, store_locale, store_country, store_address, 
                 store_phone_number, store_support_email, store_instagram, 
-                store_tiktok, store_website, creatLoginByOwnerEmailed_at, updated_at
+                store_tiktok, store_website, created_at, updated_at
         FROM mkt_stores WHERE store_name = $1`,
         store_name,
     ).Scan(
@@ -217,7 +217,7 @@ func (ss *StoreStore) GetStoreByID(ctx context.Context, store_id string) (*model
 		`SELECT store_id, owner_id, store_name, store_desc, store_pic, 
                 is_active, store_locale, store_country, store_address, 
                 store_phone_number, store_support_email, store_instagram, 
-                store_tiktok, store_website, creatLoginByOwnerEmailed_at, updated_at
+                store_tiktok, store_website, created_at, updated_at
 		 FROM mkt_ecommerce.mkt_stores WHERE store_id = $1`,
 		store_id,
 	).Scan(&store.StoreId, &store.OwnerId,

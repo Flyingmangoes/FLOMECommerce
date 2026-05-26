@@ -5,6 +5,7 @@ import (
 	"backend/src/middlewares"
 	"backend/src/repository"
 	"backend/src/services"
+	"backend/src/services/payment"
 	"backend/src/utils"
 	Logger "backend/src/utils/logger"
 	"net"
@@ -25,7 +26,7 @@ type ServerManager struct {
 	Products 	repository.ProductStoreInterface 
 	Orders 		repository.OrderStoreInterface
 	Tokens  	repository.TokenStoreInterface 
-	Payment 	*services.PaymentService
+	Payment 	*payment.PaymentService
 	Tx			*services.TxManager
 	JWTSecret	[]byte
 }

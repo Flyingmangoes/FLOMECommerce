@@ -84,9 +84,7 @@ func (us *UserStore)CreateUser(ctx context.Context, params *UserProfileParams) (
 	user := &models.User{}
 
 	tx, err := us.db.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, err
-	} 
+	if err != nil { return nil, err } 
 
 	defer tx.Rollback()
 
@@ -102,11 +100,7 @@ func (us *UserStore)CreateUser(ctx context.Context, params *UserProfileParams) (
 		&user.IsAgree, &user.EmailConsent, &user.SmsConsent, 
 		&user.Consent_src, &user.CreatedAt,
 	)
-	
-	if err != nil {
-		return nil, err
-	}
-
+	if err != nil { return nil, err }
 	if err = tx.Commit(); err != nil {
 		return nil, err
 	}
@@ -141,10 +135,7 @@ func (us *UserStore)UpdateUser(ctx context.Context, params *UserProfileParams) (
 		&user.Address, &user.EmailConsent, &user.SmsConsent, 
 		&user.Consent_Updated, &user.Updatedat,
 	)
-
-	if err != nil {
-		return nil, err
-	}
+	if err != nil { return nil, err }
 
 	return user, nil
 }
@@ -157,16 +148,10 @@ func (us *UserStore)DeleteUser(ctx context.Context, params *UserProfileParams) e
 		WHERE user_id = $1 AND email = $2`,
 		params.UserId, params.Email,
 	)
-
-	if err != nil {
-		return err
-	}
+	if err != nil { return err }
 
 	rows, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-
+	if err != nil { return err }
 	if rows == 0 {
 		return fmt.Errorf("user not found or credentials do not match")
 	}
@@ -192,9 +177,7 @@ func (us *UserStore)LoginByUserEmail(ctx context.Context, lookup *UserProfilePar
 		&user.Consent_Updated,
 	)
 
-	if err != nil {
-		return nil, err
-	}
+	if err != nil { return nil, err }
 
 	return user, nil
 }
@@ -216,10 +199,7 @@ func (us *UserStore) GetUserByUsername(ctx context.Context, username string) (*m
 		&user.Consent_src, &user.CreatedAt, &user.Updatedat, 
 		&user.Consent_Updated,
 	)
-
-	if err != nil {
-		return nil, err
-	}
+	if err != nil { return nil, err }
 
 	return user, nil
 }
@@ -239,10 +219,7 @@ func (us *UserStore) GetUserByID(ctx context.Context, uid string) (*models.User,
 		&user.Consent_src, &user.CreatedAt, &user.Updatedat, 
 		&user.Consent_Updated,
 	)
-
-	if err != nil {
-		return nil, err
-	}
+	if err != nil { return nil, err }
 
 	return user, nil
 }
@@ -277,10 +254,7 @@ func (us *UserStore) GetPassword(ctx context.Context, params *UserProfileParams)
 		default:
 			return nil, fmt.Errorf("at least one identifier must be provided")
 	}
-
-	if err != nil {
-		return nil, err
-	}
+	if err != nil { return nil, err }
 
     return user, nil
 }		

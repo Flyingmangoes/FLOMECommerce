@@ -41,6 +41,7 @@ type RateLimitingConfig struct {
 type StripeConfig struct {
 	STRIPE_PUBLIC_KEY string
 	STRIPE_SECRET_KEY string
+	STRIPE_WEBHOOK_SECRET string
 }
 
 func (a *Application) Validate() error {
@@ -92,6 +93,7 @@ func NewConfig() *Application {
 		STRIPE_CONF: &StripeConfig{
 			STRIPE_PUBLIC_KEY: os.Getenv("STRIPE_PUBLISHABLE_KEY"),
 			STRIPE_SECRET_KEY: os.Getenv("STRIPE_SECRET_KEY"),
+			STRIPE_WEBHOOK_SECRET: os.Getenv("STRIPE_WEBHOOK_SECRET"),
 		},
 		ENVIRONMENT_STATUS: os.Getenv("ENVIRONMENT"),
 	}

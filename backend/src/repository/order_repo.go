@@ -11,6 +11,7 @@ type OrderStoreInterface interface {
 	CreateOrder(ctx context.Context, tx *sql.Tx, params *OrderStoreParams) (*models.Order, []*models.OrderItem, error)
 	RemoveOrder(ctx context.Context, tx *sql.Tx, params *OrderStoreParams) error
 	GetOrders(ctx context.Context, params *OrderStoreParams) ([]*models.Order, []*models.OrderItem, error)
+	UpdateOrderStatus(ctx context.Context, order_id, status string) error
 }
 
 type OrderItemInput struct {
@@ -53,9 +54,7 @@ func (os *OrderStore)CreateOrder(ctx context.Context, tx *sql.Tx, params *OrderS
 		&order.Location, &order.Status, &order.CreatedAt,
 	)
 
-	if err != nil {
-		return nil, nil, err
-	}
+	if err != nil { return nil, nil, err }
 
 	for _, item := range params.ProductList {
 		order_item := &models.OrderItem{}
@@ -69,11 +68,8 @@ func (os *OrderStore)CreateOrder(ctx context.Context, tx *sql.Tx, params *OrderS
 			&order_item.ID, &order_item.OrderID, &order_item.ProductID,
 			&order_item.Quantity, &order_item.Price,
 		)
-
-		if err != nil {
-			return nil, nil, err
-		}
-
+		if err != nil { return nil, nil, err }
+		
 		items = append(items, order_item)
 	}	
 
@@ -86,18 +82,12 @@ func (os *OrderStore)RemoveOrder(ctx context.Context, tx *sql.Tx, params *OrderS
 		WHERE order_id = $1 AND buyer_id = $2`,
 		params.OrderID, params.BuyerID,
 	)
-
-	if err != nil {
-		return err
-	}
+	if err != nil { return err }
 
 	rows, err := results.RowsAffected()
-	if err != nil {
-		return err
-	}
-	
+	if err != nil { return err }
 	if rows == 0 {
-		return fmt.Errorf("orders not found or orders id is not match")
+		return fmt.Errorf("Order not found or id not match")
 	}
 
 	return nil
@@ -141,7 +131,8 @@ func (os *OrderStore) GetOrders(ctx context.Context, params *OrderStoreParams) (
 
 	for _, order := range orders {
 		itemRows, err := os.db.QueryContext(ctx,
-			``,
+			`SELECT order_item_id, order_id, product_id, quantity, price 
+			FROM mkt_ecommerce.mkt_order_items WHERE order_id = $1`,
 			order.ID,
 		)
 		if err != nil {
@@ -153,7 +144,9 @@ func (os *OrderStore) GetOrders(ctx context.Context, params *OrderStoreParams) (
 		for itemRows.Next(){
 			item := &models.OrderItem{}
 			if err := itemRows.Scan(
-
+				&item.ID, &item.OrderID, 
+				&item.ProductID, &item.Quantity,
+				&item.Price,
 			); err != nil {
 				return nil, nil, err
 			}
@@ -169,3 +162,20 @@ func (os *OrderStore) GetOrders(ctx context.Context, params *OrderStoreParams) (
 	return orders, items, nil
 }
  
+func (os *OrderStore) UpdateOrderStatus(ctx context.Context, order_id, status string) error {
+	results, err := os.db.ExecContext(ctx,
+		`UPDATE mkt_ecommerce.mkt_orders SET
+			status = COALESCE($1, status)
+		WHERE order_id = $2`,
+		status, order_id,
+	)
+	if err != nil { return err }
+
+	rows, err := results.RowsAffected()
+	if err != nil { return err }
+	if rows == 0 {
+		return fmt.Errorf("Order not found or id not matched")
+	}
+	
+	return nil
+}
