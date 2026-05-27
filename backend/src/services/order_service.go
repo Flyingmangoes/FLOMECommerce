@@ -13,17 +13,17 @@ type OrderService struct{
 }
 
 type PlaceOrderParams struct {
-    BuyerID     string
-    BuyerEmail  string
+    BuyerID     		string
+    BuyerEmail  		string
     CombinedLocation 	string
-    Status      string
-    ProductList []repository.OrderItemInput
+    Status      		string
+    ProductList 		[]repository.OrderItemInput
 }
 
 type CancelOrderParams struct {
-	OrderId string
-	BuyerId string
-	Confirmation bool
+	OrderId 			string
+	BuyerId 			string
+	Confirmation 		bool
 }
 
 func (os *OrderService) PlaceOrder(ctx context.Context, params *PlaceOrderParams) (*models.Order, error) {
@@ -31,9 +31,7 @@ func (os *OrderService) PlaceOrder(ctx context.Context, params *PlaceOrderParams
 
 	err := os.Tx.WithTx(ctx, func(tx *sql.Tx) error {
 		products, err := os.Tx.Products.GetProductForUpdate(ctx, tx, params.ProductList)
-		if err != nil {
-			return err
-		}
+		if err != nil { return err }
 
 		for _, p := range products {
 			for _, req := range params.ProductList {
@@ -59,18 +57,18 @@ func (os *OrderService) PlaceOrder(ctx context.Context, params *PlaceOrderParams
 		}
 
 		order, _, err := os.Tx.Orders.CreateOrder(ctx, tx, &repository.OrderStoreParams{
-			BuyerID:     &params.BuyerID,
-            BuyerEmail:  &params.BuyerEmail,
+			BaseParams: repository.BaseParams{
+				UserId: &params.BuyerID,
+				Email:  &params.BuyerEmail,
+			},
+
             TotalPrice:  &total,
             Location:    &params.CombinedLocation,
             Status:      &params.Status,
             ProductList: orderItems,
 		})
 
-		if err != nil {
-
-			return err
-		}
+		if err != nil { return err }
 
 		if err := os.Tx.Products.DeductStock(ctx, tx, orderItems); err != nil {
 			return err
@@ -90,19 +88,17 @@ func (os *OrderService)CancelOrder(ctx context.Context, params *CancelOrderParam
 		}
 
 		err := os.Tx.Orders.RemoveOrder(ctx, tx, &repository.OrderStoreParams{
+			BaseParams: repository.BaseParams{ UserId: &params.BuyerId },
 			OrderID: &params.OrderId,
-			BuyerID: &params.BuyerId,
 		})
-		
-		if err != nil {
-			return err
-		}
+
+		if err != nil { return err }
 
 		return nil
 	})
 
 	if err != nil {
-		return err;
+		return err 
 	}
 
 	return nil

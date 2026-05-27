@@ -25,6 +25,7 @@ type ServerManager struct {
 	Stores 		repository.StoreStoreInterface	
 	Products 	repository.ProductStoreInterface 
 	Orders 		repository.OrderStoreInterface
+	Carts 		repository.CartStoreInterface
 	Tokens  	repository.TokenStoreInterface 
 	Payment 	*payment.PaymentService
 	Tx			*services.TxManager

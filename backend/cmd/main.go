@@ -39,8 +39,9 @@ func main() {
 	productStore := repository.NewProductStore(db)
 	orderStore := repository.NewOrderStore(db)
 	tokenStore := repository.NewTokenStore(db)
+	cartStore := repository.NewCartStore(db)
 
-	payment := payment.NewPaymentService(cfg.STRIPE_CONF.STRIPE_SECRET_KEY, 
+	paymentService := payment.NewPaymentService(cfg.STRIPE_CONF.STRIPE_SECRET_KEY, 
 	 	cfg.STRIPE_CONF.STRIPE_WEBHOOK_SECRET,
 		net.JoinHostPort(cfg.SERV_CONF.FrontendHOST, cfg.SERV_CONF.FrontendPORT) + "/success",
     	net.JoinHostPort(cfg.SERV_CONF.FrontendHOST, cfg.SERV_CONF.FrontendPORT) + "/cancel", 
@@ -53,8 +54,9 @@ func main() {
 		Stores: storeStore,
 		Products: productStore,
 		Orders: orderStore,
+		Carts: cartStore,
 		Tokens: tokenStore,
-		Payment: payment,
+		Payment: paymentService,
 		Tx: txManager,
 		JWTSecret: []byte(cfg.SERV_CONF.JWT_SECRET),
 	}

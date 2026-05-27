@@ -2,14 +2,21 @@ package controllers
 
 import (
 	"backend/src/middlewares"
-	Logger"backend/src/utils/logger"
+	"backend/src/repository"
+	Logger "backend/src/utils/logger"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
-type AddItemRequest struct {
+type CartManager struct {
+	Carts repository.CartStoreInterface
+	Products repository.ProductStoreInterface
+}
 
+type AddItemRequest struct {
+	ProductID string `json:"productId"`
+	
 }
 
 type GetCartRequest struct {
@@ -28,7 +35,7 @@ type UpdateQuantityRequest struct {
 	
 }
 
-func GetCart() gin.HandlerFunc {
+func (cm *CartManager) GetCart() gin.HandlerFunc {
 	return func (c *gin.Context) {
 		var req GetCartRequest
 
@@ -40,7 +47,7 @@ func GetCart() gin.HandlerFunc {
 	}
 }
 
-func AddCartItem() gin.HandlerFunc {
+func (cm *CartManager) AddCartItem() gin.HandlerFunc {
 	return func (c *gin.Context) {
 		var req AddItemRequest
 		
@@ -52,7 +59,7 @@ func AddCartItem() gin.HandlerFunc {
 	}
 }
 
-func UpdateQuantity() gin.HandlerFunc {
+func (cm *CartManager) UpdateQuantity() gin.HandlerFunc {
 	return func (c *gin.Context) {
 		var req UpdateQuantityRequest
 
@@ -64,7 +71,7 @@ func UpdateQuantity() gin.HandlerFunc {
 	}
 }
 
-func RemoveCartItem() gin.HandlerFunc {
+func (cm *CartManager) RemoveCartItem() gin.HandlerFunc {
 	return func (c *gin.Context) {
 		var req RemoveItemRequest
 
@@ -76,7 +83,7 @@ func RemoveCartItem() gin.HandlerFunc {
 	}
 }
 
-func ClearCart() gin.HandlerFunc {
+func (cm *CartManager) ClearCart() gin.HandlerFunc {
 	return func (c *gin.Context) {
 		var req ClearCartRequest
 

@@ -20,19 +20,13 @@ type StoreStoreInterface interface {
 }
 
 type StoreProfileParams struct {
+	BaseParams
     StoreId      *string
-	
     // Identifiers
-    OwnerId      *string
     StoreName    *string
     StoreDesc    *string
     StorePic     *string
     IsActive     *bool
-
-    // Location
-    Locale       *string
-    Country      *string
-    Address      *string
 
     // Contact
     PhoneNumber  *string
@@ -76,7 +70,8 @@ func (ss *StoreStore) CreateStore(ctx context.Context, params *StoreProfileParam
 		`INSERT INTO mkt_stores (owner_id, store_name, store_desc, store_pic, store_locale, store_country, store_address, store_phone_number, store_support_email, store_instagram, store_tiktok, store_website)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 		RETURNING store_id, owner_id, store_name, store_desc, store_pic, is_active, store_locale, store_country, store_address, store_phone_number, store_support_email, store_instagram, store_tiktok, store_website, created_at`,
-		params.OwnerId, params.StoreName, params.StoreDesc, params.StorePic, params.Locale, params.Country, params.Address, params.PhoneNumber, params.SupportEmail, params.Instagram, params.Tiktok, params.Website,
+		params.UserId, params.StoreName, params.StoreDesc, 
+		params.StorePic, params.Locale, params.Country, params.Address, params.PhoneNumber, params.SupportEmail, params.Instagram, params.Tiktok, params.Website,
 	).Scan(&store.StoreId, 
 		&store.OwnerId, &store.StoreName, &store.StoreDesc, 
 		&store.StorePic, &store.IsActive, &store.Locale, 
@@ -138,7 +133,7 @@ func (ss *StoreStore) DeleteStore(ctx context.Context, params *StoreProfileParam
 	result, err := ss.db.ExecContext(ctx, 
 		`DELETE FROM mkt_stores
 		WHERE store_id = $1 AND owner_id = $2`,
-		params.StoreId, params.OwnerId,
+		params.StoreId, params.UserId,
 	)
 	
 	if err != nil {

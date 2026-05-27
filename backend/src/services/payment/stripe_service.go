@@ -1,7 +1,7 @@
 package payment
 
 import (
-	Logger"backend/src/utils/logger"
+	Logger "backend/src/utils/logger"
 	"context"
 	"fmt"
 	"time"
@@ -25,13 +25,6 @@ type ItemDetail struct {
     Price       float64
     Quantity    int
     ImageUrl    string
-}
-
-type OrderDetail struct {
-	OrderID 	string
-    BuyerID     string      
-	BuyerEmail 	string
-    Location    string     
 }
 
 func NewPaymentService(secretKey, webhookKey, successURL, cancelURL string) *PaymentService {

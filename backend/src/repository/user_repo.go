@@ -13,25 +13,27 @@ type UserStoreInterface interface {
 	CreateUser(ctx context.Context, params *UserProfileParams) (*models.User, error)
 	UpdateUser(ctx context.Context, params *UserProfileParams) (*models.User, error)
 	DeleteUser(ctx context.Context, params *UserProfileParams) (error)
-	LoginByUserEmail(ctx context.Context, params *UserProfileParams) (*models.User, error)
+	LoginByUserEmail(ctx context.Context, email *string) (*models.User, error)
 
-	GetUserByUsername(ctx context.Context, username string) (*models.User, error)
-	GetUserByID(ctx context.Context, uid string) (*models.User, error)
+	GetUserByUsername(ctx context.Context, username *string) (*models.User, error)
+	GetUserByID(ctx context.Context, user_id *string) (*models.User, error)
 	GetPassword(ctx context.Context, params *UserProfileParams) (*models.User, error)
 }
 
+type BaseParams struct {
+	UserId 			*string
+	Email 			*string
+	Username 		*string
+
+	Locale			*string
+	Country			*string
+	Address 		*string
+}
+
 type UserProfileParams struct {	
-	// Use the same structure for updating a product,
-	// product id cannot be updated, it stay forever like 
-	// how it supposed to be, when updating product id used 
-	// for specified which product to update
-	//
-	// keep that in mind for whoever find this usefull
-	//Identifier Section
-	UserId			*string
+	BaseParams
 	PhoneNumber		*string
 	HashedPassword  *string
-	Email			*string
 
 	//For updating (only for the password)
 	NewPasswordHashed 	*string
@@ -39,12 +41,7 @@ type UserProfileParams struct {
 	//Profile Section
 	FirstName		*string
 	LastName		*string
-	Username		*string
-	UserType		*string
-
-	Locale			*string
-	Country			*string
-	Address 		*string
+	UserType 		*string
 
 	//Consent related Section
 	EmailConsent	*bool
@@ -92,7 +89,11 @@ func (us *UserStore)CreateUser(ctx context.Context, params *UserProfileParams) (
 		`INSERT INTO mkt_users (firstname, lastname, username, email, phone_number, passwordhashed, user_locale, user_country, user_address, user_type, is_agree, email_consent, sms_consent, consent_src)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 		RETURNING user_id, firstname, lastname, username, email, phone_number, user_locale, user_country, user_address, user_type, is_verified, is_agree, email_consent, sms_consent, consent_src, created_at`,
-		params.FirstName, params.LastName, params.Username, params.Email, params.PhoneNumber, params.HashedPassword, params.Locale, params.Country, params.Address, params.UserType, params.IsAgree, params.EmailConsent, params.SmsConsent, params.ConsentSource,
+		params.FirstName, params.LastName, params.Username, 
+		params.Email, params.PhoneNumber, 
+		params.HashedPassword, params.Locale, params.Country, 
+		params.Address, params.UserType, params.IsAgree,
+	 	params.EmailConsent, params.SmsConsent, params.ConsentSource,
 	).Scan(&user.UserID, 
 		&user.FirstName, &user.LastName, &user.Username, 
 		&user.Email, &user.PhoneNumber, &user.Locale,
@@ -128,7 +129,10 @@ func (us *UserStore)UpdateUser(ctx context.Context, params *UserProfileParams) (
 			updated_at		= NOW()
 		WHERE user_id = $12
 		RETURNING user_id, firstname, lastname, phone_number, email, passwordhashed, user_locale, user_country, user_address, email_consent, sms_consent, consent_updated_at, updated_at`,
-		params.FirstName, params.LastName, params.Username, params.PhoneNumber, params.Email, params.NewPasswordHashed, params.Locale, params.Country, params.Address, params.EmailConsent, params.SmsConsent, params.UserId,
+		params.FirstName, params.LastName, params.Username, 
+		params.PhoneNumber, params.Email, params.NewPasswordHashed, 
+		params.Locale, params.Country, params.Address, 
+		params.EmailConsent, params.SmsConsent, params.UserId,
 	).Scan(&user.UserID, &user.FirstName, 
 		&user.LastName, &user.PhoneNumber, &user.Email, 
 		&user.PasswordHash, &user.Locale, &user.Country,
@@ -161,13 +165,13 @@ func (us *UserStore)DeleteUser(ctx context.Context, params *UserProfileParams) e
 
 
 
-func (us *UserStore)LoginByUserEmail(ctx context.Context, lookup *UserProfileParams) (*models.User, error) {
+func (us *UserStore)LoginByUserEmail(ctx context.Context, email *string) (*models.User, error) {
 	user := &models.User{}
 
 	err := us.db.QueryRowContext(ctx,
 		`SELECT user_id, firstname, lastname, username, email, phone_number, passwordhashed, user_locale, user_country, user_address, user_type, is_verified, is_agree, email_consent, sms_consent, consent_src, created_at, updated_at, consent_updated_at FROM mkt_users
 		WHERE email = $1`,
-		lookup.Email,
+		email,
 	).Scan(&user.UserID, 
 		&user.FirstName, &user.LastName, &user.Username, 
 		&user.Email, &user.PhoneNumber, &user.PasswordHash, 
@@ -184,7 +188,7 @@ func (us *UserStore)LoginByUserEmail(ctx context.Context, lookup *UserProfilePar
 
 
 
-func (us *UserStore) GetUserByUsername(ctx context.Context, username string) (*models.User, error) {
+func (us *UserStore) GetUserByUsername(ctx context.Context, username *string) (*models.User, error) {
 	user := &models.User{}
 
 	err := us.db.QueryRowContext(ctx,
@@ -204,13 +208,13 @@ func (us *UserStore) GetUserByUsername(ctx context.Context, username string) (*m
 	return user, nil
 }
 
-func (us *UserStore) GetUserByID(ctx context.Context, uid string) (*models.User, error) {
+func (us *UserStore) GetUserByID(ctx context.Context, user_id *string) (*models.User, error) {
 	user := &models.User{}
 
 	err := us.db.QueryRowContext(ctx,
 		`SELECT user_id, firstname, lastname, username, email, phone_number, passwordhashed, user_locale, user_country, user_address, user_type, is_verified, is_agree, email_consent, sms_consent, consent_src, created_at, updated_at, consent_updated_at FROM mkt_users 
 		WHERE user_id = $1`,
-		uid,
+		user_id,
 	).Scan(&user.UserID, 
 		&user.FirstName, &user.LastName, &user.Username, 
 		&user.Email, &user.PhoneNumber, &user.PasswordHash, 

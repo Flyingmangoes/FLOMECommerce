@@ -10,7 +10,7 @@ import (
 type OrderStoreInterface interface {
 	CreateOrder(ctx context.Context, tx *sql.Tx, params *OrderStoreParams) (*models.Order, []*models.OrderItem, error)
 	RemoveOrder(ctx context.Context, tx *sql.Tx, params *OrderStoreParams) error
-	GetOrders(ctx context.Context, params *OrderStoreParams) ([]*models.Order, []*models.OrderItem, error)
+	GetOrders(ctx context.Context, buyer_id *string) ([]*models.Order, []*models.OrderItem, error)
 	UpdateOrderStatus(ctx context.Context, order_id, status string) error
 }
 
@@ -21,9 +21,8 @@ type OrderItemInput struct {
 }
 
 type OrderStoreParams struct {
+	BaseParams
     OrderID    *string
-    BuyerID    *string
-    BuyerEmail *string
     TotalPrice *float64
     Status     *string
     Location   *string
@@ -47,7 +46,7 @@ func (os *OrderStore)CreateOrder(ctx context.Context, tx *sql.Tx, params *OrderS
 	`INSERT INTO mkt_orders(buyer_id, buyer_email, price_total, location, status)
 	VALUES($1, $2, $3, $4, $5)
 	RETURNING order_id, buyer_id, buyer_email, price_total, location, status, created_at`,
-	params.BuyerID, params.BuyerEmail, params.TotalPrice, 
+	params.UserId, params.BaseParams.Email, params.TotalPrice, 
 	params.Location, params.Status,
 	).Scan(&order.ID, 
 		&order.BuyerID, &order.BuyerEmail, &order.TotalPrice,
@@ -80,7 +79,7 @@ func (os *OrderStore)RemoveOrder(ctx context.Context, tx *sql.Tx, params *OrderS
 	results, err := tx.ExecContext(ctx,
 		`DELETE FROM mkt_orders
 		WHERE order_id = $1 AND buyer_id = $2`,
-		params.OrderID, params.BuyerID,
+		params.OrderID, params.UserId,
 	)
 	if err != nil { return err }
 
@@ -94,7 +93,7 @@ func (os *OrderStore)RemoveOrder(ctx context.Context, tx *sql.Tx, params *OrderS
 }
 
 
-func (os *OrderStore) GetOrders(ctx context.Context, params *OrderStoreParams) ([]*models.Order, []*models.OrderItem, error) {
+func (os *OrderStore) GetOrders(ctx context.Context, buyer_id *string) ([]*models.Order, []*models.OrderItem, error) {
 	orders := make([]*models.Order, 0)
 	items := make([]*models.OrderItem, 0)
 
@@ -103,7 +102,7 @@ func (os *OrderStore) GetOrders(ctx context.Context, params *OrderStoreParams) (
         FROM mkt_ecommerce.mkt_orders
         WHERE buyer_id = $1
         ORDER BY created_at DESC`,
-		params.BuyerID,
+		buyer_id,
 	)
 
 	if err != nil {

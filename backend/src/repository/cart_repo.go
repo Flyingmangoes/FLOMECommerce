@@ -8,8 +8,8 @@ import (
 )
 
 type CartStoreInterface interface {
-	CreateCart(ctx context.Context, params *CartProfileParams)(*models.Cart, error)
-	AddItem(ctx context.Context, params *CartProfileParams)(*models.CartItem, error)
+	CreateCart(ctx context.Context, user_id string)(*models.Cart, error)
+	AddCartItem(ctx context.Context, params *CartProfileParams)(*models.CartItem, error)
 
 	UpdateItemQuantity(ctx context.Context, params *CartProfileParams)(*models.CartItem, error)
 
@@ -21,9 +21,9 @@ type CartStoreInterface interface {
 }
 
 type CartProfileParams struct {
+	BaseParams
 	CartID 		string
 	CartItemsID string
-	UserID 		string
 	ProductID 	string
 	Quantity 	int
 }
@@ -36,7 +36,7 @@ func NewCartStore(db *sql.DB) *CartStore{
 	return &CartStore{db:db}
 }
 
-func (cs *CartStore) CreateCart(ctx context.Context, params *CartProfileParams)(*models.Cart, error) {
+func (cs *CartStore) CreateCart(ctx context.Context, user_id string)(*models.Cart, error) {
 	cart := &models.Cart{}
 
 	tx, err := cs.db.BeginTx(ctx, nil)
@@ -48,9 +48,9 @@ func (cs *CartStore) CreateCart(ctx context.Context, params *CartProfileParams)(
 
 	err = tx.QueryRowContext(ctx,
 		`INSERT INTO mkt_ecommerce.mkt_carts (user_id)
-		vALUE ($1)
+		VALUE ($1)
 		RETURNING cart_id, user_id`,
-		params.UserID,
+		user_id,
 	).Scan(&cart.ID, &cart.UserID)
 
 	if err != nil {
@@ -62,6 +62,26 @@ func (cs *CartStore) CreateCart(ctx context.Context, params *CartProfileParams)(
 	}
 
 	return cart, nil
+}
+
+func (cs *CartStore) AddCartItem(ctx context.Context, params *CartProfileParams)(*models.CartItem, error) {
+	cart_item := &models.CartItem{}
+
+	err := cs.db.QueryRowContext(ctx,
+		`INSERT INTO mkt_ecommerce.mkt_cart_items (cart_id, product_id, store_id, quantity)
+		VALUE ($1, $2, $3, $4)
+		RETURNING cart_item_id, cart_id, product_id, store_id, quantity`,
+		params.CartID, params.ProductID, params.UserId, params.Quantity,
+	).Scan(&cart_item.ID, &cart_item.CartID, 
+		&cart_item.ProductID, &cart_item.StoreID,
+		&cart_item.Quantity,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return cart_item, nil
 }
 
 func (cs *CartStore) UpdateItemQuantity(ctx context.Context, params *CartProfileParams)(*models.CartItem, error){
@@ -77,10 +97,12 @@ func (cs *CartStore) UpdateItemQuantity(ctx context.Context, params *CartProfile
 	err = tx.QueryRowContext(ctx, 
 		`UPDATE mkt_ecommerce.mkt_cart_items SET
 			quantity = COALESCE($1, quantity)
-		WHERE product_id = $2 AND cart_id = $3
+		WHERE cart_item_id = $2 AND cart_id = $3
 		RETURNING cart_item_id, cart_id, product_id, quantity`,
-		params.Quantity, params.ProductID, params.CartID,
-	).Scan(&updated.ID, &updated.CartID, &updated.ProductID, &updated.Quantity)
+		params.Quantity, params.CartItemsID, params.CartID,
+	).Scan(&updated.ID, &updated.CartID, 
+		&updated.ProductID, &updated.Quantity,
+	)
 
 	if err != nil {
 		return nil, err
@@ -110,7 +132,7 @@ func (cs *CartStore) RemoveItem(ctx context.Context, params *CartProfileParams) 
 	}
 
 	if rows == 0 {
-		return fmt.Errorf("Item in the card not found or ids provided did not match")
+		return fmt.Errorf("Item in the card not found or id not match")
 	}
 	
 	return nil
@@ -120,7 +142,7 @@ func (cs *CartStore) ClearCart(ctx context.Context, params *CartProfileParams) e
 	results, err := cs.db.ExecContext(ctx,
 		`DELETE FROM mkt_ecommerce.mkt_carts
 		WHERE cart_id = $1 AND user_id = $2`,
-		params.CartID, params.UserID,
+		params.CartID, params.UserId,
 	)
 
 	if err != nil {
@@ -133,7 +155,7 @@ func (cs *CartStore) ClearCart(ctx context.Context, params *CartProfileParams) e
 	}
 
 	if rows == 0 {
-		return fmt.Errorf("Item in the cart not found or ids provided not match")
+		return fmt.Errorf("Item in the cart not found or id not match")
 	}
 
 	return nil
@@ -146,7 +168,7 @@ func (cs *CartStore) GetCartItems(ctx context.Context, params []*CartProfilePara
 		item := &models.CartItem{}
 
 		err := cs.db.QueryRowContext(ctx,
-			`SELECT cart_item_id, cart_id, product_id, quantity
+			`SELECT cart_item_id, cart_id, product_id, store_id, quantity
 			FROM mkt_ecommerce.mkt_cart_items
 			WHERE cart_item_id = $1`,
 			p.CartItemsID,

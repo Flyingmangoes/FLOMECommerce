@@ -23,9 +23,6 @@ type ProductStoreInterface interface {
 }
 
 type ProductProfileParams struct {
-	// For update request need a confirmation which a bool type that sended from 
-	// client side confirmation
-
 	// Identifier Section
 	ProductID 		*string
 	StoreId 		*string

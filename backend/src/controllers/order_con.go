@@ -91,7 +91,7 @@ func (om *OrderManager) CreateOrder() gin.HandlerFunc {
 
 		buyerId := c.GetString("userId")
 
-		user, err := om.Users.GetUserByID(c.Request.Context(), buyerId)
+		user, err := om.Users.GetUserByID(c.Request.Context(), &buyerId)
 
 		if err != nil {
     		c.Error(middlewares.ErrInternal("Failed to fetch user"))

@@ -24,6 +24,7 @@ import (
 
 type UserContext struct {
     Users    	repository.UserStoreInterface
+	Cart 		repository.CartStoreInterface
     Tokens   	repository.TokenStoreInterface
 	JWTSecret 	[]byte
 }
@@ -74,8 +75,7 @@ type RemoveUserRequest struct {
 }
 
 type LoginRequest struct {
-	Username 	*string	`json:"username" binding:"omitempty"`
-	Email		*string `json:"email"    binding:"omitempty,email"`
+	Email		 string `json:"email"    binding:"required,email"`
 	Password 	 string	`json:"password" binding:"required"`
 }
 
@@ -121,7 +121,7 @@ func toUserResponse(u *models.User) userResponse {
     }
 }
 
-func (uc *UserContext)RegisterUser() gin.HandlerFunc {
+func (uc *UserContext) RegisterUser() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req UserRegisterRequest
 
@@ -139,17 +139,18 @@ func (uc *UserContext)RegisterUser() gin.HandlerFunc {
 		}
 
 		params := &repository.UserProfileParams{
+			BaseParams: repository.BaseParams{
+				Email: &req.Email,
+				Username: &req.Username,
+				Locale: &req.UserLocale,
+				Country: &req.UserCountry,
+				Address: &req.UserAddress,
+			},
 			FirstName: &req.FirstName,
 			LastName: &req.LastName,
-			HashedPassword: utils.STRtoptr(string(hashedpass)),
-			Email: &req.Email,
+			HashedPassword: utils.PString(string(hashedpass)),
 			PhoneNumber: &req.PhoneNumber,
-
-			Username: &req.Username,
 			UserType: &req.UserType,
-			Locale: &req.UserLocale,
-			Country: &req.UserCountry,
-			Address: &req.UserAddress,
 		
 			IsAgree: &req.IsAgree,
 			EmailConsent: &req.EmailConsent,
@@ -167,6 +168,13 @@ func (uc *UserContext)RegisterUser() gin.HandlerFunc {
 			}
 
 			c.Error(middlewares.ErrInternal("Failed to create user"))
+			return
+		}
+
+		cart, err := uc.Cart.CreateCart(c.Request.Context(), user.UserID)
+		if err != nil {
+			Logger.Log.Error("Error", zap.Error(err))
+			c.Error(middlewares.ErrInternal("failed to create cart"))
 			return
 		}
 
@@ -196,7 +204,10 @@ func (uc *UserContext)RegisterUser() gin.HandlerFunc {
 		Logger.Log.Info("Register process completed")
 		c.JSON(http.StatusCreated, gin.H{
 			"response": "user created",
-			"detail": toUserResponse(user),
+			"detail": gin.H{
+				"user": toUserResponse(user),
+				"cart": cart,
+			},
 
 			"token": gin.H{
 				"access_token": accessToken,
@@ -228,27 +239,30 @@ func (uc *UserContext)UpdateUser() gin.HandlerFunc {
 				return
 			}
 
-			newPassword = utils.STRtoptr(string(hashedpass))
+			newPassword = utils.PString(string(hashedpass))
 		}
 
 		id := c.GetString("userId")
 
 		params := &repository.UserProfileParams{
-			UserId: &id,
+			BaseParams: repository.BaseParams{
+				UserId: &id,
+				Username: req.NewUsername,
+				Locale: req.NewLocale,
+				Country: req.NewCountry,
+			},
 			HashedPassword: &req.Password,
 
 			FirstName: req.NewFirstname,
 			LastName: req.NewLastname,
-			Username: req.NewUsername,
 			NewPasswordHashed: newPassword,
 			PhoneNumber: req.NewPhonenumber,
-			Locale: req.NewLocale,
-			Country: req.NewCountry,
 			EmailConsent: req.NewEmailConsent,
 			SmsConsent: req.NewSmsConsent,
 		}
 		
 		existingUser, err := uc.Users.GetPassword(c.Request.Context(), params)
+
 		if err != nil {
     		c.Error(middlewares.ErrInternal("Failed to fetch user"))
     		return
@@ -288,12 +302,10 @@ func (uc *UserContext)DeleteUser() gin.HandlerFunc {
 
 		id := c.GetString("userId")
 
-		params := &repository.UserProfileParams{
-			UserId: &id,
-			Email: &req.Email,
-		}
-
-		stored, err := uc.Users.GetPassword(c.Request.Context(), params)
+		stored, err := uc.Users.GetPassword(c.Request.Context(), &repository.UserProfileParams{
+			BaseParams: repository.BaseParams{UserId: &id},
+		})
+		
         if err != nil {
             Logger.Log.Error("Error", zap.Error(err))
             c.Error(middlewares.ErrUnauthorized("Invalid credentials"))
@@ -304,6 +316,13 @@ func (uc *UserContext)DeleteUser() gin.HandlerFunc {
 			Logger.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrUnauthorized("Invalid credentials"))
 			return
+		}
+
+		params := &repository.UserProfileParams{
+			BaseParams: repository.BaseParams{
+				UserId: &req.UserID,
+				Email: &req.Email,
+			},
 		}
 
 		if err := uc.Users.DeleteUser(c.Request.Context(), params); err != nil {
@@ -330,16 +349,8 @@ func (uc *UserContext)LoginUser(prison *middlewares.LoginPrison) gin.HandlerFunc
 			return
 		}
 
-		if req.Email == nil && req.Username == nil {
-            c.Error(middlewares.ErrBadRequest("Email or username is missing"))
-            return
-        }
 
-		params:= &repository.UserProfileParams{
-			Email: req.Email,
-		}
-
-		user, err := uc.Users.LoginByUserEmail(c.Request.Context(), params)
+		user, err := uc.Users.LoginByUserEmail(c.Request.Context(), &req.Email)
         if err != nil {
 			Logger.Log.Error("Error", zap.Error(err))
             c.Error(middlewares.ErrUnauthorized("Invalid credentials"))

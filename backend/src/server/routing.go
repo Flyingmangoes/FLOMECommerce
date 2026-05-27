@@ -97,6 +97,12 @@ func registerRoutes(r *gin.Engine, sm *ServerManager, lp *middlewares.LoginPriso
         order.DELETE("", orderCtrl.CancelOrder())
     }
 
+    cart := r.Group("/v1/cart")
+    cart.Use(middlewares.AuthMiddlewares(string(sm.JWTSecret)))
+    {
+        cart.POST("")
+    }
+
     payment := r.Group("/v1/payment")
     payment.Use(middlewares.AuthMiddlewares(string(sm.JWTSecret)))
     {

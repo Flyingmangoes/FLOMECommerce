@@ -32,9 +32,7 @@ func (pm *PaymentManager) CheckoutOrder() gin.HandlerFunc {
 		buyerId := c.GetString("userId")
 		items := make([]payment.ItemDetail, 0)
 
-		orders, order_items, err := pm.Orders.GetOrders(c.Request.Context(), &repository.OrderStoreParams{
-			BuyerID: &buyerId,
-		})
+		orders, order_items, err := pm.Orders.GetOrders(c.Request.Context(), &buyerId)
 
 		if err != nil {
 			Logger.Log.Error("Failed retrieve order data",zap.Error(err))

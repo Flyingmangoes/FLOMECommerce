@@ -1,9 +1,9 @@
 package utils
 
-func STRtoptr(v string) *string {
+func PString(v string) *string {
 	return &v
 }
 
-func I64toptr(v int64) *int64 {
+func PInt64(v int64) *int64 {
 	return &v
 }

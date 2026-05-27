@@ -81,13 +81,16 @@ func (sm *StoreManager) RegisterStore() gin.HandlerFunc {
 		ownerid := c.GetString("userId")
 
 		params := &repository.StoreProfileParams{
-			OwnerId: &ownerid,
+			BaseParams: repository.BaseParams{
+				UserId: &ownerid,
+				Locale: &req.Locale,
+				Country: &req.Country,
+				Address: &req.Address,
+			},
+
 			StoreName: &req.StoreName,
 			StoreDesc: &req.StoreDesc,
 			StorePic: &req.StoreIMG,
-			Locale: &req.Locale,
-			Country: &req.Country,
-			Address: &req.Address,
 			PhoneNumber: &req.PhoneNumber,
 			SupportEmail: &req.SupportEmail,
 			Instagram: &req.Instagram,
@@ -121,11 +124,9 @@ func (sm *StoreManager) UpdateStore() gin.HandlerFunc {
 		ownerId := c.GetString("userId")
         storeId := c.GetString("storeId") 
 
-		up := &repository.UserProfileParams{
-			UserId: &ownerId,
-		}
-
-		userpass, err := sm.Users.GetPassword(c.Request.Context(), up)
+		userpass, err := sm.Users.GetPassword(c.Request.Context(), &repository.UserProfileParams{
+			BaseParams: repository.BaseParams{ UserId: &ownerId },
+		})
 		if err != nil {
 			Logger.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrInternal("Failed to compare credentials"))
@@ -139,13 +140,16 @@ func (sm *StoreManager) UpdateStore() gin.HandlerFunc {
 		}
 
 		params:= &repository.StoreProfileParams{	
+			BaseParams: repository.BaseParams{
+				Locale: req.NewLocale,
+				Country: req.NewCountry,
+				Address: req.NewAddress,
+			},
+
 			StoreId: &storeId,
 			StoreName: req.NewName,
 			StoreDesc: req.NewDesc,
 			StorePic:  req.NewImage,
-			Locale: req.NewLocale,
-			Country: req.NewCountry,
-			Address: req.NewAddress,
 			PhoneNumber: req.NewPhoneNumber,
 			SupportEmail: req.NewSupportEmail,
 			Instagram: req.NewInstagram,
