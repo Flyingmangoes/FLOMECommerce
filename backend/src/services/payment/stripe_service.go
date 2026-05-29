@@ -1,4 +1,4 @@
-package payment
+package payment_service
 
 import (
 	Logger "backend/src/utils/logger"

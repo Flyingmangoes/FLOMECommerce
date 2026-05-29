@@ -2,14 +2,15 @@ package server
 
 import (
 	"backend/src/controllers"
+    authHandler"backend/src/controllers/auth"
 	"backend/src/middlewares"
-	"backend/src/services"
+	orderService"backend/src/services/order"
 
 	"github.com/gin-gonic/gin"
 )
 
 func registerRoutes(r *gin.Engine, sm *ServerManager, lp *middlewares.LoginPrison) {
-	userCtrl := &controllers.UserContext{
+	userCtrl := &authHandler.UserManager{
         Users:     sm.Users,
         Tokens:    sm.Tokens,
         JWTSecret: sm.JWTSecret,
@@ -30,7 +31,7 @@ func registerRoutes(r *gin.Engine, sm *ServerManager, lp *middlewares.LoginPriso
     orderCtrl := &controllers.OrderManager{
         Orders: sm.Orders,
         Users: sm.Users,
-        OrderService: &services.OrderService{Tx: sm.Tx},
+        OrderService: &orderService.OrderService{Tx: sm.Tx},
     }
 
     paymentCtrl := &controllers.PaymentManager{
@@ -40,8 +41,13 @@ func registerRoutes(r *gin.Engine, sm *ServerManager, lp *middlewares.LoginPriso
         Payment: sm.Payment,
     }
 
-    sudoCtrl := &controllers.SudoContext{
-        JWTSecret: string(sm.JWTSecret),
+    sudoCtrl := &controllers.SudoManager{
+        SUDOSecret: string(sm.SUDOSecret),
+    }
+
+    cartCtrl := &controllers.CartManager{
+        Carts: sm.Carts,
+        Products: sm.Products,
     }
 
     auth := r.Group("/v2/auth")
@@ -58,7 +64,7 @@ func registerRoutes(r *gin.Engine, sm *ServerManager, lp *middlewares.LoginPriso
         user.POST("/store", storeCtrl.RegisterStore())
     }
 
-    user.Use(middlewares.ConfirmationMiddleware(string(sm.JWTSecret)))
+    user.Use(middlewares.SudoMiddleware(string(sm.JWTSecret)))
     {
         user.PUT("", userCtrl.UpdateUser())
         user.DELETE("", userCtrl.DeleteUser())
@@ -66,8 +72,8 @@ func registerRoutes(r *gin.Engine, sm *ServerManager, lp *middlewares.LoginPriso
 
     store := r.Group("/v1/store")
     store.Use(middlewares.AuthMiddlewares(string(sm.JWTSecret)))
-    store.Use(middlewares.CheckForStore(sm.Stores))
-    store.Use(middlewares.ConfirmationMiddleware(string(sm.JWTSecret)))
+    store.Use(middlewares.StoreMiddleware(sm.Stores))
+    store.Use(middlewares.SudoMiddleware(string(sm.JWTSecret)))
     {
         store.PUT("",    storeCtrl.UpdateStore())
         store.DELETE("", storeCtrl.DeleteStore())
@@ -75,12 +81,12 @@ func registerRoutes(r *gin.Engine, sm *ServerManager, lp *middlewares.LoginPriso
 
     product := r.Group("/v1/store")
     product.Use(middlewares.AuthMiddlewares(string(sm.JWTSecret)))
-    product.Use(middlewares.CheckForStore(sm.Stores))
+    product.Use(middlewares.StoreMiddleware(sm.Stores))
     {
         product.POST("/products", prdctCtrl.RegisterProduct())
     }
 
-    product.Use(middlewares.ConfirmationMiddleware(string(sm.JWTSecret)))
+    product.Use(middlewares.SudoMiddleware(string(sm.JWTSecret)))
     {
         product.PUT("/products", prdctCtrl.UpdateProduct())
         product.DELETE("/products", prdctCtrl.RemoveProduct())
@@ -92,7 +98,7 @@ func registerRoutes(r *gin.Engine, sm *ServerManager, lp *middlewares.LoginPriso
         order.POST("", orderCtrl.CreateOrder())
     }
 
-    order.Use(middlewares.ConfirmationMiddleware(string(sm.JWTSecret)))
+    order.Use(middlewares.SudoMiddleware(string(sm.JWTSecret)))
     {
         order.DELETE("", orderCtrl.CancelOrder())
     }
@@ -100,7 +106,11 @@ func registerRoutes(r *gin.Engine, sm *ServerManager, lp *middlewares.LoginPriso
     cart := r.Group("/v1/cart")
     cart.Use(middlewares.AuthMiddlewares(string(sm.JWTSecret)))
     {
-        cart.POST("")
+        cart.POST("", cartCtrl.AddCartItem())
+        cart.PUT("", cartCtrl.UpdateQuantity())
+        cart.GET("", cartCtrl.GetCarts())
+        cart.DELETE("", cartCtrl.RemoveCartItem())
+        cart.DELETE("/clear", cartCtrl.ClearCart())
     }
 
     payment := r.Group("/v1/payment")

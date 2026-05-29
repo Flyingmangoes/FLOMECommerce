@@ -11,16 +11,16 @@ import (
 	"go.uber.org/zap"
 )
 
-type SudoContext struct {
-	JWTSecret string
+type SudoManager struct {
+	SUDOSecret string
 }
 
-func (sc *SudoContext) GenerateConfirmation() gin.HandlerFunc {
+func (sc *SudoManager) GenerateConfirmation() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userId := c.GetString("userId")
 		userType := c.GetString("userType")
 
-		access, err := jwt.GenerateAnyToken(userId, userType, utils.CONFIRM_TOKEN, nil, []byte(sc.JWTSecret))
+		access, err := jwt.GenerateAnyToken(userId, userType, utils.SUDO_TOKEN, nil, []byte(sc.SUDOSecret))
 		if err != nil {
 			Logger.Log.Error("Failed to generate token", zap.Error(err))
 			c.Error(middlewares.ErrInternal("Failed to generate token"))

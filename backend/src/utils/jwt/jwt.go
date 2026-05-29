@@ -1,6 +1,7 @@
 package jwt
 
 import (
+	"backend/src/utils"
 	"errors"
 	"time"
 
@@ -20,15 +21,15 @@ type Claims struct {
     jwt.RegisteredClaims
 }
 
-type ConfirmClaims struct {
+type SudoClaims struct {
     UserID string `json:"userId"`
-    Action string `json:"action"`
+    Action utils.Action `json:"action"`
     jwt.RegisteredClaims
 }
 
-func GenerateAnyToken(userID, userType, usage string, action *string, secret []byte) (string, error) {
-    if usage == "confirm" && action != nil {
-        claims := ConfirmClaims{
+func GenerateAnyToken(userID, userType string, usage utils.TokenType, action *utils.Action, secret []byte) (string, error) {
+    if usage == utils.SUDO_TOKEN && action != nil {
+        claims := SudoClaims{
             UserID: userID,
             Action: *action,
             RegisteredClaims: jwt.RegisteredClaims{
@@ -107,8 +108,8 @@ func VerifyAccessToken(tokenString string, secret []byte) (*Claims, error) {
 	return claims, nil
 }
 
-func VerifyConfirmToken(tokenString string, secret []byte) (*ConfirmClaims, error) {
-    token, err := jwt.ParseWithClaims(tokenString, &ConfirmClaims{}, func(t *jwt.Token) (interface{}, error) {
+func VerifyConfirmToken(tokenString string, secret []byte) (*SudoClaims, error) {
+    token, err := jwt.ParseWithClaims(tokenString, &SudoClaims{}, func(t *jwt.Token) (interface{}, error) {
         if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
             return nil, ErrInvalidToken
         }
@@ -123,7 +124,7 @@ func VerifyConfirmToken(tokenString string, secret []byte) (*ConfirmClaims, erro
         return nil, ErrInvalidToken
     }
 
-    claims, ok := token.Claims.(*ConfirmClaims) 
+    claims, ok := token.Claims.(*SudoClaims) 
     if !ok || !token.Valid {
         return nil, ErrInvalidToken
     }

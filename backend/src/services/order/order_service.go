@@ -1,15 +1,16 @@
-package services
+package order_services
 
 import (
 	"backend/src/models"
 	"backend/src/repository"
+	"backend/src/services"
 	"context"
 	"database/sql"
 	"fmt"
 )
 
 type OrderService struct{
-	Tx *TxManager
+	Tx *services.TxManager
 }
 
 type PlaceOrderParams struct {
@@ -23,7 +24,6 @@ type PlaceOrderParams struct {
 type CancelOrderParams struct {
 	OrderId 			string
 	BuyerId 			string
-	Confirmation 		bool
 }
 
 func (os *OrderService) PlaceOrder(ctx context.Context, params *PlaceOrderParams) (*models.Order, error) {
@@ -83,10 +83,6 @@ func (os *OrderService) PlaceOrder(ctx context.Context, params *PlaceOrderParams
 
 func (os *OrderService)CancelOrder(ctx context.Context, params *CancelOrderParams) error {
 	err := os.Tx.WithTx(ctx, func(tx *sql.Tx) error {
-		if params.Confirmation != true {
-			return fmt.Errorf("Confirmation needed")
-		}
-
 		err := os.Tx.Orders.RemoveOrder(ctx, tx, &repository.OrderStoreParams{
 			BaseParams: repository.BaseParams{ UserId: &params.BuyerId },
 			OrderID: &params.OrderId,

@@ -6,20 +6,18 @@ import (
 	"backend/src/repository"
 	"backend/src/server"
 	"backend/src/services"
-	"backend/src/services/payment"
+	paymentSrvc"backend/src/services/payment"
 	Logger "backend/src/utils/logger"
 	"fmt"
 	"log/slog"
 	"net"
 	"os"
-	"path/filepath"
 
 	"github.com/subosito/gotenv"
 )
 
 func main() {
-	envDir := filepath.Dir("/home/yakutsk/Public/E-Commerce/backend/cmd/.env")
-	if err := gotenv.Load(filepath.Join(envDir, ".env")); err != nil {
+	if err := gotenv.Load(); err != nil {
 		slog.Warn(fmt.Sprintf("detail: %v", err))
 	}
 
@@ -41,7 +39,7 @@ func main() {
 	tokenStore := repository.NewTokenStore(db)
 	cartStore := repository.NewCartStore(db)
 
-	paymentService := payment.NewPaymentService(cfg.STRIPE_CONF.STRIPE_SECRET_KEY, 
+	paymentService := paymentSrvc.NewPaymentService(cfg.STRIPE_CONF.STRIPE_SECRET_KEY, 
 	 	cfg.STRIPE_CONF.STRIPE_WEBHOOK_SECRET,
 		net.JoinHostPort(cfg.SERV_CONF.FrontendHOST, cfg.SERV_CONF.FrontendPORT) + "/success",
     	net.JoinHostPort(cfg.SERV_CONF.FrontendHOST, cfg.SERV_CONF.FrontendPORT) + "/cancel", 
@@ -59,6 +57,7 @@ func main() {
 		Payment: paymentService,
 		Tx: txManager,
 		JWTSecret: []byte(cfg.SERV_CONF.JWT_SECRET),
+		SUDOSecret: []byte(cfg.SERV_CONF.SUDO_SECRET),
 	}
 
 	serv.Start(cfg)

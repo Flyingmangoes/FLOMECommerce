@@ -27,6 +27,7 @@ type ServerConfig struct {
 	FrontendHOST 	string
 	FrontendPORT 	string
 	JWT_SECRET 		string
+	SUDO_SECRET		string
 }
 
 type DBConfig struct {
@@ -51,6 +52,10 @@ func (a *Application) Validate() error {
 
 	if a.SERV_CONF.JWT_SECRET == "" {
 		return errors.New("jwt secret not found")
+	}
+
+	if a.SERV_CONF.SUDO_SECRET == "" {
+		return errors.New("sudo secret not found")
 	}
 
 	if a.STRIPE_CONF.STRIPE_PUBLIC_KEY == "" {
@@ -81,6 +86,7 @@ func NewConfig() *Application {
 			FrontendHOST: os.Getenv("FRONTEND_HOST"),
 			FrontendPORT: os.Getenv("FRONTEND_PORT"),
 			JWT_SECRET: os.Getenv("JWT_SECRET"),
+			SUDO_SECRET: os.Getenv("SUDO_SECRET"),
 		},
 		APP_CONF: &AppConfig{
 			RETRY_LOGIN_COOLDOWN: 10,

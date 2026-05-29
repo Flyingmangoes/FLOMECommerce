@@ -40,12 +40,10 @@ type UpdateProductRequest struct {
 	NewPrice 		*float64 	`json:"newPrice" binding:"omitempty"`
 	NewCategory 	*string		`json:"newCategory" binding:"omitempty"`
 	NewAvailability *int		`json:"newAvailability" binding:"omitempty"`
-	Confirmation 	bool		`json:"confirmation" binding:"required"`
 }
 
 type RemoveProductRequest struct {
 	ProductID 		string	`json:"productId" binding:"required"`
-	Confirmation	bool 	`json:"Confirmation" binding:"required"`
 }
 
 type productResponse struct {
@@ -166,11 +164,6 @@ func (pm *ProductManager) RemoveProduct() gin.HandlerFunc {
 		if err := c.ShouldBindBodyWithJSON(&req); err != nil {
 			Logger.Log.Error("detail", zap.Error(err))
 			c.Error(middlewares.ErrBadRequest("Failed to read client request"))
-			return
-		}
-
-		if req.Confirmation != true {
-			c.Error(middlewares.ErrUnauthorized("Action need confirmation "))
 			return
 		}
 

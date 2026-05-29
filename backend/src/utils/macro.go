@@ -1,27 +1,31 @@
 package utils
 
+type Action string
+type TokenType string
+type Environment string
+
 const (
-	ACTION_DELETE_USER = "delete_user"
-	ACTION_DELETE_STORE = "delete_store"
-	ACTION_DELETE_PRODUCT = "delete_product"
-	ACTION_CANCEL_PRODUCT = "cancel_order"
-	ACTION_UPDATE_STORE = "update_store"
-	ACTION_UPDATE_USER = "update_user"
-	ACTION_UPDATE_PRODUCT = "update_product"
+	ACTION_DELETE_USER 		Action = "delete_user"
+	ACTION_DELETE_STORE 	Action = "delete_store"
+	ACTION_DELETE_PRODUCT 	Action = "delete_product"
+	ACTION_CANCEL_ORDER 	Action = "cancel_order"
+	ACTION_UPDATE_STORE 	Action = "update_store"
+	ACTION_UPDATE_USER 		Action = "update_user"
+	ACTION_UPDATE_PRODUCT 	Action = "update_product"
 )
 
 const (
-	CONFIRM_TOKEN = "confirm"
-	ACCESS_TOKEN = "user"
+	SUDO_TOKEN 		TokenType = "confirm"
+	ACCESS_TOKEN 	TokenType = "user"
 )
 
 const (
-	DEVELOPMENT = "DEVELOPMENT"
-	PRODUCTION = "PRODUCTION"
+	DEVELOPMENT 	Environment = "DEVELOPMENT"
+	PRODUCTION 		Environment = "PRODUCTION"
 )
 
-var AllowedAction = map[string]bool{
-	ACTION_CANCEL_PRODUCT: true,
+var AllowedAction = map[Action]bool{
+	ACTION_CANCEL_ORDER: true,
 	ACTION_DELETE_PRODUCT: true,
 	ACTION_DELETE_STORE: true,
 	ACTION_DELETE_USER: true,

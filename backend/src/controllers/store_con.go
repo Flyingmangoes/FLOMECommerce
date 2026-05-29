@@ -42,7 +42,6 @@ type StoreRegisterRequest struct {
 
 type StoreUpdateRequest struct {
 	OwnerPassword 	string `json:"password" binding:"required"`
-	Confirmation 	bool   `json:"confirmation" binding:"required"`
 
 	NewName    		*string `json:"newStoreName" binding:"omitempty"`
 	NewDesc 		*string `json:"newStoreDesc" binding:"omitempty"`
@@ -155,7 +154,6 @@ func (sm *StoreManager) UpdateStore() gin.HandlerFunc {
 			Instagram: req.NewInstagram,
 			Tiktok: req.NewTiktok,
 			Website: req.NewWebsite,
-			Confirmation: req.Confirmation,
 		}
 
 		store, err := sm.Stores.UpdateStore(c.Request.Context(), params)

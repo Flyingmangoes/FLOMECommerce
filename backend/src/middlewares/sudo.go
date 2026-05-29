@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func ConfirmationMiddleware(secret string) gin.HandlerFunc {
+func SudoMiddleware(secret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		confirmationHeader := c.GetHeader("X-Sudo-Token")
 		if confirmationHeader == "" {

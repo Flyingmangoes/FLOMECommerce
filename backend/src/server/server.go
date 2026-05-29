@@ -5,7 +5,7 @@ import (
 	"backend/src/middlewares"
 	"backend/src/repository"
 	"backend/src/services"
-	"backend/src/services/payment"
+	paymentSrvc"backend/src/services/payment"
 	"backend/src/utils"
 	Logger "backend/src/utils/logger"
 	"net"
@@ -27,16 +27,17 @@ type ServerManager struct {
 	Orders 		repository.OrderStoreInterface
 	Carts 		repository.CartStoreInterface
 	Tokens  	repository.TokenStoreInterface 
-	Payment 	*payment.PaymentService
+	Payment 	*paymentSrvc.PaymentService
 	Tx			*services.TxManager
 	JWTSecret	[]byte
+	SUDOSecret 	[]byte
 }
 
 func (sm *ServerManager)Start(cfg *config.Application) {
 	router := gin.Default()
 
 	gin.SetMode(gin.DebugMode)
-	if cfg.ENVIRONMENT_STATUS == utils.PRODUCTION {
+	if utils.Environment(cfg.ENVIRONMENT_STATUS) == utils.PRODUCTION {
 		gin.SetMode(gin.ReleaseMode)
 	}
 

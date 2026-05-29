@@ -4,7 +4,7 @@ import (
 	"backend/src/middlewares"
 	"backend/src/models"
 	"backend/src/repository"
-	"backend/src/services"
+	orderSrvc "backend/src/services/order"
 	Logger "backend/src/utils/logger"
 	"fmt"
 	"net/http"
@@ -17,7 +17,7 @@ import (
 type OrderManager struct {
 	Orders 		repository.OrderStoreInterface
 	Users 		repository.UserStoreInterface
-	OrderService 	*services.OrderService
+	OrderService 	*orderSrvc.OrderService
 }
 
 //
@@ -36,7 +36,6 @@ type OrderRequest struct {
 
 type CancelOrderRequest struct {
 	OID string `json:"orderId" binding:"required"`
-	Confirmation bool `json:"confirmation" binding:"required"`
 }
 
 type orderResponse struct {
@@ -114,7 +113,7 @@ func (om *OrderManager) CreateOrder() gin.HandlerFunc {
 			})
 		}
 		
-		order, err := om.OrderService.PlaceOrder(c.Request.Context(), &services.PlaceOrderParams{
+		order, err := om.OrderService.PlaceOrder(c.Request.Context(), &orderSrvc.PlaceOrderParams{
 			BuyerID: buyerId,
             BuyerEmail: buyerEmail,
             CombinedLocation: location,
@@ -151,10 +150,9 @@ func (om *OrderManager) CancelOrder() gin.HandlerFunc {
 
 		buyerId := c.GetString("userId")
 
-		err := om.OrderService.CancelOrder(c.Request.Context(), &services.CancelOrderParams{
+		err := om.OrderService.CancelOrder(c.Request.Context(), &orderSrvc.CancelOrderParams{
 			BuyerId: buyerId,
 			OrderId: req.OID,
-			Confirmation: req.Confirmation,
 		})
 
 		if err != nil {

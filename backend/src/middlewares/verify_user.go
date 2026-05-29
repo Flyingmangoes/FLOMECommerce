@@ -8,7 +8,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func CheckForStore(stores repository.StoreStoreInterface) gin.HandlerFunc {
+func StoreMiddleware(stores repository.StoreStoreInterface) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userTypes := c.GetString("userType")
 		if userTypes == "" {
