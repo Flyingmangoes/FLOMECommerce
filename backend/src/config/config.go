@@ -5,49 +5,64 @@ import (
 	"os"
 )
 
-type Application struct {
-	DB_CONF *DBConfig
-	SERV_CONF *ServerConfig
-	APP_CONF *AppConfig
-	RATE_CONF *RateLimitingConfig
-	STRIPE_CONF *StripeConfig
-	ENVIRONMENT_STATUS string
+type ConfigManager struct {
+	DB_CONF 			*DBConfig
+	SERV_CONF 			*ServerConfig
+	APP_CONF 			*AppConfig
+	RATE_CONF 			*RateLimitingConfig
+	STRIPE_CONF 		*StripeConfig
+	SENDGRID_CONF 		*SendgridConfig
+	ENVIRONMENT_STATUS 	string
 }
 
 type AppConfig struct {
-	RETRY_LOGIN_COOLDOWN int
-	MAX_RETRY_LOGIN int
+	RETRY_LOGIN_COOLDOWN 	int
+	MAX_RETRY_LOGIN 		int
 }
 
 type ServerConfig struct {
-	HOST 			string
-	PORT 			string
-	ProxyHOST 		string
-	ProxyPORT 		string
-	FrontendHOST 	string
-	FrontendPORT 	string
-	JWT_SECRET 		string
-	SUDO_SECRET		string
+	HOST 				string
+	PORT 				string
+
+	ProxyHOST 			string
+	ProxyPORT 			string
+
+	FrontendHOST 		string
+	FrontendPORT 		string
+
+	JWT_SECRET 			string
+	SUDO_SECRET			string
 }
 
 type DBConfig struct {
-	DATABASE string
+	DATABASE 	string
 }
 
 type RateLimitingConfig struct {
-	RPM int
-	BURST int
+	RPM 	int
+	BURST 	int
 }
 
 type StripeConfig struct {
-	STRIPE_PUBLIC_KEY string
-	STRIPE_SECRET_KEY string
-	STRIPE_WEBHOOK_SECRET string
+	STRIPE_PUBLIC_KEY 		string
+	STRIPE_SECRET_KEY 		string
+	STRIPE_WEBHOOK_SECRET 	string
 }
 
-func (a *Application) Validate() error {
+type SendgridConfig struct {
+	VERIFICATION_SECRET 	string
+	SENDGRID_SECRET 		string
+	TEMP_MAILCONFIRMATION 	string
+	TEMP_PASSRESET 			string
+}
+
+func (a *ConfigManager) Validate() error {
 	if a.DB_CONF.DATABASE == ""{
 		return errors.New("Database detail not found")
+	}
+
+	if a.SENDGRID_CONF.SENDGRID_SECRET == "" {
+		return errors.New("sendgrid secret not found")
 	}
 
 	if a.SERV_CONF.JWT_SECRET == "" {
@@ -56,6 +71,10 @@ func (a *Application) Validate() error {
 
 	if a.SERV_CONF.SUDO_SECRET == "" {
 		return errors.New("sudo secret not found")
+	}
+
+	if a.SENDGRID_CONF.VERIFICATION_SECRET == "" {
+		return errors.New("verification secret not found")
 	}
 
 	if a.STRIPE_CONF.STRIPE_PUBLIC_KEY == "" {
@@ -73,18 +92,21 @@ func (a *Application) Validate() error {
     return nil
 }
 
-func NewConfig() *Application {
-	return &Application{
+func NewConfig() *ConfigManager {
+	return &ConfigManager{
 		DB_CONF: &DBConfig{
 			DATABASE: os.Getenv("DATABASE"),
 		},
 		SERV_CONF: &ServerConfig{
 			HOST: os.Getenv("SERVER_HOST"),
 			PORT: os.Getenv("SERVER_PORT"),
+
 			ProxyHOST: os.Getenv("PROXY_HOST"),
 			ProxyPORT: os.Getenv("PROXY_PORT"),
+
 			FrontendHOST: os.Getenv("FRONTEND_HOST"),
 			FrontendPORT: os.Getenv("FRONTEND_PORT"),
+
 			JWT_SECRET: os.Getenv("JWT_SECRET"),
 			SUDO_SECRET: os.Getenv("SUDO_SECRET"),
 		},
@@ -100,6 +122,12 @@ func NewConfig() *Application {
 			STRIPE_PUBLIC_KEY: os.Getenv("STRIPE_PUBLISHABLE_KEY"),
 			STRIPE_SECRET_KEY: os.Getenv("STRIPE_SECRET_KEY"),
 			STRIPE_WEBHOOK_SECRET: os.Getenv("STRIPE_WEBHOOK_SECRET"),
+		},
+		SENDGRID_CONF: &SendgridConfig{
+			SENDGRID_SECRET: os.Getenv("SENDGRID_SECRET"),
+			VERIFICATION_SECRET: os.Getenv("VERIFICATION_SECRET"),
+			TEMP_MAILCONFIRMATION: os.Getenv("MAIL_CONFIRMATION_TEMPLATE"),
+			TEMP_PASSRESET: os.Getenv("PASS_RESET_TEMPLATE"),
 		},
 		ENVIRONMENT_STATUS: os.Getenv("ENVIRONMENT"),
 	}
