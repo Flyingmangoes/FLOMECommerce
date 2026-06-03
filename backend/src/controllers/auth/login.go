@@ -2,6 +2,7 @@ package auth_controllers
 
 import (
 	"backend/src/middlewares"
+	"backend/src/repository"
 	"backend/src/utils"
 	"backend/src/utils/jwt"
 	Logger "backend/src/utils/logger"
@@ -13,7 +14,8 @@ import (
 )
 
 type LoginRequest struct {
-	Email		 string `json:"email"    binding:"required,email"`
+	Email		 string `json:"email"    binding:"omitempty,email"`
+	Username 	 string `json:"username" binding:"omitempty"`
 	Password 	 string	`json:"password" binding:"required"`
 }
 
@@ -28,8 +30,12 @@ func (uc *UserManager)LoginUser(prison *middlewares.LoginPrison) gin.HandlerFunc
 			return
 		}
 
-
-		user, err := uc.Users.LoginByUserEmail(c.Request.Context(), &req.Email)
+		user, err := uc.Users.LoginUser(c.Request.Context(), &repository.UserProfileParams{
+			BaseParams: repository.BaseParams{
+				Username: &req.Username,
+				Email: &req.Email,
+			},
+		})
         if err != nil {
 			Logger.Log.Error("Error", zap.Error(err))
             c.Error(middlewares.ErrUnauthorized("Invalid credentials"))
@@ -54,7 +60,7 @@ func (uc *UserManager)LoginUser(prison *middlewares.LoginPrison) gin.HandlerFunc
 
 		prison.Release(key)
 
-		accessToken, err := jwt.GenerateAnyToken(user.UserID, user.UserType, utils.ACCESS_TOKEN, nil, uc.JWTSecret)
+		accessToken, err := jwt.GenerateAnyToken(user.UserID, user.UserType, user.IsVerified, utils.ACCESS_TOKEN, nil, uc.JWTSecret)
 		if err != nil {
 			Logger.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrInternal("Failed to generate token"))

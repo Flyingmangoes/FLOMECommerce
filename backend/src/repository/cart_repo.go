@@ -106,11 +106,8 @@ func (cs *CartStore) UpdateItemQuantity(ctx context.Context, params *CartProfile
 	).Scan(&updated.ID, &updated.CartID, 
 		&updated.ProductID, &updated.Quantity,
 	)
-
-	if err != nil {
-		return nil, err
-	}
-
+	
+	if err != nil { return nil, err }
 	if err = tx.Commit(); err != nil {
 		return nil, err
 	}

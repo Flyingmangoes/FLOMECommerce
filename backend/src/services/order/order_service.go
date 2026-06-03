@@ -33,9 +33,16 @@ func (os *OrderService) PlaceOrder(ctx context.Context, params *PlaceOrderParams
 		products, err := os.Tx.Products.GetProductForUpdate(ctx, tx, params.ProductList)
 		if err != nil { return err }
 
+
+		/*
+			Don't forget to refactor this product lookup
+			Current Notation: O(N * M)
+			- FloatingMangoe, 01/06/2026
+		*/
+		
 		for _, p := range products {
 			for _, req := range params.ProductList {
-				if req.ProductID == &p.ProductID && p.Availability < *req.Quantity {
+				if *req.ProductID == p.ProductID && p.Availability < *req.Quantity {
 					return fmt.Errorf("insufficient stock: %s", p.ProductID)
 				}
 			}
@@ -67,9 +74,8 @@ func (os *OrderService) PlaceOrder(ctx context.Context, params *PlaceOrderParams
             Status:      &params.Status,
             ProductList: orderItems,
 		})
-
 		if err != nil { return err }
-
+		
 		if err := os.Tx.Products.DeductStock(ctx, tx, orderItems); err != nil {
 			return err
 		}

@@ -3,8 +3,9 @@ package server
 import (
 	"backend/src/config"
 	"backend/src/middlewares"
-	"backend/src/repository"
+	repo"backend/src/repository"
 	"backend/src/services"
+	emailSrvc"backend/src/services/email"
 	paymentSrvc"backend/src/services/payment"
 	"backend/src/utils"
 	Logger "backend/src/utils/logger"
@@ -16,24 +17,24 @@ import (
 	"golang.org/x/time/rate"
 )
 
-// Always Store the required Interface in the server context
-// to make it more readable and added the new variable
-// in SetupServer
-
 type ServerManager struct {
-	Users 		repository.UserStoreInterface
-	Stores 		repository.StoreStoreInterface	
-	Products 	repository.ProductStoreInterface 
-	Orders 		repository.OrderStoreInterface
-	Carts 		repository.CartStoreInterface
-	Tokens  	repository.TokenStoreInterface 
+	Users 		repo.UserStoreInterface
+	Stores 		repo.StoreStoreInterface	
+	Products 	repo.ProductStoreInterface 
+	Orders 		repo.OrderStoreInterface
+	Carts 		repo.CartStoreInterface
+	Tokens  	repo.TokenStoreInterface 
+
+	Email 		*emailSrvc.SGMailManager
 	Payment 	*paymentSrvc.PaymentService
 	Tx			*services.TxManager
-	JWTSecret	[]byte
-	SUDOSecret 	[]byte
+
+	JWTSecret			[]byte
+	SUDOSecret 			[]byte
+	VERIFICATION_SECRET []byte
 }
 
-func (sm *ServerManager)Start(cfg *config.Application) {
+func (sm *ServerManager)Start(cfg *config.ConfigManager) {
 	router := gin.Default()
 
 	gin.SetMode(gin.DebugMode)

@@ -1,6 +1,7 @@
 package middlewares
 
 import (
+	"backend/src/services"
 	"backend/src/utils/jwt"
 	"strings"
 	"sync"
@@ -32,11 +33,27 @@ func AuthMiddlewares(secret string) gin.HandlerFunc {
             return
 		}
 
+		c.Set("userStatus", claims.UserVerified)
 		c.Set("userId", claims.UserID)
         c.Set("userType", claims.UserType)
         c.Next()
 	}
 }        
+
+func AuthorizationMiddleware(action services.Action) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userType := c.GetString("userType")
+
+		ok, err := services.VerifyAuthorization(services.AccountType(userType), action)
+		if err != nil  || !ok {
+			c.Error(ErrUnauthorized("Action not permitted"))
+			c.Abort()
+			return
+		}
+
+		c.Next()
+	}
+}
 
 type LoginAttempt struct {
 	Attempts int

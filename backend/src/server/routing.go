@@ -2,9 +2,11 @@ package server
 
 import (
 	"backend/src/controllers"
-    authHandler"backend/src/controllers/auth"
+	authHandler "backend/src/controllers/auth"
 	"backend/src/middlewares"
-	orderService"backend/src/services/order"
+	"backend/src/services"
+	orderService "backend/src/services/order"
+	paymentService "backend/src/services/payment"
 
 	"github.com/gin-gonic/gin"
 )
@@ -34,12 +36,14 @@ func registerRoutes(r *gin.Engine, sm *ServerManager, lp *middlewares.LoginPriso
         OrderService: &orderService.OrderService{Tx: sm.Tx},
     }
 
-    paymentCtrl := &controllers.PaymentManager{
+    paymentCtrl := &paymentService.PaymentManager{
         Orders: sm.Orders,
         Products: sm.Products,
         Store: sm.Stores,
         Payment: sm.Payment,
     }
+
+    emailCtrl := sm.Email
 
     sudoCtrl := &controllers.SudoManager{
         SUDOSecret: string(sm.SUDOSecret),
@@ -52,10 +56,15 @@ func registerRoutes(r *gin.Engine, sm *ServerManager, lp *middlewares.LoginPriso
 
     auth := r.Group("/v2/auth")
     {
-        auth.GET("/users",     userCtrl.LoginUser(lp))
-        auth.POST("/users",    userCtrl.RegisterUser())
-        auth.POST("/refresh", userCtrl.Refresh())
-        auth.POST("/logout",  userCtrl.LogoutUser())
+        auth.GET("/users",      userCtrl.LoginUser(lp))
+        auth.POST("/users",     userCtrl.RegisterUser())
+        auth.POST("/refresh",   userCtrl.Refresh())
+        auth.POST("/logout",    userCtrl.LogoutUser())
+
+        verificationAuth := r.Group("/verify")
+        verificationAuth.Use(middlewares.VerificationMiddleware(sm.VERIFICATION_SECRET))
+        auth.POST("/request", emailCtrl.SendVerificationMail())
+        auth.POST("",         emailCtrl.VerifyEmail())
     }
 
     user := r.Group("/v2/user")
@@ -64,10 +73,18 @@ func registerRoutes(r *gin.Engine, sm *ServerManager, lp *middlewares.LoginPriso
         user.POST("/store", storeCtrl.RegisterStore())
     }
 
-    user.Use(middlewares.SudoMiddleware(string(sm.JWTSecret)))
+        sudoUser := r.Group("sudo")
+        sudoUser.Use(middlewares.SudoMiddleware(string(sm.JWTSecret)))
     {
-        user.PUT("", userCtrl.UpdateUser())
-        user.DELETE("", userCtrl.DeleteUser())
+        sudoUser.PUT("", 
+            middlewares.AuthorizationMiddleware(services.ActionProfileUpdate), 
+            userCtrl.UpdateUser(),
+        )
+
+        sudoUser.DELETE("", 
+            middlewares.AuthorizationMiddleware(services.ActionProfileDelete), 
+            userCtrl.DeleteUser(),
+        )
     }
 
     store := r.Group("/v1/store")
@@ -75,42 +92,85 @@ func registerRoutes(r *gin.Engine, sm *ServerManager, lp *middlewares.LoginPriso
     store.Use(middlewares.StoreMiddleware(sm.Stores))
     store.Use(middlewares.SudoMiddleware(string(sm.JWTSecret)))
     {
-        store.PUT("",    storeCtrl.UpdateStore())
-        store.DELETE("", storeCtrl.DeleteStore())
+        store.PUT("", 
+            middlewares.AuthorizationMiddleware(services.ActionStoreUpdate), 
+            storeCtrl.UpdateStore(),
+        )
+
+        store.DELETE("", 
+            middlewares.AuthorizationMiddleware(services.ActionStoreDelete), 
+            storeCtrl.DeleteStore(),
+        )
     }
 
-    product := r.Group("/v1/store")
+    product := r.Group("/v1/store/product")
     product.Use(middlewares.AuthMiddlewares(string(sm.JWTSecret)))
     product.Use(middlewares.StoreMiddleware(sm.Stores))
     {
-        product.POST("/products", prdctCtrl.RegisterProduct())
-    }
+        product.POST("", 
+            middlewares.AuthorizationMiddleware(services.ActionProductCreate), 
+            prdctCtrl.RegisterProduct(),
+        )
 
-    product.Use(middlewares.SudoMiddleware(string(sm.JWTSecret)))
-    {
-        product.PUT("/products", prdctCtrl.UpdateProduct())
-        product.DELETE("/products", prdctCtrl.RemoveProduct())
+        sudoProduct := r.Group("sudo")
+        sudoProduct.Use(middlewares.SudoMiddleware(string(sm.JWTSecret)))
+        {
+            sudoProduct.PUT("", 
+                middlewares.AuthorizationMiddleware(services.ActionProductUpdate), 
+                prdctCtrl.UpdateProduct(),
+            )
+            sudoProduct.DELETE("", 
+                middlewares.AuthorizationMiddleware(services.ActionProductDelete), 
+                prdctCtrl.RemoveProduct(),
+            )
+        }
     }
 
     order := r.Group("/v1/order")
     order.Use(middlewares.AuthMiddlewares(string(sm.JWTSecret)))
     {
-        order.POST("", orderCtrl.CreateOrder())
-    }
+        order.POST("", 
+            middlewares.AuthorizationMiddleware(services.ActionOrderCreate), 
+            orderCtrl.CreateOrder(),
+        )
 
-    order.Use(middlewares.SudoMiddleware(string(sm.JWTSecret)))
-    {
-        order.DELETE("", orderCtrl.CancelOrder())
+        sudoOrder := r.Group("sudo")
+        sudoOrder.Use(middlewares.SudoMiddleware(string(sm.JWTSecret)))
+        {
+            order.DELETE("", 
+                middlewares.AuthorizationMiddleware(services.ActionOrderCancel), 
+                orderCtrl.CancelOrder(),
+            )
+        }
     }
 
     cart := r.Group("/v1/cart")
     cart.Use(middlewares.AuthMiddlewares(string(sm.JWTSecret)))
     {
-        cart.POST("", cartCtrl.AddCartItem())
-        cart.PUT("", cartCtrl.UpdateQuantity())
-        cart.GET("", cartCtrl.GetCarts())
-        cart.DELETE("", cartCtrl.RemoveCartItem())
-        cart.DELETE("/clear", cartCtrl.ClearCart())
+        cart.POST("", 
+            middlewares.AuthorizationMiddleware(services.ActionCartAdd), 
+            cartCtrl.AddCartItem(),
+        )
+
+        cart.PUT("", 
+            middlewares.AuthorizationMiddleware(services.ActionCartUpdate), 
+            cartCtrl.UpdateQuantity(),
+        )
+
+        cart.GET("", 
+            middlewares.AuthorizationMiddleware(services.ActionCartSelfRead), 
+            cartCtrl.GetCarts(),
+        )
+
+        cart.DELETE("", 
+            middlewares.AuthorizationMiddleware(services.ActionCartRemove), 
+            cartCtrl.RemoveCartItem(),
+        )
+
+        cart.DELETE("/clear", 
+            middlewares.AuthorizationMiddleware(services.ActionCartClear), 
+            cartCtrl.ClearCart(),
+        )
     }
 
     payment := r.Group("/v1/payment")

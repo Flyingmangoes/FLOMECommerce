@@ -1,6 +1,7 @@
 package email_services
 
 import (
+	"backend/src/repository"
 	Logger "backend/src/utils/logger"
 	"strconv"
 	"time"
@@ -15,31 +16,44 @@ type MailType int
 type MailService interface {
 	CreateMail(mailReq *Mail) []byte
 	SendMail(mailReq *Mail) error
-	NewMail(params *MailServiceParams) *Mail
 }
 
 type MailServiceParams struct {
-	from 		string
-	to 			[]string
-	subject 	string
-	mailType 	MailType
-	data 		*MailData
+	From 		string
+	To 			[]string
+	Subject 	string
+	MailType 	MailType
+	MailData 	*MailData
 }
 
 type SGMailManager struct {
-	SG_SECRET 	string
+	Users 				repository.UserStoreInterface
+	SG_SECRET 				string
+	VERIFICATION_SECRET 	string
+	TEST_EMAIL 				string
+	SGTemplate
 }	
 
-func NewSGMailManager(secret string) *SGMailManager {
-	return &SGMailManager{SG_SECRET: secret}
+type SGTemplate struct{
+	TEMP_MAILCONFIRMATION string
+	TEMP_PASSRESET 		  string
+}
+
+func NewSGMailManager(sg_secret, v_secret string, template SGTemplate, us repository.UserStoreInterface) *SGMailManager {
+	return &SGMailManager{
+		SG_SECRET: sg_secret,
+		VERIFICATION_SECRET: v_secret,
+		Users: us,
+		SGTemplate: template,
+	}
 }
 
 type MailData struct {
-	Username 		string
-	UserEmail 		string
-	SupportEmail 	string
-	Code 			string
-	Expiration 		*time.Duration
+	Username 		string		`json:"username"`
+	UserEmail 		string		`json:"userEmail"`
+	SupportEmail 	string		`json:"supportEmail"`
+	Token 			string		`json:"token"`
+	Expiration 		*time.Time 	`json:"expires"`
 }
 
 type Mail struct {
@@ -55,6 +69,11 @@ const (
 	PassReset 
 )
 
+var typeList = map[MailType]string{
+	MailConfirmation: "Mail_Confirmation",
+	PassReset: "Pass_Reset",
+}
+
 const (
 	MailEndpoint 	string = "/v3/mail/send"
 	MailHost 	 	string = "https://api.sendgrid.com"
@@ -68,11 +87,14 @@ func(sg *SGMailManager) CreateMail(mailReq *Mail) []byte {
 
 	switch mailReq.mailTyp {
 		case MailConfirmation: {
-			m.SetTemplateID("d-fa0f7c2169aa4c67a6b2f4d9f638a67a")
+			m.SetTemplateID(sg.TEMP_MAILCONFIRMATION)
 		}
 		case PassReset: {
-			m.SetTemplateID("")
+			m.SetTemplateID(sg.TEMP_PASSRESET)
 		}
+	default:
+		Logger.Log.Error("Unknown Mail type", zap.Int("type", int(mailReq.mailTyp)))
+		return nil
 	}
 
 	p := mail.NewPersonalization()
@@ -86,8 +108,7 @@ func(sg *SGMailManager) CreateMail(mailReq *Mail) []byte {
 	p.SetDynamicTemplateData("Username", mailReq.data.Username)
 	p.SetDynamicTemplateData("User_Email", mailReq.data.UserEmail)
 	p.SetDynamicTemplateData("Support_Email", mailReq.data.SupportEmail)
-	p.SetDynamicTemplateData("Link_Expiration", mailReq.data.Expiration)
-	p.SetDynamicTemplateData("Code", mailReq.data.Code)
+	p.SetDynamicTemplateData("Code", mailReq.data.Token)
 
 	m.AddPersonalizations(p)
 	return mail.GetRequestBody(m)
@@ -112,10 +133,10 @@ func(sg *SGMailManager) SendMail(mailReq *Mail) error {
 
 func(sg *SGMailManager) NewMail(params *MailServiceParams) *Mail {
 	return &Mail{
-		from: params.from,
-		to: params.to,
-		subject: params.subject,				
-		mailTyp: params.mailType,
-		data: params.data,
+		from: params.From,
+		to: params.To,
+		subject: params.Subject,				
+		mailTyp: params.MailType,
+		data: params.MailData,
 	}
 }

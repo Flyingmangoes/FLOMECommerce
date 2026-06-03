@@ -3,7 +3,8 @@ package controllers
 import (
 	"backend/src/middlewares"
 	"backend/src/models"
-	"backend/src/repository"	
+	repo "backend/src/repository"
+	"backend/src/utils"
 	Logger "backend/src/utils/logger"
 	"net/http"
 	"time"
@@ -17,8 +18,8 @@ import (
 //
 
 type ProductManager struct {
-	Stores	   repository.StoreStoreInterface
-	Products   repository.ProductStoreInterface
+	Stores	   repo.StoreStoreInterface
+	Products   repo.ProductStoreInterface
 	JWTSecret []byte
 }
 
@@ -93,7 +94,7 @@ func (pm *ProductManager) RegisterProduct() gin.HandlerFunc {
 
 		store_id := c.GetString("storeId")
 
-		params := &repository.ProductProfileParams{
+		params := &repo.ProductProfileParams{
 			StoreId: &store_id,
 			Name: &req.ProductName,
 			ImageUrl: &req.ImageUrl,
@@ -111,8 +112,11 @@ func (pm *ProductManager) RegisterProduct() gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusCreated, gin.H{
-			"response": "product created",
-			"detail": toProductResponse(product),
+			"response": utils.EXIT_SUCCESS,
+			"detail": gin.H{
+				"info": "product created",
+				"product": toProductResponse(product),
+			},
 		})
 	}
 }
@@ -131,7 +135,7 @@ func (pm *ProductManager) UpdateProduct() gin.HandlerFunc {
 
 		storeId := c.GetString("storeId")
 
-		params := &repository.ProductProfileParams{
+		params := &repo.ProductProfileParams{
 			ProductID:  &req.ProductID,
 			StoreId: &storeId,
 			Name: req.NewProductName,	
@@ -150,8 +154,11 @@ func (pm *ProductManager) UpdateProduct() gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusCreated, gin.H{
-			"response": "product updated",
-			"detail": toProductResponse(product),
+			"response": utils.EXIT_SUCCESS,
+			"detail": gin.H{
+				"info": "product updated",
+				"product": toProductResponse(product),
+			},
 		})
 	}
 }
@@ -169,7 +176,7 @@ func (pm *ProductManager) RemoveProduct() gin.HandlerFunc {
 
 		storeId := c.GetString("storeId")
 
-		err := pm.Products.RemoveProduct(c.Request.Context(), &repository.ProductProfileParams{
+		err := pm.Products.RemoveProduct(c.Request.Context(), &repo.ProductProfileParams{
 			ProductID: &req.ProductID,
 			StoreId: &storeId,
 		})
@@ -180,6 +187,9 @@ func (pm *ProductManager) RemoveProduct() gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"response": "product removed"})
+		c.JSON(http.StatusOK, gin.H{
+			"response": utils.EXIT_SUCCESS,
+			"detail": "product removed",
+		})
 	}
 }

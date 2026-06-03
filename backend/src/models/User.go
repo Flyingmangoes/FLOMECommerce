@@ -23,10 +23,3 @@ type User struct {
 	CreatedAt 		time.Time 	`db:"created_at"`
 	Updatedat  		*time.Time	`db:"updated_at"`
 }	
-
-type VerificationData struct {
-	UserID		string 		`db:"user_id"`
-	Email		string 		`db:"email"`
-	ExpiresAt 	time.Time 	`db:"expires_at"`
-	Type 		string		`db:"verification_type"`
-}

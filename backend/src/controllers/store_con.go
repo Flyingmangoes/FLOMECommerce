@@ -2,7 +2,8 @@ package controllers
 
 import (
 	"backend/src/middlewares"
-	"backend/src/repository"
+	repo "backend/src/repository"
+	"backend/src/utils"
 	Logger "backend/src/utils/logger"
 	"backend/src/validators"
 
@@ -17,9 +18,9 @@ import (
 //
 
 type StoreManager struct {
-	Users 		repository.UserStoreInterface
-	Stores    	repository.StoreStoreInterface
-    Tokens   	repository.TokenStoreInterface
+	Users 		repo.UserStoreInterface
+	Stores    	repo.StoreStoreInterface
+    Tokens   	repo.TokenStoreInterface
 	JWTSecret 	[]byte
 }
 
@@ -79,8 +80,8 @@ func (sm *StoreManager) RegisterStore() gin.HandlerFunc {
 
 		ownerid := c.GetString("userId")
 
-		params := &repository.StoreProfileParams{
-			BaseParams: repository.BaseParams{
+		params := &repo.StoreProfileParams{
+			BaseParams: repo.BaseParams{
 				UserId: &ownerid,
 				Locale: &req.Locale,
 				Country: &req.Country,
@@ -104,11 +105,15 @@ func (sm *StoreManager) RegisterStore() gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusCreated, gin.H{"response": store})
+		c.JSON(http.StatusCreated, gin.H{
+			"response": utils.EXIT_SUCCESS,
+			"detail": gin.H{
+				"info": "store created",
+				"store": store,
+			},
+		})
 	}
 }
-
-
 
 func (sm *StoreManager) UpdateStore() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -123,8 +128,8 @@ func (sm *StoreManager) UpdateStore() gin.HandlerFunc {
 		ownerId := c.GetString("userId")
         storeId := c.GetString("storeId") 
 
-		userpass, err := sm.Users.GetPassword(c.Request.Context(), &repository.UserProfileParams{
-			BaseParams: repository.BaseParams{ UserId: &ownerId },
+		hashed_password, err := sm.Users.GetPassword(c.Request.Context(), &repo.UserProfileParams{
+			BaseParams: repo.BaseParams{ UserId: &ownerId },
 		})
 		if err != nil {
 			Logger.Log.Error("Error", zap.Error(err))
@@ -132,14 +137,14 @@ func (sm *StoreManager) UpdateStore() gin.HandlerFunc {
 			return
 		}
 
-		if err = validators.ValidatePassword(userpass.PasswordHash, req.OwnerPassword); err != nil {
+		if err = validators.ValidatePassword(*hashed_password, req.OwnerPassword); err != nil {
 			Logger.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrUnauthorized("Invalid credentials"))
 			return
 		}
 
-		params:= &repository.StoreProfileParams{	
-			BaseParams: repository.BaseParams{
+		params:= &repo.StoreProfileParams{	
+			BaseParams: repo.BaseParams{
 				Locale: req.NewLocale,
 				Country: req.NewCountry,
 				Address: req.NewAddress,
@@ -163,15 +168,30 @@ func (sm *StoreManager) UpdateStore() gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusCreated, gin.H{"response": store})
+		c.JSON(http.StatusCreated, gin.H{
+			"response": utils.EXIT_SUCCESS,
+			"detail": gin.H{
+				"info": "store updated",
+				"store": store,
+			},
+		})
 	}	
 }
 
-
-
 func (sm *StoreManager) DeleteStore() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		
+		var req StoreRemoveRequest
+
+		if err := c.ShouldBindBodyWithJSON(&req); err != nil {
+			Logger.Log.Error("Error in reading client request", zap.Error(err))
+			c.Error(middlewares.ErrBadRequest("Failed to parse client request"))
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"response": utils.EXIT_SUCCESS,
+			"detail": "store removed",
+		})
 	}
 }
 

@@ -3,7 +3,7 @@ package auth_controllers
 import (
 	"backend/src/middlewares"
 	"backend/src/models"
-	"backend/src/repository"
+	repo"backend/src/repository"
 	"backend/src/services"
 	"backend/src/utils"
 	"backend/src/utils/jwt"
@@ -18,9 +18,9 @@ import (
 )
 
 type UserManager struct {
-    Users    	repository.UserStoreInterface
-	Cart 		repository.CartStoreInterface
-    Tokens   	repository.TokenStoreInterface
+    Users    	repo.UserStoreInterface
+	Cart 		repo.CartStoreInterface
+    Tokens   	repo.TokenStoreInterface
 	JWTSecret 	[]byte
 }
 
@@ -102,8 +102,8 @@ func (uc *UserManager) RegisterUser() gin.HandlerFunc {
 			return
 		}
 
-		params := &repository.UserProfileParams{
-			BaseParams: repository.BaseParams{
+		params := &repo.UserProfileParams{
+			BaseParams: repo.BaseParams{
 				Email: &req.Email,
 				Username: &req.Username,
 				Locale: &req.UserLocale,
@@ -142,7 +142,7 @@ func (uc *UserManager) RegisterUser() gin.HandlerFunc {
 			return
 		}
 
-		accessToken, err := jwt.GenerateAnyToken(user.UserID, user.UserType, utils.ACCESS_TOKEN, nil, uc.JWTSecret)
+		accessToken, err := jwt.GenerateAnyToken(user.UserID, user.UserType, user.IsVerified, utils.ACCESS_TOKEN, nil, uc.JWTSecret)
 		if err != nil {
 			Logger.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrInternal("Failed to generate token"))

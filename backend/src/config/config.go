@@ -52,6 +52,8 @@ type StripeConfig struct {
 type SendgridConfig struct {
 	VERIFICATION_SECRET 	string
 	SENDGRID_SECRET 		string
+	TEST_EMAIL				string
+
 	TEMP_MAILCONFIRMATION 	string
 	TEMP_PASSRESET 			string
 }
@@ -126,6 +128,8 @@ func NewConfig() *ConfigManager {
 		SENDGRID_CONF: &SendgridConfig{
 			SENDGRID_SECRET: os.Getenv("SENDGRID_SECRET"),
 			VERIFICATION_SECRET: os.Getenv("VERIFICATION_SECRET"),
+			TEST_EMAIL: os.Getenv("SENDGRID_TEST_EMAIL"),
+			
 			TEMP_MAILCONFIRMATION: os.Getenv("MAIL_CONFIRMATION_TEMPLATE"),
 			TEMP_PASSRESET: os.Getenv("PASS_RESET_TEMPLATE"),
 		},

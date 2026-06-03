@@ -16,7 +16,6 @@ type StoreStoreInterface interface {
 	GetStoreByName(ctx context.Context, store_name string) (*models.Store, error)	
 	GetStoreByOwner(ctx context.Context, owner_id string) (*models.Store, error)
 	GetStoreByID(ctx context.Context, store_id string) (*models.Store, error)
-	ListStore(ctx context.Context, params *StoreProfileParams, limit int) ([]*models.Store, error)
 }
 
 type StoreProfileParams struct {
@@ -93,19 +92,19 @@ func (ss *StoreStore) UpdateStore(ctx context.Context, params *StoreProfileParam
 
 	err := ss.db.QueryRowContext(ctx,
 		`UPDATE mkt_stores SET
-			store_name = COALESCE ($1, store_name),
-			store_desc = COALESCE ($2, store_desc),
-			store_pic  = COALESCE ($3, store_pic),
-			store_locale =	COALESCE ($4, store_locale),
-			store_country = COALESCE ($5, store_country),
-			store_address = COALESCE ($6, store_address),
-			store_phone_number = COALESCE ($7, store_phone_number),
+			store_name 			= COALESCE ($1, store_name),
+			store_desc 			= COALESCE ($2, store_desc),
+			store_pic  			= COALESCE ($3, store_pic),
+			store_locale 		= COALESCE ($4, store_locale),
+			store_country 		= COALESCE ($5, store_country),
+			store_address 		= COALESCE ($6, store_address),
+			store_phone_number 	= COALESCE ($7, store_phone_number),
 			store_support_email = COALESCE ($8, store_support_email),
-			store_instagram = COALESCE ($9, store_instagram),
-			store_tiktok = COALESCE ($10, store_tiktok),
-			store_website = COALESCE ($11, store_website),
-			updated_at = NOW()
-		WHERE store_id = $12
+			store_instagram 	= COALESCE ($9, store_instagram),
+			store_tiktok 		= COALESCE ($10, store_tiktok),
+			store_website 		= COALESCE ($11, store_website),
+			updated_at 			= NOW()
+		WHERE store_id 			= $12
 		RETURNING store_id, owner_id, store_name, store_desc, store_pic, store_locale, store_country, store_address, store_phone_number, store_support_email, store_instagram, store_tiktok, store_website, created_at, updated_at`,
 		params.StoreName, params.StoreDesc, params.StorePic, params.Locale, 
 		params.Country,params.Address, params.PhoneNumber, 
@@ -154,9 +153,9 @@ func (ss *StoreStore) GetStoreByName(ctx context.Context, store_name string) (*m
 
     err := ss.db.QueryRowContext(ctx,
         `SELECT store_id, owner_id, store_name, store_desc, store_pic, 
-                is_active, store_locale, store_country, store_address, 
-                store_phone_number, store_support_email, store_instagram, 
-                store_tiktok, store_website, created_at, updated_at
+            is_active, store_locale, store_country, store_address, 
+            store_phone_number, store_support_email, store_instagram, 
+            store_tiktok, store_website, created_at, updated_at
         FROM mkt_stores WHERE store_name = $1`,
         store_name,
     ).Scan(
@@ -207,9 +206,9 @@ func (ss *StoreStore) GetStoreByID(ctx context.Context, store_id string) (*model
 	
 	err = ss.db.QueryRowContext(ctx,
 		`SELECT store_id, owner_id, store_name, store_desc, store_pic, 
-                is_active, store_locale, store_country, store_address, 
-                store_phone_number, store_support_email, store_instagram, 
-                store_tiktok, store_website, created_at, updated_at
+            is_active, store_locale, store_country, store_address, 
+            store_phone_number, store_support_email, store_instagram, 
+            store_tiktok, store_website, created_at, updated_at
 		 FROM mkt_ecommerce.mkt_stores WHERE store_id = $1`,
 		store_id,
 	).Scan(&store.StoreId, &store.OwnerId,
@@ -227,6 +226,4 @@ func (ss *StoreStore) GetStoreByID(ctx context.Context, store_id string) (*model
 	return store, nil
 }
 
-func (ss *StoreStore ) ListStore(ctx context.Context, params *StoreProfileParams, limit int) ([]*models.Store, error) {
-	return nil, nil
-}
+

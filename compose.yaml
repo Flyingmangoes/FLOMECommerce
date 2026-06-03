@@ -1,0 +1,37 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    env_file:
+      - .env
+    volumes:
+      - postgres_data:
+      -
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U yakutsk"]
+      interval: 5
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+  frontend:
+    build: ./frontend
+    ports:
+      -"12335:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+  backend:
+    build: ./backend
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      - 
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+  
+volumes:

@@ -28,7 +28,7 @@ func (uc *UserManager)DeleteUser() gin.HandlerFunc {
 
 		id := c.GetString("userId")
 
-		stored, err := uc.Users.GetPassword(c.Request.Context(), &repository.UserProfileParams{
+		password, err := uc.Users.GetPassword(c.Request.Context(), &repository.UserProfileParams{
 			BaseParams: repository.BaseParams{UserId: &id},
 		})
 		
@@ -38,7 +38,7 @@ func (uc *UserManager)DeleteUser() gin.HandlerFunc {
             return
         }
 
-		if err := validators.ValidatePassword(stored.PasswordHash, req.Password); err != nil {
+		if err := validators.ValidatePassword(*password, req.Password); err != nil {
 			Logger.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrUnauthorized("Invalid credentials"))
 			return

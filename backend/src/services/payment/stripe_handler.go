@@ -1,10 +1,9 @@
-package controllers
+package payment_service
 
 import (
-	"backend/src/repository"
+	repo"backend/src/repository"
 	"backend/src/middlewares"
 	Logger"backend/src/utils/logger"
-	payment"backend/src/services/payment"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -16,10 +15,10 @@ import (
 )
 
 type PaymentManager struct {
-	Products repository.ProductStoreInterface
-	Orders repository.OrderStoreInterface
-	Store repository.StoreStoreInterface
-	Payment *payment.PaymentService
+	Products 	repo.ProductStoreInterface
+	Orders 		repo.OrderStoreInterface
+	Store 		repo.StoreStoreInterface
+	Payment 	*PaymentService
 }
 
 func (pm *PaymentManager) CheckoutOrder() gin.HandlerFunc {
@@ -30,9 +29,16 @@ func (pm *PaymentManager) CheckoutOrder() gin.HandlerFunc {
 		)
 
 		buyerId := c.GetString("userId")
-		items := make([]payment.ItemDetail, 0)
+		items := make([]ItemDetail, 0)
 
-		orders, order_items, err := pm.Orders.GetOrders(c.Request.Context(), &buyerId)
+		oid, err := pm.Orders.GetOrderId(c.Request.Context(), buyerId)
+		if err != nil {
+			Logger.Log.Error("Failed retrieve order id", zap.Error(err))
+			c.Error(middlewares.ErrInternal("Retrieve order id failed"))
+			return
+		}
+
+		orders, order_items, err := pm.Orders.GetOrders(c.Request.Context(), buyerId, oid)
 
 		if err != nil {
 			Logger.Log.Error("Failed retrieve order data",zap.Error(err))
@@ -55,7 +61,7 @@ func (pm *PaymentManager) CheckoutOrder() gin.HandlerFunc {
 				return
 			}
 
-			item_detail := payment.ItemDetail{
+			item_detail := ItemDetail{
 				ProductID: value.ProductID,
 				ProductName: product.Name,
 				ProductDesc: product.Desc,
@@ -121,19 +127,19 @@ func(pm *PaymentManager) HandleWebhooks() gin.HandlerFunc {
 			pm.Orders.UpdateOrderStatus(c.Request.Context(), orderId, "paid")
 			Logger.Log.Info("Order paid", zap.String("order_id", orderId))
 
-  		case "checkout.session.expired":
-    		var session stripe.CheckoutSession
-    		if err := json.Unmarshal(event.Data.Raw, &session); err != nil {
-      			c.Status(http.StatusBadRequest)
-      			return
+		case "checkout.session.expired":
+			var session stripe.CheckoutSession
+			if err := json.Unmarshal(event.Data.Raw, &session); err != nil {
+				c.Status(http.StatusBadRequest)
+				return
     		}
 
 			orderId := session.Metadata["order_id"]
 			pm.Orders.UpdateOrderStatus(c.Request.Context(), orderId, "cancelled")
 			Logger.Log.Info("Order cancelled", zap.String("order_id", orderId))
 
-  		default:
-    		Logger.Log.Info("Unhandled event", zap.String("type", string(event.Type)))
+		default:
+			Logger.Log.Info("Unhandled event", zap.String("type", string(event.Type)))
 		}
 
 		c.Status(http.StatusOK)

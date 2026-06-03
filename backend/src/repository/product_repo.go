@@ -15,7 +15,6 @@ type ProductStoreInterface interface {
 
 	GetProductByName(ctx context.Context, product_name string) (*models.Product, error)
 	GetProductByID(ctx context.Context, product_id string) (*models.Product, error)
-	GetProductByBulk(ctx context.Context, params *ProductProfileParams, limit int) (*models.Product, error)
 	GetProductForUpdate(ctx context.Context, tx *sql.Tx, orderInput []OrderItemInput) ([]models.Product, error)
 
 	UpdateRating(ctx context.Context, params *ProductProfileParams) (*models.Product, error)
@@ -225,13 +224,6 @@ func (ps *ProductStore) GetProductByID(ctx context.Context, product_id string) (
 
 	return product, nil
 }
-
-
-
-func (ps *ProductStore) GetProductByBulk(ctx context.Context, params *ProductProfileParams, limit int) (*models.Product, error) {
-	return nil, nil
-}
-
 
 
 func (ps *ProductStore) UpdateRating(ctx context.Context, params *ProductProfileParams) (*models.Product, error) {

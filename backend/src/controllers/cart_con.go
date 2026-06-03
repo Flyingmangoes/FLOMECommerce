@@ -2,7 +2,8 @@ package controllers
 
 import (
 	"backend/src/middlewares"
-	"backend/src/repository"
+	repo "backend/src/repository"
+	"backend/src/utils"
 	Logger "backend/src/utils/logger"
 	"database/sql"
 	"net/http"
@@ -12,8 +13,8 @@ import (
 )
 
 type CartManager struct {
-	Carts repository.CartStoreInterface
-	Products repository.ProductStoreInterface
+	Carts 		repo.CartStoreInterface
+	Products 	repo.ProductStoreInterface
 }
 
 type AddItemRequest struct {
@@ -25,6 +26,10 @@ type RemoveItemRequest struct {
 	CartItemId 	string `json:"cartItemId" binding:"required"`
 }
 
+type ClearCartRequest struct {
+	CartId string `json:"cartId" binding:"required"`
+}
+
 type UpdateQuantityRequest struct {
 	CartItemID 	string	`json:"cartItemId" binding:"required"`
 	ProductID 	string 	`json:"productId" binding:"required"`
@@ -33,7 +38,46 @@ type UpdateQuantityRequest struct {
 
 func (cm *CartManager) GetCarts() gin.HandlerFunc {
 	return func (c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{})
+		var req struct {
+			CartId string `json:"cartId" binding:"required"`
+		}
+
+		userId := c.GetString("userId")
+		cart, err := cm.Carts.GetCart(c.Request.Context(), &repo.CartProfileParams{
+			CartID: &userId,
+		})
+
+		if err != nil {
+			Logger.Log.Error("Error in cart retrieval", zap.Error(err))
+			c.Error(middlewares.ErrInternal("Failed to retrieve cart"))
+			return
+		}
+
+		req.CartId = cart.ID
+		if err := c.ShouldBindBodyWithJSON(&req); err != nil {
+			Logger.Log.Error("Error in binding request", zap.Error(err))
+			c.Error(middlewares.ErrBadRequest("Failed to read client request"))
+			return
+		}
+
+		items, err := cm.Carts.GetCartItems(c.Request.Context(), &repo.CartProfileParams{
+			CartID: &req.CartId,
+		})
+		if err != nil {
+			if err == sql.ErrNoRows {
+				c.Error(middlewares.ErrNotFound("Cart items not found"))	
+			}
+			Logger.Log.Error("Error in retrieving cart items", zap.Error(err))
+			c.Error(middlewares.ErrInternal("Failed to retrieve cart items"))
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"response":utils.EXIT_SUCCESS,
+			"detail": gin.H{"cart": cart,
+				"cart_items":items,
+			},
+		})
 	}
 }
 
@@ -48,8 +92,8 @@ func (cm *CartManager) AddCartItem() gin.HandlerFunc {
 		}
 
 		user_id := c.GetString("userId")
-		cart, err := cm.Carts.GetCart(c.Request.Context(), &repository.CartProfileParams{
-			BaseParams: repository.BaseParams{UserId: &user_id},
+		cart, err := cm.Carts.GetCart(c.Request.Context(), &repo.CartProfileParams{
+			BaseParams: repo.BaseParams{UserId: &user_id},
 		})
 
 		if err == sql.ErrNoRows {
@@ -72,8 +116,8 @@ func (cm *CartManager) AddCartItem() gin.HandlerFunc {
 			return
 		}
 
-		params := &repository.CartProfileParams{
-			BaseParams: repository.BaseParams{UserId: &user_id},
+		params := &repo.CartProfileParams{
+			BaseParams: repo.BaseParams{UserId: &user_id},
 			CartID: 	&cart.ID,
 			ProductID: 	&req.ProductID,
 			StoreID: &product.StoreID,
@@ -88,8 +132,9 @@ func (cm *CartManager) AddCartItem() gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusOK, gin.H{
-			"response": "success",
+			"response": utils.EXIT_SUCCESS,
 			"detail": gin.H{
+				"info":"item added",
 				"cart": cart,
 				"cart_item": cart_items,
 			},
@@ -108,8 +153,8 @@ func (cm *CartManager) UpdateQuantity() gin.HandlerFunc {
 		}
 
 		user_id := c.GetString("userId")
-		cart, err := cm.Carts.GetCart(c.Request.Context(), &repository.CartProfileParams{
-			BaseParams: repository.BaseParams{UserId: &user_id},
+		cart, err := cm.Carts.GetCart(c.Request.Context(), &repo.CartProfileParams{
+			BaseParams: repo.BaseParams{UserId: &user_id},
 		})
 
 		if err != nil {
@@ -118,7 +163,7 @@ func (cm *CartManager) UpdateQuantity() gin.HandlerFunc {
 			return
 		}
 
-		params := &repository.CartProfileParams{
+		params := &repo.CartProfileParams{
 			Quantity: &req.NewQuantity,
 			CartItemsID: &req.CartItemID,
 			CartID: &cart.ID,
@@ -126,14 +171,19 @@ func (cm *CartManager) UpdateQuantity() gin.HandlerFunc {
 
 		items, err := cm.Carts.UpdateItemQuantity(c.Request.Context(), params)
 		if err != nil {
+			if err == sql.ErrNoRows {
+				c.Error(middlewares.ErrNotFound("Cart items not found"))	
+			}
+
 			Logger.Log.Error("Failed to update quantity", zap.Error(err))
 			c.Error(middlewares.ErrInternal("Failed to update item"))
 			return
 		}
 
 		c.JSON(http.StatusOK, gin.H{
-			"response": "success",
+			"response": utils.EXIT_SUCCESS,
 			"detail": gin.H{
+				"info":"quantity updated",
 				"cart": cart,
 				"cart_item": items,
 			},
@@ -152,8 +202,8 @@ func (cm *CartManager) RemoveCartItem() gin.HandlerFunc {
 		}
 
 		user_id := c.GetString("userId")
-		cart, err := cm.Carts.GetCart(c.Request.Context(), &repository.CartProfileParams{
-			BaseParams: repository.BaseParams{
+		cart, err := cm.Carts.GetCart(c.Request.Context(), &repo.CartProfileParams{
+			BaseParams: repo.BaseParams{
 				UserId: &user_id,
 			},
 		})
@@ -164,7 +214,7 @@ func (cm *CartManager) RemoveCartItem() gin.HandlerFunc {
 			return
 		}
 
-		err = cm.Carts.RemoveItem(c.Request.Context(), &repository.CartProfileParams{
+		err = cm.Carts.RemoveItem(c.Request.Context(), &repo.CartProfileParams{
 			CartItemsID: &req.CartItemId,
 			CartID: &cart.ID,
 		})
@@ -175,12 +225,33 @@ func (cm *CartManager) RemoveCartItem() gin.HandlerFunc {
 			return 
 		}
 
-		c.JSON(http.StatusOK, gin.H{"response": "success"})
+		c.JSON(http.StatusOK, gin.H{"response": utils.EXIT_SUCCESS})
 	}
 }
 
 func (cm *CartManager) ClearCart() gin.HandlerFunc {
 	return func (c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"response": "success"})
+		var req ClearCartRequest
+
+		if err := c.ShouldBindBodyWithJSON(&req); err != nil {
+			Logger.Log.Error("Error in reading request", zap.Error(err))
+			c.Error(middlewares.ErrBadRequest("Failed to read client request"))
+			return
+		}
+
+		err := cm.Carts.ClearCart(c.Request.Context(), &repo.CartProfileParams{CartID: &req.CartId})
+		if err != nil {
+			if err == sql.ErrNoRows{
+				Logger.Log.Error("Rows not found", zap.Error(err))
+				c.Error(middlewares.ErrNotFound("Cart not found"))
+				return
+			}
+
+			Logger.Log.Error("Error in clear cart", zap.Error(err))
+			c.Error(middlewares.ErrInternal("Failed to clear cart"))
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{ "response": utils.EXIT_SUCCESS})
 	}
 }

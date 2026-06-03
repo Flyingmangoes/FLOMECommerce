@@ -43,7 +43,7 @@ func (uc *UserManager)Refresh() gin.HandlerFunc {
 			return
 		}
 
-		newAccess, err := jwt.GenerateAnyToken(claims.UserID, claims.UserType, utils.ACCESS_TOKEN, nil, uc.JWTSecret)
+		newAccess, err := jwt.GenerateAnyToken(claims.UserID, claims.UserType, claims.UserVerified, utils.ACCESS_TOKEN, nil, uc.JWTSecret)
 		if err != nil {
 			Logger.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrInternal("Failed to create token"))

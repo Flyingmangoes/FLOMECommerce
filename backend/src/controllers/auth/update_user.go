@@ -58,10 +58,17 @@ func (uc *UserManager)UpdateUser() gin.HandlerFunc {
 		}
 
 		id := c.GetString("userId")
+		email, err := uc.Users.GetEmail(c.Request.Context(), &id)
+		if err != nil {
+			Logger.Log.Error("Error while retrieving user email", zap.Error(err))
+			c.Error(middlewares.ErrInternal("Failed to retrieve email"))
+			return
+		}
 
 		params := &repository.UserProfileParams{
 			BaseParams: repository.BaseParams{
 				UserId: &id,
+				Email: email,
 				Username: req.NewUsername,
 				Locale: req.NewLocale,
 				Country: req.NewCountry,
@@ -76,14 +83,14 @@ func (uc *UserManager)UpdateUser() gin.HandlerFunc {
 			SmsConsent: req.NewSmsConsent,
 		}
 		
-		existingUser, err := uc.Users.GetPassword(c.Request.Context(), params)
+		hashed_password, err := uc.Users.GetPassword(c.Request.Context(), params)
 
 		if err != nil {
     		c.Error(middlewares.ErrInternal("Failed to fetch user"))
     		return
 		}
 
-		if err := validators.ValidatePassword(existingUser.PasswordHash, req.Password); err != nil {
+		if err := validators.ValidatePassword(*hashed_password, req.Password); err != nil {
     		c.Error(middlewares.ErrUnauthorized("Invalid credentials"))
     		return
 		}

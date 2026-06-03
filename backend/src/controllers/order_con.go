@@ -3,8 +3,9 @@ package controllers
 import (
 	"backend/src/middlewares"
 	"backend/src/models"
-	"backend/src/repository"
+	repo "backend/src/repository"
 	orderSrvc "backend/src/services/order"
+	"backend/src/utils"
 	Logger "backend/src/utils/logger"
 	"fmt"
 	"net/http"
@@ -14,14 +15,37 @@ import (
 	"go.uber.org/zap"
 )
 
+/* ORDER DOCUMENTATION
+* 1. CreateOrder
+*	Create order is the process that handle the order creation, it take an array of items, and optional location 
+*	(optional because we take the default user location from database).
+*	
+*	The email and id of the buyer retrieved from header that setted by middleware. After that we prep for the Place Order
+*	service, the reason i use separate parameter for the place order is to avoid tangled import sequence since that not allowed
+*	in golang. The function PlaceOrder return a pointer to the order data or model whatever it called.
+*
+* 	After the create success it will return a json formatted data, and redirect to stripe checkout payment page...
+*	I think i don't suppose to do that in the server side, isn't it supposed to be client side?
+*
+* 2. CancelOrder
+*	Cancel order is a function that it sole purpose is handling the cancel mechanism of order, it required order id and user id to work,
+*	user id will be retrieve from jwt token while the oid (order id) retrieved from the client sided in json formatted data.
+*
+*	it will then be binded to json, And call CancelOrder function from service directory, simply CancelOrder is just service layer
+*	that wrap the Order repository with a centralized transaction function (Transaction is a sql function that make sure if and error
+	happened in the middle of the process everything reset to it's default state same thing like c.Abort() from gin).
+*	
+*	If it's CancelOrder service success it return nil.
+*/
+
 type OrderManager struct {
-	Orders 		repository.OrderStoreInterface
-	Users 		repository.UserStoreInterface
+	Orders 		repo.OrderStoreInterface
+	Users 		repo.UserStoreInterface
 	OrderService 	*orderSrvc.OrderService
 }
 
 //
-// Order Structure
+//	ORDER REQUEST SCHEMATIC
 //
 
 type OrderItemRequest struct {
@@ -30,7 +54,7 @@ type OrderItemRequest struct {
 }
 
 type OrderRequest struct {
-	Items []OrderItemRequest `json:"items" binding:"required"`
+	Items []OrderItemRequest 	`json:"items" binding:"required"`
     BuyerLocation *string       `json:"location" binding:"omitempty"`
 }	
 
@@ -48,10 +72,6 @@ type orderResponse struct {
 	CreatedAt time.Time
 }
 
-//
-// Handler
-//
-
 func toOrderResponse(o *models.Order) orderResponse {
 	return orderResponse{
 		ID: o.ID,
@@ -63,20 +83,6 @@ func toOrderResponse(o *models.Order) orderResponse {
 		CreatedAt: o.CreatedAt,
 	}
 }
-
-/* ORDER DOCUMENTATION
-* 1. CreateOrder
-*	create order is a function that used by gin.IRoutes and used OrderRequest struct
-*	as the parameter that then be  binded using gin.Context.ShouldBindBodyWithJSON
-*
-*	for buyer id aka user id we use GetString(), because the user id already set 
-*	in the auth middleware which used for retrieve the user data which will be 
-*	used to fill an array of OrderItemInput that used in-- 
-*	OrderStoreInterface.PlaceOrder that require PlaceOrderParams to work.
-*	
-* 2. CheckoutOrder
-* 3. CancelOrder
-*/
 
 func (om *OrderManager) CreateOrder() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -105,9 +111,9 @@ func (om *OrderManager) CreateOrder() gin.HandlerFunc {
             location = fmt.Sprintf("%s, %s", user.Country, user.Address)
 		}
 
-		items := make([]repository.OrderItemInput, 0)
+		items := make([]repo.OrderItemInput, 0)
 		for _, item := range req.Items {
-			items = append(items, repository.OrderItemInput{
+			items = append(items, repo.OrderItemInput{
 				ProductID: &item.ProductID,
 				Quantity: &item.Quantity,
 			})
@@ -122,19 +128,18 @@ func (om *OrderManager) CreateOrder() gin.HandlerFunc {
 		})
 
 		if err != nil {
-            Logger.Log.Error("detail", zap.Error(err))
+            Logger.Log.Error("Error in creating order", zap.Error(err))
             c.Error(middlewares.ErrInternal("Failed to place order"))
             return
 		}
 
 		c.JSON(http.StatusCreated, gin.H{
-			"response": "order created",
+			"response": utils.EXIT_SUCCESS,
 			"detail": gin.H{
+				"info": "order created",
 				"order": toOrderResponse(order),
 			},
 		})
-
-		c.Redirect(http.StatusFound, "v1/payment/stripe")
 	}
 }
 

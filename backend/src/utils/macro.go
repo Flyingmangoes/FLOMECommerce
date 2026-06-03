@@ -1,8 +1,10 @@
 package utils
 
 type Action string
-type TokenType string
+type TokenType int
 type Environment string
+type Status string
+type OrderStatus string
 
 const (
 	ACTION_DELETE_USER 		Action = "delete_user"
@@ -15,8 +17,8 @@ const (
 )
 
 const (
-	SUDO_TOKEN 		TokenType = "confirm"
-	ACCESS_TOKEN 	TokenType = "user"
+	SUDO_TOKEN 		TokenType = iota + 1
+	ACCESS_TOKEN
 )
 
 const (
@@ -33,3 +35,14 @@ var AllowedAction = map[Action]bool{
 	ACTION_UPDATE_USER: true,
 	ACTION_UPDATE_PRODUCT: true,
 }
+
+const (
+	EXIT_SUCCESS Status = "success"
+	EXIT_FAILURE Status = "failed"
+)
+
+const (
+	ORDER_PENDING OrderStatus = "PENDING"
+	ORDER_SHIPPED OrderStatus = "SHIPPED"
+	ORDER_ARRIVED OrderStatus = "ARRIVED"
+)
