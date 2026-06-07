@@ -31,15 +31,7 @@ func (pm *PaymentManager) CheckoutOrder() gin.HandlerFunc {
 		buyerId := c.GetString("userId")
 		items := make([]ItemDetail, 0)
 
-		oid, err := pm.Orders.GetOrderId(c.Request.Context(), buyerId)
-		if err != nil {
-			Logger.Log.Error("Failed retrieve order id", zap.Error(err))
-			c.Error(middlewares.ErrInternal("Retrieve order id failed"))
-			return
-		}
-
-		orders, order_items, err := pm.Orders.GetOrders(c.Request.Context(), buyerId, oid)
-
+		orders, order_items, err := pm.Orders.GetOrders(c.Request.Context(), buyerId)
 		if err != nil {
 			Logger.Log.Error("Failed retrieve order data",zap.Error(err))
 			c.Error(middlewares.ErrInternal("Retrieve order data failed"))
@@ -94,7 +86,7 @@ func (pm *PaymentManager) CheckoutOrder() gin.HandlerFunc {
 	}
 }
 
-func(pm *PaymentManager) HandleWebhooks() gin.HandlerFunc {
+func(pm *PaymentManager) StripeWebhooks() gin.HandlerFunc {
 	return func (c *gin.Context)  {
 		payload, err := io.ReadAll(c.Request.Body)
 		if err != nil {
