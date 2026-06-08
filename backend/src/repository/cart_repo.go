@@ -120,7 +120,7 @@ func (cs *CartStore) RemoveItem(ctx context.Context, params *CartProfileParams) 
 		`DELETE FROM mkt_ecommerce.mkt_cart_items
 		WHERE cart_item_id = $1 AND cart_id = $2`,
 		params.CartItemsID, params.CartID,
-	) 
+	)     
 
 	if err != nil {
 		return err

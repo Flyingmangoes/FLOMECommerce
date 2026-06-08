@@ -18,9 +18,9 @@ type UserStoreInterface interface {
 	GetUserByUsername(ctx context.Context, username *string) (*models.User, error)
 	GetUserByID(ctx context.Context, user_id *string) (*models.User, error)
 	GetPassword(ctx context.Context, params *UserProfileParams) (*string, error)
-	GetEmail(ctx context.Context, user_id *string)(*string, error)
 
 	VerifyUser(ctx context.Context, verified_id string) (*models.User, error)
+	SearchUser(ctx context.Context, params *UserSearchParams) ([]models.User, error)
 }
 
 type BaseParams struct {
@@ -59,8 +59,11 @@ type UserProfileParams struct {
 	UpdatedAt		*time.Time
 }
 
-type ListUsersFilter struct {
-	UserType *string
+type UserSearchParams struct {
+	Query 		*string
+	Username 	*string
+	SortBy 		*string
+	SortOrder 	*string
 	utils.PagFilter
 }
 
@@ -90,7 +93,7 @@ func (us *UserStore)CreateUser(ctx context.Context, params *UserProfileParams) (
 		params.Email, params.PhoneNumber, 
 		params.HashedPassword, params.Locale, params.Country, 
 		params.Address, params.UserType, params.IsVerified,
-	 	params.EmailConsent, params.SmsConsent, params.ConsentSource,
+		params.EmailConsent, params.SmsConsent, params.ConsentSource,
 	).Scan(&user.UserID, 
 		&user.FirstName, &user.LastName, &user.Username, 
 		&user.Email, &user.PhoneNumber, &user.Locale,
@@ -124,7 +127,7 @@ func (us *UserStore)UpdateUser(ctx context.Context, params *UserProfileParams) (
 			sms_consent		= COALESCE ($11, sms_consent),
 			consent_updated_at = NOW(),
 			updated_at		= NOW()
-		WHERE user_id = $12 AND email = $13
+		WHERE user_id = $12
 		RETURNING user_id, firstname, lastname, phone_number, email, passwordhashed, 
 		user_locale, user_country, user_address, email_consent, sms_consent, 
 		consent_updated_at, updated_at`,
@@ -132,7 +135,6 @@ func (us *UserStore)UpdateUser(ctx context.Context, params *UserProfileParams) (
 		params.PhoneNumber, params.Email, params.NewPasswordHashed, 
 		params.Locale, params.Country, params.Address, 
 		params.EmailConsent, params.SmsConsent, params.UserId,
-		params.Email,
 	).Scan(&user.UserID, &user.FirstName, 
 		&user.LastName, &user.PhoneNumber, &user.Email, 
 		&user.PasswordHash, &user.Locale, &user.Country,
@@ -149,8 +151,8 @@ func (us *UserStore)UpdateUser(ctx context.Context, params *UserProfileParams) (
 func (us *UserStore)DeleteUser(ctx context.Context, params *UserProfileParams) error {
 	result, err := us.db.ExecContext(ctx, 
 		`DELETE FROM mkt_users
-		WHERE user_id = $1 AND email = $2`,
-		params.UserId, params.Email,
+		WHERE user_id = $1`,
+		params.UserId, 
 	)
 	if err != nil { return err }
 
@@ -173,7 +175,7 @@ func (us *UserStore)LoginUser(ctx context.Context, params *UserProfileParams) (*
 		return nil, fmt.Errorf("Required parameter can't be empty")
 	}
 
-	if params.Username == nil {
+	if params.Username == nil && params.Email != nil {
 		err = us.db.QueryRowContext(ctx,
 		`SELECT user_id, firstname, lastname, username, email, phone_number, passwordhashed, user_locale, user_country, user_address, user_type, is_verified, is_agree, email_consent, sms_consent, consent_src, created_at, updated_at, consent_updated_at FROM mkt_users
 		WHERE email = $1`,
@@ -186,7 +188,7 @@ func (us *UserStore)LoginUser(ctx context.Context, params *UserProfileParams) (*
 			&user.Consent_src, &user.CreatedAt, &user.Updatedat, 
 			&user.Consent_Updated,
 		)
-	} else if params.Email == nil {
+	} else if params.Email == nil && params.Username != nil {
 		err = us.db.QueryRowContext(ctx,
 			`SELECT user_id, firstname, lastname, username, email, phone_number, passwordhashed, user_locale, user_country, user_address, user_type, is_verified, is_agree, email_consent, sms_consent, consent_src, created_at, updated_at, consent_updated_at FROM mkt_users
 			WHERE email = $1`,
@@ -304,18 +306,39 @@ func (us *UserStore) VerifyUser(ctx context.Context, verified_id string) (*model
 	return user, nil
 }
 
-func (us *UserStore) GetEmail(ctx context.Context, user_id *string) (*string, error) {
-	user := &models.User{}
+func (us *UserStore) SearchUser(ctx context.Context, params *UserSearchParams) ([]models.User, error) {
+	params.Normalize()
 
-	err := us.db.QueryRowContext(ctx,
-		`SELECT email FROM mkt_ecommerce.mkt_users
-		WHERE user_id = $1`,
-		user_id,
-	).Scan(&user.Email)
+	createdAt, id := params.CursorValues()
+	
+	rows, err := us.db.QueryContext(ctx,
+		`SELECT user_id, username, user_country, created_at,
+		FROM mkt_ecommerce.mkt_users
+		WHERE
+			($1::timestamptz IS NULL OR (created_at, user_id) < ($1, $2::uuid)) AND
+			($3::varchar IS NULL OR username ILIKE '%' || $3 || '%') AND
+		ORDER BY created_at DESC, user_id DESC
+		LIMIT $4`,
+		createdAt, id,
+		params.Username, params.Limit,
+	)
 
-	if err != nil {
-		return nil, err
+	if err != nil { return nil, err }
+	
+	defer rows.Close()
+
+	users := make([]models.User, 0)
+	for rows.Next() {
+		u := models.User{}
+		if err := rows.Scan(
+			u.UserID, u.Username,
+			u.Country, u.CreatedAt, 
+		); err != nil {
+			return nil, err
+		}
+
+		users = append(users, u)
 	}
 
-	return &user.Email, err
+	return users, rows.Err()
 }

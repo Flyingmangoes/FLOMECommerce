@@ -31,3 +31,6 @@ database.env
 
 out
 out/*
+
+nginx
+nginx/*

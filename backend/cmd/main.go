@@ -17,8 +17,6 @@ import (
 	"github.com/subosito/gotenv"
 )
 
-
-
 func main() {
 	slog.Info("Loading environment variable")
 	if err := gotenv.Load(); err != nil {
@@ -39,14 +37,13 @@ func main() {
 	slog.Info("Connecting to database")
 	db := database.NewDatabaseConnection(cfg.DB_CONF.DATABASE)
 
-
 	slog.Info("Initializing repository")
-	userStore 		:= repository.NewUserStore(db)
-	storeStore 		:= repository.NewStoresStore(db)
-	productStore 	:= repository.NewProductStore(db)
-	orderStore 		:= repository.NewOrderStore(db)
-	tokenStore 		:= repository.NewTokenStore(db)
-	cartStore 		:= repository.NewCartStore(db)
+	userStore 	 := repository.NewUserStore(db)
+	storeStore 	 := repository.NewStoresStore(db)
+	productStore := repository.NewProductStore(db)
+	orderStore 	 := repository.NewOrderStore(db)
+	tokenStore 	 := repository.NewTokenStore(db)
+	cartStore 	 := repository.NewCartStore(db)
 
 	slog.Info("Initializing Service")
 	emailService := emailSrvc.NewSGMailManager(

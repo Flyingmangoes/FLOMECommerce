@@ -34,8 +34,8 @@ func AuthMiddlewares(secret string) gin.HandlerFunc {
 		}
 
 		c.Set("userStatus", claims.UserVerified)
-		c.Set("userId", claims.UserID)
-        c.Set("userType", claims.UserType)
+		c.Set("userId", 	claims.UserID)
+        c.Set("userType", 	claims.UserType)
         c.Next()
 	}
 }        
@@ -46,7 +46,7 @@ func AuthorizationMiddleware(action services.Action) gin.HandlerFunc {
 
 		ok, err := services.VerifyAuthorization(services.AccountType(userType), action)
 		if err != nil  || !ok {
-			c.Error(ErrUnauthorized("Action not permitted"))
+			c.Error(ErrUnauthorized("Invalid user"))
 			c.Abort()
 			return
 		}

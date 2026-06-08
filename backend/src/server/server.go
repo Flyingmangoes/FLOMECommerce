@@ -3,10 +3,10 @@ package server
 import (
 	"backend/src/config"
 	"backend/src/middlewares"
-	repo"backend/src/repository"
+	repo "backend/src/repository"
 	"backend/src/services"
-	emailSrvc"backend/src/services/email"
-	paymentSrvc"backend/src/services/payment"
+	emailSrvc "backend/src/services/email"
+	paymentSrvc "backend/src/services/payment"
 	"backend/src/utils"
 	Logger "backend/src/utils/logger"
 	"net"
@@ -28,7 +28,7 @@ type ServerManager struct {
 	Email 		*emailSrvc.SGMailManager
 	Payment 	*paymentSrvc.PaymentService
 	Tx			*services.TxManager
-
+	
 	JWTSecret			[]byte
 	SUDOSecret 			[]byte
 	VERIFICATION_SECRET []byte
@@ -60,4 +60,8 @@ func (sm *ServerManager)Start(cfg *config.ConfigManager) {
 	if err := router.Run(addr); err != nil {      
 		Logger.Log.Error("Server Failed to Start", zap.Error(err))
 	}
+}
+
+func (sm *ServerManager)Exit() {
+
 }

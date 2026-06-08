@@ -58,17 +58,9 @@ func (uc *UserManager)UpdateUser() gin.HandlerFunc {
 		}
 
 		id := c.GetString("userId")
-		email, err := uc.Users.GetEmail(c.Request.Context(), &id)
-		if err != nil {
-			Logger.Log.Error("Error while retrieving user email", zap.Error(err))
-			c.Error(middlewares.ErrInternal("Failed to retrieve email"))
-			return
-		}
-
 		params := &repository.UserProfileParams{
 			BaseParams: repository.BaseParams{
 				UserId: &id,
-				Email: email,
 				Username: req.NewUsername,
 				Locale: req.NewLocale,
 				Country: req.NewCountry,

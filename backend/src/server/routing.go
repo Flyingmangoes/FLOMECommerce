@@ -2,7 +2,7 @@ package server
 
 import (
 	"backend/src/controllers"
-	authHandler "backend/src/controllers/auth"
+	authHandler "backend/src/controllers/user"
 	"backend/src/middlewares"
 	"backend/src/services"
 	orderService "backend/src/services/order"

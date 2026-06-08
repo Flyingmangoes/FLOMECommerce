@@ -2,6 +2,7 @@ package middlewares
 
 import (
 	"backend/src/repository"
+	"backend/src/services"
 	Logger "backend/src/utils/logger"
 
 	"github.com/gin-gonic/gin"
@@ -17,21 +18,21 @@ func StoreMiddleware(stores repository.StoreStoreInterface) gin.HandlerFunc {
 			return
 		}
 
-		if userTypes != "Store" {
+		if userTypes != string(services.AccountMerchant) {
 			c.Error(ErrUnauthorized("Not allowed"))
 			c.Abort()
 			return 
 		}
 
 		ownerId := c.GetString("userId")
-		store, err := stores.GetStoreByOwner(c.Request.Context(), ownerId)
+		store_id, err := stores.FetchStoreID(c.Request.Context(), ownerId)
 		if err != nil {
 			Logger.Log.Error("detail", zap.Error(err))
 			c.Abort()
 			return
 		}
 		
-		c.Set("storeId", store.StoreId)
+		c.Set("storeId", store_id)
 		c.Next()
 	}
 }

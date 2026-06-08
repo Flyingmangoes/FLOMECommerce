@@ -3,9 +3,12 @@ package controllers
 import (
 	"backend/src/middlewares"
 	"backend/src/models"
+	"backend/src/repository"
 	repo "backend/src/repository"
+	"backend/src/services"
 	"backend/src/utils"
 	Logger "backend/src/utils/logger"
+	"backend/src/validators"
 	"net/http"
 	"time"
 
@@ -45,6 +48,18 @@ type UpdateProductRequest struct {
 
 type RemoveProductRequest struct {
 	ProductID 		string	`json:"productId" binding:"required"`
+}
+
+type SearchProductRequest struct {
+	Query 		*string 	`form:"q"`
+	Category 	*string 	`form:"category"`
+	StoreID		*string 	`form:"storeId"`
+	MinPrice	*float64 	`form:"minPrice"`
+	MaxPrice 	*float64 	`form:"maxPrice"`
+	SortBy		*string		`form:"sortBy"`
+	SortOrder 	*string		`form:"sortOrder"`
+	Cursor		*string  	`form:"cursor"`
+	Limit 		int			`form:"limit"`
 }
 
 type productResponse struct {
@@ -128,7 +143,7 @@ func (pm *ProductManager) UpdateProduct() gin.HandlerFunc {
 		var req UpdateProductRequest
 
 		if err := c.ShouldBindBodyWithJSON(&req); err != nil {
-			Logger.Log.Error("detail", zap.Error(err))
+			Logger.Log.Error("Error while binding cient request", zap.Error(err))
 			c.Error(middlewares.ErrBadRequest("Failed to read client request"))
 			return
 		}
@@ -174,11 +189,24 @@ func (pm *ProductManager) RemoveProduct() gin.HandlerFunc {
 			return
 		}
 
-		storeId := c.GetString("storeId")
+		requester_id := c.GetString("storeId")
+		isAllowed, err := validators.ValidateRequester(c.Request.Context(), 
+			requester_id, req.ProductID, string(services.AccountMerchant), pm.Products,
+		)
+		if err != nil {
+			Logger.Log.Error("Error while checking credentials", zap.Error(err))
+			c.Error(middlewares.ErrInternal("Failed to check credentials"))
+			return
+		}
 
-		err := pm.Products.RemoveProduct(c.Request.Context(), &repo.ProductProfileParams{
+		if !isAllowed {
+			c.Error(middlewares.ErrUnauthorized("Invalid user"))
+			return
+		}
+
+		err = pm.Products.RemoveProduct(c.Request.Context(), &repo.ProductProfileParams{
 			ProductID: &req.ProductID,
-			StoreId: &storeId,
+			StoreId: &requester_id,
 		})
 
 		if err != nil {
@@ -191,5 +219,60 @@ func (pm *ProductManager) RemoveProduct() gin.HandlerFunc {
 			"response": utils.EXIT_SUCCESS,
 			"detail": "product removed",
 		})
+	}
+}
+
+func (pm *ProductManager) SearchProduct() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req SearchProductRequest
+
+		if err := c.ShouldBindBodyWithJSON(&req); err != nil {
+			Logger.Log.Error("")
+			c.Error(middlewares.ErrBadRequest("Failed to read client request"))
+			return
+		}
+
+		filter := utils.PagFilter{Limit: req.Limit}
+
+		if req.Cursor != nil {
+			cursor, err := utils.DecodeCursor(*req.Cursor)
+			if err != nil {
+				c.Error(middlewares.ErrBadRequest("Invalid cursor"))
+				return 
+			}
+
+			filter.Cursor = cursor
+		}
+
+		filter.Normalize()
+
+		params := &repository.ProductSearchParams{
+			Query: req.Query,
+			Category: req.Category,
+			StoreID: req.StoreID,
+			MinPrice: req.MinPrice,			
+			MaxPrice: req.MaxPrice,
+			SortBy: *req.SortBy,
+			SortOrder: *req.SortOrder,
+			PagFilter: filter,
+		}
+
+		products, err := pm.Products.SearchProduct(c.Request.Context(), params)
+		if err != nil {
+			Logger.Log.Error("Failed to retrieve products", zap.Error(err))
+			c.Error(middlewares.ErrInternal("Failed to retrieve products"))
+			return
+		}
+
+		page, err := utils.Build(products, filter.Limit, func(p models.Product) (time.Time, string) {
+			return p.CreatedAt, p.ProductID
+		})
+
+		if err != nil {
+			c.Error(middlewares.ErrInternal("Failed to build page"))
+			return
+		}
+
+		c.JSON(http.StatusOK, page)
 	}
 }

@@ -109,7 +109,7 @@ func (cm *CartManager) AddCartItem() gin.HandlerFunc {
 			return
 		}
 
-		product, err := cm.Products.GetProductByID(c.Request.Context(), req.ProductID)
+		store_id, err := cm.Products.FetchStoreID(c.Request.Context(), req.ProductID)
 		if err != nil {
 			Logger.Log.Error("Failed to retrieve product", zap.Error(err))
 			c.Error(middlewares.ErrInternal("Faile to retrieve product"))
@@ -120,7 +120,7 @@ func (cm *CartManager) AddCartItem() gin.HandlerFunc {
 			BaseParams: repo.BaseParams{UserId: &user_id},
 			CartID: 	&cart.ID,
 			ProductID: 	&req.ProductID,
-			StoreID: &product.StoreID,
+			StoreID: &store_id,
 			Quantity: 	&req.Quantity,
 		}
 

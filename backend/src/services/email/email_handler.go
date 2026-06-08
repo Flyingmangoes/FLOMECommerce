@@ -28,7 +28,7 @@ func(sg *SGMailManager) SendVerificationMail() gin.HandlerFunc {
 			return
 		}
 
-		v_token, expires, err := jwt.GenerateVerificationToken(user_id, []byte(sg.VERIFICATION_SECRET))
+		v_token, expires, err := jwt.GenerateEmailVerificationToken(user_id, []byte(sg.VERIFICATION_SECRET))
 		if err != nil {
 			Logger.Log.Error("Error in generating token", zap.Error(err))
 			c.Error(middlewares.ErrInternal("Failed to generate token"))

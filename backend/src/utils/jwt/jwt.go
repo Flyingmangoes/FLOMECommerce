@@ -98,7 +98,7 @@ func GenerateRefreshToken(userID, userType string, secret []byte) (string, time.
     return signed, expiresAt, err
 }
 
-func GenerateVerificationToken(user_id string, secret []byte) (string, time.Time, error) {
+func GenerateEmailVerificationToken(user_id string, secret []byte) (string, time.Time, error) {
     expiresAt := time.Now().Add((5 * time.Minute))
     
     claims := EmailClaims{
@@ -163,7 +163,7 @@ func VerifySudoToken(tokenString string, secret []byte) (*SudoClaims, error) {
     return claims, nil
 }
 
-func VerifyVerificationToken(tokenString string, secret []byte)(*EmailClaims, error) {
+func VerifyEmailToken(tokenString string, secret []byte)(*EmailClaims, error) {
     token, err := jwt.ParseWithClaims(tokenString, &EmailClaims{}, func(t *jwt.Token) (interface{}, error) {
         if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
             return nil, ErrInvalidToken

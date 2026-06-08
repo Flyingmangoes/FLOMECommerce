@@ -19,7 +19,7 @@ func VerificationMiddleware(secret []byte) gin.HandlerFunc {
 			return
 		}
 
-		claims, err := jwt.VerifyVerificationToken(req.Token, secret)
+		claims, err := jwt.VerifyEmailToken(req.Token, secret)
 		if err != nil {
 			c.Error(ErrUnauthorized("Invalid verification token"))
 			c.Abort()

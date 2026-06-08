@@ -10,10 +10,8 @@ import (
 type OrderStoreInterface interface {
 	CreateOrder(ctx context.Context, tx *sql.Tx, params *OrderStoreParams) (*models.Order, []*models.OrderItem, error)
 	RemoveOrder(ctx context.Context, tx *sql.Tx, params *OrderStoreParams) error
-	GetOrders(ctx context.Context, buyer_id, order_id string) ([]*models.Order, []*models.OrderItem, error)
+	GetOrders(ctx context.Context, buyer_id string) ([]*models.Order, []*models.OrderItem, error)
 	UpdateOrderStatus(ctx context.Context, order_id, status string) error
-
-	GetOrderId(ctx context.Context, buyer_id string)(string, error)
 }
 
 type OrderItemInput struct {
@@ -95,16 +93,16 @@ func (os *OrderStore)RemoveOrder(ctx context.Context, tx *sql.Tx, params *OrderS
 }
 
 
-func (os *OrderStore) GetOrders(ctx context.Context, buyer_id, order_id string) ([]*models.Order, []*models.OrderItem, error) {
+func (os *OrderStore) GetOrders(ctx context.Context, buyer_id string) ([]*models.Order, []*models.OrderItem, error) {
 	orders := make([]*models.Order, 0)
 	items := make([]*models.OrderItem, 0)
 
 	rows, err := os.db.QueryContext(ctx,
 		`SELECT order_id, buyer_id, buyer_email, price_total, location, status, created_at
         FROM mkt_ecommerce.mkt_orders
-        WHERE buyer_id = $1 AND order_id = $2
+        WHERE buyer_id = $1
         ORDER BY created_at DESC`,
-		buyer_id, order_id,
+		buyer_id,
 	)
 
 	if err != nil {
@@ -133,8 +131,8 @@ func (os *OrderStore) GetOrders(ctx context.Context, buyer_id, order_id string) 
 	for _, order := range orders {
 		itemRows, err := os.db.QueryContext(ctx,
 			`SELECT order_item_id, order_id, product_id, quantity, price 
-			FROM mkt_ecommerce.mkt_order_items WHERE order_id = $1 AND buyer_id = $2`,
-			order.ID, order.BuyerID,
+			FROM mkt_ecommerce.mkt_order_items WHERE order_id = $1`,
+			order.ID, 
 		)
 		if err != nil {
 			return nil, nil, err
@@ -162,28 +160,12 @@ func (os *OrderStore) GetOrders(ctx context.Context, buyer_id, order_id string) 
 	
 	return orders, items, nil
 }
-
-func (os *OrderStore) GetOrderId(ctx context.Context, buyer_id string) (string, error) {
-	order := models.Order{}
-
-	err := os.db.QueryRowContext(ctx,
-		`SELECT order_id FROM mkt_ecommerce.mkt_orders
-		WHERE buyer_id = $1`,
-		buyer_id,
-	).Scan(order.ID)
-
-	if err != nil {
-		return "", err
-	}
-
-	return order.ID, nil
-}
  
 func (os *OrderStore) UpdateOrderStatus(ctx context.Context, order_id, status string) error {
 	results, err := os.db.ExecContext(ctx,
 		`UPDATE mkt_ecommerce.mkt_orders SET
 			status = COALESCE($1, status)
-		WHERE order_id = $2 AND buyer_id = $3`,
+		WHERE order_id = $2`,
 		status, order_id, 
 	)
 	if err != nil { return err }

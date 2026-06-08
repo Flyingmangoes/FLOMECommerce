@@ -10,10 +10,10 @@ type Action string
 type AccountType string
 
 const (
-	AccountGuestUser	AccountType = "GUEST_USER"
-	AccountNormalUser 	AccountType = "NORMAL_USER"
-	AccountMerchant 	AccountType = "MERCHANT"
-	AccountAdmin 		AccountType = "ADMIN"
+	AccountGuestUser		AccountType = "GUEST_USER"
+	AccountVerifiedUser 	AccountType = "VERIFIED_USER"
+	AccountMerchant 		AccountType = "MERCHANT"
+	AccountAdmin 			AccountType = "ADMIN"
 )
 
 const (
@@ -47,7 +47,7 @@ var AuthorizationList = map[AccountType][]Action{
 		ActionProductRead,
 		ActionStoreRead,
 	},
-	AccountNormalUser: {
+	AccountVerifiedUser: {
 		ActionProfileUpdate,
 		ActionProfileDelete,
 		ActionProductRead,

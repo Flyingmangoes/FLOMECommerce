@@ -2,20 +2,48 @@ package controllers
 
 import (
 	"backend/src/middlewares"
+	"backend/src/models"
 	repo "backend/src/repository"
 	"backend/src/utils"
 	Logger "backend/src/utils/logger"
 	"backend/src/validators"
-
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
-//
-// STORE HANDLER DECLARATION
-//
+/* STORE DOCUMENTATION
+*	StoreManager is just a struct for all the required repos for store to be functional
+*	it used in backend/src/server/routing.go
+*
+*	To make a user became a merchant this is how to do it:
+*		1. Register new account / or login to an account
+*		2. Send the required data to RegisterStore 
+*
+*	1. Register Store
+*		This function handle merchant registry, it require a Request struct.
+*		This struct hold the json data required to register a new merchant account.
+*		
+*		The request then be bind to json it return an error or nil if succeed. 
+*		Next we filled up StoreProfileParams(required for CreateUser repository) 
+*		with the data in request.
+*
+*		If the CreateUser succeed it will return *models.Store and nil, if failed
+*		it will return nil and err
+*
+*		After that just send the result using c.JSON(http.StatusCreated, result)
+*
+*	2. Update Store
+*		
+*
+*
+*
+*
+
+*	3. Remove Store
+ */
 
 type StoreManager struct {
 	Users 		repo.UserStoreInterface
@@ -36,9 +64,9 @@ type StoreRegisterRequest struct {
 	PhoneNumber  string	`json:"storePhoneNumber"`
 	SupportEmail string	`json:"storeSupportEmail"`
 
-	Instagram	string 	`json:"storeInstagram"`
-	Tiktok		string	`json:"storeTiktok"`
-	Website		string	`json:"storeWebsite"`	
+	Instagram	 string `json:"storeInstagram"`
+	Tiktok		 string	`json:"storeTiktok"`
+	Website		 string	`json:"storeWebsite"`	
 }
 
 type StoreUpdateRequest struct {
@@ -60,13 +88,18 @@ type StoreUpdateRequest struct {
 }
 
 type StoreRemoveRequest struct {
-	OwnerId		string  `json:"userId"      binding:"required"`
-	Password	string  `json:"password"     binding:"required"`
+	StoreId		string 	`json:"storeId"`
 }
 
-//
-// STORE HANDLER IMPLEMENTATION
-//
+type SearchStoreRequest struct {
+	Query 			*string		`form:"q"`
+	StoreName		*string		`form:"storeName"`
+	StoreCountry	*string		`form:"country"`
+	SortBy			*string		`form:"sortBy"`
+	SortOrder 		*string		`form:"sortOrder"`
+	Cursor			*string		`form:"cursor"`
+	Limit 			int			`form:"limit"`
+}
 
 func (sm *StoreManager) RegisterStore() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -188,6 +221,35 @@ func (sm *StoreManager) DeleteStore() gin.HandlerFunc {
 			return
 		}
 
+		requester_id := c.GetString("userId")
+		isAllowed, err := validators.ValidateRequester(c.Request.Context(), 
+			requester_id, req.StoreId, "PRODUCT", sm.Stores,
+		)
+		if err != nil {
+			Logger.Log.Error("Failed in Validate request", zap.Error(err))
+			c.Error(middlewares.ErrInternal("Failed to compare credentials"))
+			return
+		}
+
+		if !isAllowed {
+			c.Error(middlewares.ErrUnauthorized("Invalid user"))
+			return
+		}
+
+		params := &repo.StoreProfileParams{
+			StoreId: &req.StoreId,
+			BaseParams: repo.BaseParams{
+				UserId: &requester_id,
+			},
+		}
+
+		err = sm.Stores.DeleteStore(c.Request.Context(), params)
+		if err != nil {
+			Logger.Log.Error("Error in deletion process", zap.Error(err))
+			c.Error(middlewares.ErrInternal("Failed to process deletion"))
+			return
+		}
+
 		c.JSON(http.StatusOK, gin.H{
 			"response": utils.EXIT_SUCCESS,
 			"detail": "store removed",
@@ -195,5 +257,52 @@ func (sm *StoreManager) DeleteStore() gin.HandlerFunc {
 	}
 }
 
+func (sm *StoreManager) SearchStore() gin.HandlerFunc{
+	return func (c *gin.Context) {
+		var req SearchStoreRequest
 
+		if err := c.ShouldBindBodyWithJSON(&req);err != nil {
+			Logger.Log.Error("Failed to read request", zap.Error(err))
+			c.Error(middlewares.ErrBadRequest("Failed to read client request"))
+			return
+		}
 
+		filter := utils.PagFilter{Limit: req.Limit}
+		if req.Cursor != nil {
+			cursor, err := utils.DecodeCursor(*req.Cursor)
+			if err != nil {
+				c.Error(middlewares.ErrBadRequest("Invalid cursor"))
+				return
+			}
+
+			filter.Cursor = cursor
+		}
+
+		filter.Normalize()
+
+		params := &repo.StoreSearchParams{
+			Query: req.Query,
+			StoreName: req.StoreName,
+			StoreCountry: req.StoreCountry,
+			SortBy: req.SortBy,
+			SortOrder: req.SortOrder,
+			PagFilter: filter,
+		}
+
+		stores, err := sm.Stores.SearchStore(c.Request.Context(), params)
+		if err != nil {
+			Logger.Log.Error("Failed to retrieve store", zap.Error(err))
+			c.Error(middlewares.ErrInternal("Failed to retrieve Stores"))
+			return
+		}
+
+		page, err := utils.Build(stores, filter.Limit, func(s models.Store) (time.Time, string)  {
+			return s.CreatedAt, s.StoreId
+		})
+		if err != nil {
+			c.Error(middlewares.ErrInternal("Failed to build page"))
+			return
+		}
+		c.JSON(http.StatusOK, page)
+	}
+}
