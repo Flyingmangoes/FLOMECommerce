@@ -48,20 +48,6 @@ type OrderManager struct {
 //	ORDER REQUEST SCHEMATIC
 //
 
-type OrderItemRequest struct {
-    ProductID 	string `json:"productId" binding:"required"`
-    Quantity  	int    `json:"quantity"  binding:"required,min=1"`
-}
-
-type OrderRequest struct {
-	Items []OrderItemRequest 	`json:"items" binding:"required"`
-    BuyerLocation *string       `json:"location" binding:"omitempty"`
-}	
-
-type CancelOrderRequest struct {
-	OID string `json:"orderId" binding:"required"`
-}
-
 type orderResponse struct {
 	ID string
 	BuyerID string

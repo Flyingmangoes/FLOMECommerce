@@ -14,37 +14,18 @@ import (
 
 type CartManager struct {
 	Carts 		repo.CartStoreInterface
+	Users 		repo.UserStoreInterface
 	Products 	repo.ProductStoreInterface
-}
-
-type AddItemRequest struct {
-	ProductID 	string 	`json:"productId" binding:"required"`
-	Quantity  	int 	`json:"quantity" binding:"required"`
-}
-
-type RemoveItemRequest struct {
-	CartItemId 	string `json:"cartItemId" binding:"required"`
-}
-
-type ClearCartRequest struct {
-	CartId string `json:"cartId" binding:"required"`
-}
-
-type UpdateQuantityRequest struct {
-	CartItemID 	string	`json:"cartItemId" binding:"required"`
-	ProductID 	string 	`json:"productId" binding:"required"`
-	NewQuantity int 	`json:"newQuantity" binding:"required"`
 }
 
 func (cm *CartManager) GetCarts() gin.HandlerFunc {
 	return func (c *gin.Context) {
-		var req struct {
-			CartId string `json:"cartId" binding:"required"`
-		}
 
-		userId := c.GetString("userId")
+		requester_id := c.GetString("userId")
 		cart, err := cm.Carts.GetCart(c.Request.Context(), &repo.CartProfileParams{
-			CartID: &userId,
+			BaseParams: repo.BaseParams{
+				UserId: &requester_id,
+			},
 		})
 
 		if err != nil {
@@ -53,19 +34,13 @@ func (cm *CartManager) GetCarts() gin.HandlerFunc {
 			return
 		}
 
-		req.CartId = cart.ID
-		if err := c.ShouldBindBodyWithJSON(&req); err != nil {
-			Logger.Log.Error("Error in binding request", zap.Error(err))
-			c.Error(middlewares.ErrBadRequest("Failed to read client request"))
-			return
-		}
-
 		items, err := cm.Carts.GetCartItems(c.Request.Context(), &repo.CartProfileParams{
-			CartID: &req.CartId,
+			CartID: &cart.ID,
 		})
 		if err != nil {
 			if err == sql.ErrNoRows {
 				c.Error(middlewares.ErrNotFound("Cart items not found"))	
+				return
 			}
 			Logger.Log.Error("Error in retrieving cart items", zap.Error(err))
 			c.Error(middlewares.ErrInternal("Failed to retrieve cart items"))
@@ -231,15 +206,15 @@ func (cm *CartManager) RemoveCartItem() gin.HandlerFunc {
 
 func (cm *CartManager) ClearCart() gin.HandlerFunc {
 	return func (c *gin.Context) {
-		var req ClearCartRequest
+		requester_id := c.GetString("userId")
 
-		if err := c.ShouldBindBodyWithJSON(&req); err != nil {
-			Logger.Log.Error("Error in reading request", zap.Error(err))
-			c.Error(middlewares.ErrBadRequest("Failed to read client request"))
-			return
-		}
-
-		err := cm.Carts.ClearCart(c.Request.Context(), &repo.CartProfileParams{CartID: &req.CartId})
+		cart, err := cm.Carts.GetCart(c.Request.Context(), &repo.CartProfileParams{
+			BaseParams: repo.BaseParams{UserId: &requester_id},
+		})
+		err = cm.Carts.ClearCart(c.Request.Context(), &repo.CartProfileParams{
+			BaseParams: repo.BaseParams{UserId:  &requester_id},
+			CartID: &cart.ID,
+		})
 		if err != nil {
 			if err == sql.ErrNoRows{
 				Logger.Log.Error("Rows not found", zap.Error(err))

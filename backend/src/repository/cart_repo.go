@@ -4,7 +4,6 @@ import (
 	"backend/src/models"
 	"context"
 	"database/sql"
-	"fmt"
 )
 
 type CartStoreInterface interface {
@@ -132,7 +131,7 @@ func (cs *CartStore) RemoveItem(ctx context.Context, params *CartProfileParams) 
 	}
 
 	if rows == 0 {
-		return fmt.Errorf("Item not found or id not match")
+		return nil
 	}
 	
 	return nil
@@ -155,7 +154,7 @@ func (cs *CartStore) ClearCart(ctx context.Context, params *CartProfileParams) e
 	}
 
 	if rows == 0 {
-		return fmt.Errorf("Item in not found or id not match")
+		return nil
 	}
 
 	return nil

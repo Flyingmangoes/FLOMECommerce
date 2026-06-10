@@ -49,8 +49,8 @@ type ProductSearchParams struct {
 	StoreID 	*string
 	MinPrice 	*float64
 	MaxPrice 	*float64
-	SortBy 		string
-	SortOrder 	string
+	SortBy 		*string
+	SortOrder 	*string
 	utils.PagFilter
 }
 

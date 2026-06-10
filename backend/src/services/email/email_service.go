@@ -35,8 +35,9 @@ type SGMailManager struct {
 }	
 
 type SGTemplate struct{
-	TEMP_MAILCONFIRMATION string
-	TEMP_PASSRESET 		  string
+	TEMP_EMAILCONFIRMATION 	string
+	TEMP_ORDERCONFIRMATION 	string
+	TEMP_PASSRESET 		  	string
 }
 
 func NewSGMailManager(sg_secret, v_secret string, template SGTemplate, us repository.UserStoreInterface) *SGMailManager {
@@ -65,12 +66,13 @@ type Mail struct {
 }
 
 const (
-	MailConfirmation MailType = iota + 1
+	EmailConfirmation MailType = iota + 1
 	PassReset 
+	OrderConfirmation
 )
 
 var typeList = map[MailType]string{
-	MailConfirmation: "Mail_Confirmation",
+	EmailConfirmation: "Mail_Confirmation",
 	PassReset: "Pass_Reset",
 }
 
@@ -86,11 +88,14 @@ func(sg *SGMailManager) CreateMail(mailReq *Mail) []byte {
 	m.SetFrom(from)
 
 	switch mailReq.mailTyp {
-		case MailConfirmation: {
-			m.SetTemplateID(sg.TEMP_MAILCONFIRMATION)
+		case EmailConfirmation: {
+			m.SetTemplateID(sg.TEMP_EMAILCONFIRMATION)
 		}
 		case PassReset: {
 			m.SetTemplateID(sg.TEMP_PASSRESET)
+		}
+		case OrderConfirmation: {
+			m.SetTemplateID(sg.TEMP_ORDERCONFIRMATION)
 		}
 	default:
 		Logger.Log.Error("Unknown Mail type", zap.Int("type", int(mailReq.mailTyp)))

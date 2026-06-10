@@ -12,6 +12,7 @@ type ConfigManager struct {
 	RATE_CONF 			*RateLimitingConfig
 	STRIPE_CONF 		*StripeConfig
 	SENDGRID_CONF 		*SendgridConfig
+	REDIS_CONF 			*RedisConfig
 	ENVIRONMENT_STATUS 	string
 }
 
@@ -54,8 +55,14 @@ type SendgridConfig struct {
 	SENDGRID_SECRET 		string
 	TEST_EMAIL				string
 
-	TEMP_MAILCONFIRMATION 	string
+	TEMP_EMAILCONFIRMATION 	string
 	TEMP_PASSRESET 			string
+}
+
+type RedisConfig struct {
+	REDIS_PORT 	string
+	REDIS_HOST 	string
+	TTL_M 		int
 }
 
 func (a *ConfigManager) Validate() error {
@@ -130,10 +137,15 @@ func NewConfig() *ConfigManager {
 			VERIFICATION_SECRET: os.Getenv("VERIFICATION_SECRET"),
 			TEST_EMAIL: os.Getenv("SENDGRID_TEST_EMAIL"),
 			
-			TEMP_MAILCONFIRMATION: os.Getenv("EMAIL_CONFIRMATION_TEMPLATE"),
+			TEMP_EMAILCONFIRMATION: os.Getenv("EMAIL_CONFIRMATION_TEMPLATE"),
 			TEMP_PASSRESET: os.Getenv("PASS_RESET_TEMPLATE"),
 		},
 		ENVIRONMENT_STATUS: os.Getenv("ENVIRONMENT"),
+		REDIS_CONF: &RedisConfig{
+			REDIS_PORT: os.Getenv("REDIS_PORT"),
+			REDIS_HOST: os.Getenv("REDIS_HOST"),
+			TTL_M: 5,
+		},
 	}
 }
 	

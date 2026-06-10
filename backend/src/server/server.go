@@ -7,6 +7,7 @@ import (
 	"backend/src/services"
 	emailSrvc "backend/src/services/email"
 	paymentSrvc "backend/src/services/payment"
+	"backend/src/services/redis"
 	"backend/src/utils"
 	Logger "backend/src/utils/logger"
 	"net"
@@ -28,6 +29,7 @@ type ServerManager struct {
 	Email 		*emailSrvc.SGMailManager
 	Payment 	*paymentSrvc.PaymentService
 	Tx			*services.TxManager
+	Cacher		redis.RedisInterface
 	
 	JWTSecret			[]byte
 	SUDOSecret 			[]byte

@@ -4,10 +4,14 @@ import (
 	"backend/src/middlewares"
 	"backend/src/models"
 	repo "backend/src/repository"
+	"backend/src/services/redis"
 	"backend/src/utils"
 	Logger "backend/src/utils/logger"
 	"backend/src/validators"
+	"encoding/json"
+	"fmt"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -18,16 +22,18 @@ import (
 *	StoreManager is just a struct for all the required repos for store to be functional
 *	it used in backend/src/server/routing.go
 *
+*	I MOVE EVERY REQUEST STRUCT FROM ALL CONTROLLER TO requers_variant.go
+*
 *	To make a user became a merchant this is how to do it:
 *		1. Register new account / or login to an account
-*		2. Send the required data to RegisterStore 
+*		2. Send the required data to RegisterStore
 *
 *	1. Register Store
 *		This function handle merchant registry, it require a Request struct.
 *		This struct hold the json data required to register a new merchant account.
-*		
-*		The request then be bind to json it return an error or nil if succeed. 
-*		Next we filled up StoreProfileParams(required for CreateUser repository) 
+*
+*		The request then be bind to json it return an error or nil if succeed.
+*		Next we filled up StoreProfileParams(required for CreateUser repository)
 *		with the data in request.
 *
 *		If the CreateUser succeed it will return *models.Store and nil, if failed
@@ -41,64 +47,22 @@ import (
 *
 *
 *
-
+*
 *	3. Remove Store
+*
+*
+*
+*
+*
+*
  */
 
 type StoreManager struct {
 	Users 		repo.UserStoreInterface
 	Stores    	repo.StoreStoreInterface
     Tokens   	repo.TokenStoreInterface
+	Cache 		redis.RedisInterface
 	JWTSecret 	[]byte
-}
-
-type StoreRegisterRequest struct {	
-	StoreName 	 string `json:"storeName"`
-	StoreDesc 	 string `json:"storeDesc"`
-	StoreIMG 	 string `json:"storeIMG"`
-
-	Locale 		 string	`json:"storeLocale"`
-	Country		 string	`json:"storeCountry"`
-	Address		 string	`json:"storeAddress"`
-
-	PhoneNumber  string	`json:"storePhoneNumber"`
-	SupportEmail string	`json:"storeSupportEmail"`
-
-	Instagram	 string `json:"storeInstagram"`
-	Tiktok		 string	`json:"storeTiktok"`
-	Website		 string	`json:"storeWebsite"`	
-}
-
-type StoreUpdateRequest struct {
-	OwnerPassword 	string `json:"password" binding:"required"`
-
-	NewName    		*string `json:"newStoreName" binding:"omitempty"`
-	NewDesc 		*string `json:"newStoreDesc" binding:"omitempty"`
-	NewImage		*string `json:"newStorePic" binding:"omitempty"`
-	NewPhoneNumber  *string `json:"newPhoneNumber" binding:"omitempty"`
-	NewSupportEmail *string `json:"newSupportEmail" binding:"omitempty"`
-
-    NewLocale  		*string `json:"newLocale" binding:"omitempty"`
-	NewCountry		*string `json:"newCountry" binding:"omitempty"`
-	NewAddress		*string `json:"newAddress" binding:"omitempty"`
-
-	NewTiktok    	*string `json:"newTiktokAcc" binding:"omitempty"`
-	NewInstagram 	*string `json:"newInstagramAcc" binding:"omitempty"`
-	NewWebsite 		*string `json:"newWebsite" binding:"omitempty"`
-}
-
-type StoreRemoveRequest struct {
-	StoreId		string 	`json:"storeId"`
-}
-
-type SearchStoreRequest struct {
-	Query 			*string		`form:"q"`
-	StoreName		*string		`form:"storeName"`
-	StoreCountry	*string		`form:"country"`
-	SortBy			*string		`form:"sortBy"`
-	SortOrder 		*string		`form:"sortOrder"`
-	Cursor			*string		`form:"cursor"`
-	Limit 			int			`form:"limit"`
 }
 
 func (sm *StoreManager) RegisterStore() gin.HandlerFunc {
@@ -261,7 +225,7 @@ func (sm *StoreManager) SearchStore() gin.HandlerFunc{
 	return func (c *gin.Context) {
 		var req SearchStoreRequest
 
-		if err := c.ShouldBindBodyWithJSON(&req);err != nil {
+		if err := c.ShouldBindQuery(&req);err != nil {
 			Logger.Log.Error("Failed to read request", zap.Error(err))
 			c.Error(middlewares.ErrBadRequest("Failed to read client request"))
 			return
@@ -288,6 +252,18 @@ func (sm *StoreManager) SearchStore() gin.HandlerFunc{
 			SortOrder: req.SortOrder,
 			PagFilter: filter,
 		}
+
+		url, _ := url.Parse(fmt.Sprintf("stores:%s", c.Request.URL))
+		cacheKey := sm.Cache.GenerateCacheKey(url)
+
+		cached, err := sm.Cache.Get(c.Request.Context(), cacheKey)
+		if err == nil && cached != nil {
+			var page utils.Page[models.Store]
+			if err := json.Unmarshal(cached, &page); err != nil {
+				c.JSON(http.StatusOK, page)
+				return
+			}
+		} 
 
 		stores, err := sm.Stores.SearchStore(c.Request.Context(), params)
 		if err != nil {

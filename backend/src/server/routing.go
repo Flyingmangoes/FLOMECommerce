@@ -22,12 +22,14 @@ func registerRoutes(r *gin.Engine, sm *ServerManager, lp *middlewares.LoginPriso
 		Users: sm.Users,
         Stores: sm.Stores,
         JWTSecret: sm.JWTSecret,
+        Cache: sm.Cacher,
     }
 
     prdctCtrl := &controllers.ProductManager{
         Stores: sm.Stores,
         Products: sm.Products,
         JWTSecret: sm.JWTSecret,
+        Cache: sm.Cacher,
     }
 
     orderCtrl := &controllers.OrderManager{
@@ -71,6 +73,7 @@ func registerRoutes(r *gin.Engine, sm *ServerManager, lp *middlewares.LoginPriso
 
         api := r.Group("/api")
         {
+            api.GET("/users", userCtrl.SearchUser())
             api.GET("/products", prdctCtrl.SearchProduct())
             api.GET("/stores", storeCtrl.SearchStore())
         }

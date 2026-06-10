@@ -12,9 +12,7 @@ import (
 )
 
 type RemoveUserRequest struct {
-	UserID      string  `json:"userId"      binding:"required"`
-	Email 		string  `json:"email"        binding:"required,email"`
-	Password    string  `json:"password"     binding:"required"`
+	Password    string  `json:"password" binding:"required"`
 }
 
 func (uc *UserManager)DeleteUser() gin.HandlerFunc {
@@ -26,10 +24,9 @@ func (uc *UserManager)DeleteUser() gin.HandlerFunc {
 			return
 		}
 
-		id := c.GetString("userId")
-
+		requester_id := c.GetString("userId")
 		password, err := uc.Users.GetPassword(c.Request.Context(), &repository.UserProfileParams{
-			BaseParams: repository.BaseParams{UserId: &id},
+			BaseParams: repository.BaseParams{UserId: &requester_id},
 		})
 		
         if err != nil {
@@ -46,8 +43,7 @@ func (uc *UserManager)DeleteUser() gin.HandlerFunc {
 
 		params := &repository.UserProfileParams{
 			BaseParams: repository.BaseParams{
-				UserId: &req.UserID,
-				Email: &req.Email,
+				UserId: &requester_id,
 			},
 		}
 

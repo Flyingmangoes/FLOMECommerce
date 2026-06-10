@@ -6,10 +6,14 @@ import (
 	"backend/src/repository"
 	repo "backend/src/repository"
 	"backend/src/services"
+	"backend/src/services/redis"
 	"backend/src/utils"
 	Logger "backend/src/utils/logger"
 	"backend/src/validators"
+	"encoding/json"
+	"fmt"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -22,44 +26,9 @@ import (
 
 type ProductManager struct {
 	Stores	   repo.StoreStoreInterface
+	Cache 	   redis.RedisInterface
 	Products   repo.ProductStoreInterface
 	JWTSecret []byte
-}
-
-type RegisterProductRequest struct {
-	ProductName 	string 	`json:"productName"`
-	ImageUrl 		string 	`json:"imageUrl"`
-	Price 			float64 `json:"price"`
-	Desc 			string  `json:"desc"`
-	Category 		string	`json:"category"`
-	Availability 	int		`json:"availability"`
-}
-
-type UpdateProductRequest struct {
-	ProductID		string 		`json:"productId" binding:"required"`
-	NewProductName 	*string 	`json:"newProductName" binding:"omitempty"`
-	NewProductDesc 	*string		`json:"newProductDesc" binding:"omitempty"`
-	NewStorename 	*string		`json:"newStoreName" binding:"omitempty"`
-	NewImage 		*string 	`json:"newImage" binding:"omitempty"`
-	NewPrice 		*float64 	`json:"newPrice" binding:"omitempty"`
-	NewCategory 	*string		`json:"newCategory" binding:"omitempty"`
-	NewAvailability *int		`json:"newAvailability" binding:"omitempty"`
-}
-
-type RemoveProductRequest struct {
-	ProductID 		string	`json:"productId" binding:"required"`
-}
-
-type SearchProductRequest struct {
-	Query 		*string 	`form:"q"`
-	Category 	*string 	`form:"category"`
-	StoreID		*string 	`form:"storeId"`
-	MinPrice	*float64 	`form:"minPrice"`
-	MaxPrice 	*float64 	`form:"maxPrice"`
-	SortBy		*string		`form:"sortBy"`
-	SortOrder 	*string		`form:"sortOrder"`
-	Cursor		*string  	`form:"cursor"`
-	Limit 		int			`form:"limit"`
 }
 
 type productResponse struct {
@@ -226,8 +195,8 @@ func (pm *ProductManager) SearchProduct() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req SearchProductRequest
 
-		if err := c.ShouldBindBodyWithJSON(&req); err != nil {
-			Logger.Log.Error("")
+		if err := c.ShouldBindQuery(&req); err != nil {
+			Logger.Log.Error("Failed to bind query", zap.Error(err))
 			c.Error(middlewares.ErrBadRequest("Failed to read client request"))
 			return
 		}
@@ -252,9 +221,21 @@ func (pm *ProductManager) SearchProduct() gin.HandlerFunc {
 			StoreID: req.StoreID,
 			MinPrice: req.MinPrice,			
 			MaxPrice: req.MaxPrice,
-			SortBy: *req.SortBy,
-			SortOrder: *req.SortOrder,
+			SortBy: req.SortBy,
+			SortOrder: req.SortOrder,
 			PagFilter: filter,
+		}
+
+		url, _ := url.Parse(fmt.Sprintf("products:%s", c.Request.URL))
+		cacheKey := pm.Cache.GenerateCacheKey(url)
+
+		cached, err := pm.Cache.Get(c.Request.Context(), cacheKey)
+		if err == nil && cached != nil {
+			var page utils.Page[models.Product]
+			if err :=  json.Unmarshal(cached, &page); err != nil {
+				c.JSON(http.StatusOK, page)
+				return
+			}
 		}
 
 		products, err := pm.Products.SearchProduct(c.Request.Context(), params)
@@ -265,7 +246,7 @@ func (pm *ProductManager) SearchProduct() gin.HandlerFunc {
 		}
 
 		page, err := utils.Build(products, filter.Limit, func(p models.Product) (time.Time, string) {
-			return p.CreatedAt, p.ProductID
+			return p.CreatedAt, p.ProductID			
 		})
 
 		if err != nil {

@@ -39,7 +39,7 @@ func(sg *SGMailManager) SendVerificationMail() gin.HandlerFunc {
 			From: sg.TEST_EMAIL,
 			To: []string{user.Email},
 			Subject: "Email Verification for Flommerce Account",
-			MailType: MailConfirmation,
+			MailType: EmailConfirmation,
 			MailData: &MailData{
 				Username: user.Username,
 				UserEmail: user.Email,

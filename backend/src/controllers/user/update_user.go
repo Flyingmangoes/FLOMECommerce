@@ -15,7 +15,6 @@ import (
 
 
 type UpdateUserRequest struct {
-    UserID      	string  `json:"userId"      binding:"required"`
 	Password 		string 	`json:"password"`
 
     NewFirstname 	*string `json:"newFirstname" binding:"omitempty"`
@@ -45,9 +44,7 @@ func (uc *UserManager)UpdateUser() gin.HandlerFunc {
 
 		var newPassword *string = nil
 		if req.NewPassword != nil {
-			var pw string = *req.NewPassword
-
-			hashedpass, err := services.Hashing([]byte(pw))
+			hashedpass, err := services.Hashing([]byte(*req.NewPassword))
 			if err != nil {
 				Logger.Log.Error("Error", zap.Error(err))
 				c.Error(middlewares.ErrInternal("Failed to hash password"))
@@ -57,16 +54,15 @@ func (uc *UserManager)UpdateUser() gin.HandlerFunc {
 			newPassword = utils.PSTRING(string(hashedpass))
 		}
 
-		id := c.GetString("userId")
+		user_id := c.GetString("userId")
 		params := &repository.UserProfileParams{
 			BaseParams: repository.BaseParams{
-				UserId: &id,
+				UserId: &user_id,
 				Username: req.NewUsername,
 				Locale: req.NewLocale,
 				Country: req.NewCountry,
 			},
-			HashedPassword: &req.Password,
-
+			
 			FirstName: req.NewFirstname,
 			LastName: req.NewLastname,
 			NewPasswordHashed: newPassword,
@@ -76,7 +72,6 @@ func (uc *UserManager)UpdateUser() gin.HandlerFunc {
 		}
 		
 		hashed_password, err := uc.Users.GetPassword(c.Request.Context(), params)
-
 		if err != nil {
     		c.Error(middlewares.ErrInternal("Failed to fetch user"))
     		return
@@ -88,7 +83,6 @@ func (uc *UserManager)UpdateUser() gin.HandlerFunc {
 		}
 
 		user, err := uc.Users.UpdateUser(c.Request.Context(), params)
-
 		if err != nil {
 			Logger.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrInternal("Failed to update user"))

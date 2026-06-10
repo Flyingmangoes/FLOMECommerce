@@ -8,6 +8,7 @@ import (
 	"backend/src/services"
 	emailSrvc "backend/src/services/email"
 	paymentSrvc "backend/src/services/payment"
+	"backend/src/services/redis"
 	Logger "backend/src/utils/logger"
 	"fmt"
 	"log/slog"
@@ -50,15 +51,21 @@ func main() {
 		cfg.SENDGRID_CONF.SENDGRID_SECRET, 
 		cfg.SENDGRID_CONF.VERIFICATION_SECRET,
 		emailSrvc.SGTemplate{
-			TEMP_MAILCONFIRMATION: cfg.SENDGRID_CONF.TEMP_MAILCONFIRMATION,
+			TEMP_EMAILCONFIRMATION: cfg.SENDGRID_CONF.TEMP_EMAILCONFIRMATION,
 			TEMP_PASSRESET: cfg.SENDGRID_CONF.TEMP_PASSRESET,
 		},
 		userStore,
 	)
 
+	cacheService := redis.NewRedisService(
+		userStore,
+		productStore,
+		storeStore,
+		cfg,
+	)
+
 	success_url := net.JoinHostPort(cfg.SERV_CONF.FrontendHOST, cfg.SERV_CONF.FrontendPORT) + "/success"
     cancel_url := net.JoinHostPort(cfg.SERV_CONF.FrontendHOST, cfg.SERV_CONF.FrontendPORT) + "/cancel"
-
 	paymentService := paymentSrvc.NewPaymentService(cfg.STRIPE_CONF.STRIPE_SECRET_KEY, 
 		cfg.STRIPE_CONF.STRIPE_WEBHOOK_SECRET,
 		success_url,
@@ -68,7 +75,7 @@ func main() {
 	txManager := services.NewTxManager(db, productStore, orderStore, storeStore)
 
 	slog.Info("Starting Server")
-	serv := &server.ServerManager{
+	serverManager := &server.ServerManager{
 		Users: userStore,
 		Stores: storeStore,
 		Products: productStore,
@@ -78,11 +85,12 @@ func main() {
 		Email: emailService,
 		Payment: paymentService,
 		Tx: txManager,
+		Cacher: cacheService,
 		JWTSecret: []byte(cfg.SERV_CONF.JWT_SECRET),
 		SUDOSecret: []byte(cfg.SERV_CONF.SUDO_SECRET),
 	}
 
-	serv.Start(cfg)
+	serverManager.Start(cfg)
 	
 	slog.Info("Shutting Down")
 	os.Exit(0)
