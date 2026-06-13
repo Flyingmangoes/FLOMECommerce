@@ -15,9 +15,8 @@ type UserStoreInterface interface {
 	DeleteUser(ctx context.Context, params *UserProfileParams) (error)
 	LoginUser(ctx context.Context, params *UserProfileParams) (*models.User, error)
 
-	GetUserByUsername(ctx context.Context, username *string) (*models.User, error)
-	GetUserByID(ctx context.Context, user_id *string) (*models.User, error)
-	GetPassword(ctx context.Context, params *UserProfileParams) (*string, error)
+	FetchUserByID(ctx context.Context, user_id *string) (*models.User, error)
+	FetchPassword(ctx context.Context, params *UserProfileParams) (*string, error)
 
 	VerifyUser(ctx context.Context, verified_id string) (*models.User, error)
 	SearchUser(ctx context.Context, params *UserSearchParams) ([]models.User, error)
@@ -41,12 +40,10 @@ type UserProfileParams struct {
 	//For updating (only for the password)
 	NewPasswordHashed 	*string
 
-	//Profile Section
 	FirstName		*string
 	LastName		*string
 	UserType 		*string
 
-	//Consent related Section
 	EmailConsent	*bool
 	SmsConsent		*bool
 	ConsentUpdatedAt *time.Time
@@ -85,19 +82,24 @@ func (us *UserStore)CreateUser(ctx context.Context, params *UserProfileParams) (
 
 	err = tx.QueryRowContext(ctx, 
 		`INSERT INTO mkt_ecommerce.mkt_users (firstname, lastname, username, 
-		email, phone_number, passwordhashed, user_locale, user_country, user_address, 
-		user_type, is_agree, email_consent, sms_consent, consent_src)
+			email, phone_number, password_hash, user_locale, user_country, user_address, 
+			user_type, is_agree, email_consent, sms_consent, consent_src)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-		RETURNING user_id, firstname, lastname, username, email, phone_number, user_locale, user_country, user_address, user_type, is_verified, is_agree, email_consent, sms_consent, consent_src, created_at`,
+		RETURNING user_id, firstname, lastname, 
+		username, email, phone_number, 
+		user_locale, user_country, user_address, 
+		user_type, is_verified, is_agree, 
+		email_consent, sms_consent, consent_src, 
+		created_at`,
 		params.FirstName, params.LastName, params.Username, 
 		params.Email, params.PhoneNumber, 
 		params.HashedPassword, params.Locale, params.Country, 
-		params.Address, params.UserType, params.IsVerified,
+		params.Address, params.UserType, params.IsAgree,
 		params.EmailConsent, params.SmsConsent, params.ConsentSource,
 	).Scan(&user.UserID, 
 		&user.FirstName, &user.LastName, &user.Username, 
 		&user.Email, &user.PhoneNumber, &user.Locale,
-		&user.Country, &user.Address, &user.UserType, &user.IsVerified, 
+		&user.Country, &user.Address, &user.UserType, &user.IsAgree, 
 		&user.IsAgree, &user.EmailConsent, &user.SmsConsent, 
 		&user.Consent_src, &user.CreatedAt,
 	)
@@ -114,21 +116,21 @@ func (us *UserStore)UpdateUser(ctx context.Context, params *UserProfileParams) (
 		
 	err := us.db.QueryRowContext(ctx, 
 		`UPDATE mkt_ecommerce.mkt_users SET 
-			firstname		= COALESCE ($1, firstname),
-			lastname		= COALESCE ($2, lastname),
-			username		= COALESCE ($3, username),
-			phone_number	= COALESCE ($4, phone_number),
-			email			= COALESCE ($5, email),
-			passwordhashed 	= COALESCE ($6, passwordhashed),		
-			user_locale  	= COALESCE ($7, user_locale),
-			user_country	= COALESCE ($8, user_country),
-			user_address 	= COALESCE ($9, user_address),
-			email_consent	= COALESCE ($10, email_consent),
-			sms_consent		= COALESCE ($11, sms_consent),
-			consent_updated_at = NOW(),
-			updated_at		= NOW()
+			firstname			= COALESCE ($1, firstname),
+			lastname			= COALESCE ($2, lastname),
+			username			= COALESCE ($3, username),
+			phone_number		= COALESCE ($4, phone_number),
+			email				= COALESCE ($5, email),
+			password_hash 		= COALESCE ($6, password_hash),		
+			user_locale  		= COALESCE ($7, user_locale),
+			user_country		= COALESCE ($8, user_country),
+			user_address 		= COALESCE ($9, user_address),
+			email_consent		= COALESCE ($10, email_consent),
+			sms_consent			= COALESCE ($11, sms_consent),
+			consent_updated_at 	= NOW(),
+			updated_at			= NOW()
 		WHERE user_id = $12
-		RETURNING user_id, firstname, lastname, phone_number, email, passwordhashed, 
+		RETURNING user_id, firstname, lastname, phone_number, email, password_hash, 
 		user_locale, user_country, user_address, email_consent, sms_consent, 
 		consent_updated_at, updated_at`,
 		params.FirstName, params.LastName, params.Username, 
@@ -145,8 +147,6 @@ func (us *UserStore)UpdateUser(ctx context.Context, params *UserProfileParams) (
 
 	return user, nil
 }
-
-
 
 func (us *UserStore)DeleteUser(ctx context.Context, params *UserProfileParams) error {
 	result, err := us.db.ExecContext(ctx, 
@@ -165,87 +165,74 @@ func (us *UserStore)DeleteUser(ctx context.Context, params *UserProfileParams) e
 	return nil
 }
 
-
-
 func (us *UserStore)LoginUser(ctx context.Context, params *UserProfileParams) (*models.User, error) {
 	user := &models.User{}
 	var err error
 
-	if params.Email == nil && params.Username == nil {
-		return nil, fmt.Errorf("Required parameter can't be empty")
+	hasEmail := params.Email != nil && *params.Email != ""
+	hasUsername := params.Username != nil && *params.Username != ""
+
+	if !hasEmail && !hasUsername {
+		return nil, fmt.Errorf("email or username is required")
 	}
 
-	if params.Username == nil && params.Email != nil {
+	const baseSelect = `
+        SELECT user_id, firstname, lastname,
+            username, email, phone_number, password_hash,
+            user_locale, user_country, user_address,
+            user_type, is_verified, is_agree,
+            email_consent, sms_consent, consent_src,
+            created_at, updated_at, consent_updated_at
+        FROM mkt_ecommerce.mkt_users`
+
+	if hasEmail {
 		err = us.db.QueryRowContext(ctx,
-		`SELECT user_id, firstname, lastname, username, email, phone_number, passwordhashed, user_locale, user_country, user_address, user_type, is_verified, is_agree, email_consent, sms_consent, consent_src, created_at, updated_at, consent_updated_at FROM mkt_users
-		WHERE email = $1`,
-		params.Email,
-		).Scan(&user.UserID, 
-			&user.FirstName, &user.LastName, &user.Username, 
-			&user.Email, &user.PhoneNumber, &user.PasswordHash, 
-			&user.Locale, &user.Country, &user.Address, &user.UserType, 
-			&user.IsVerified, &user.IsAgree, &user.EmailConsent, &user.SmsConsent, 
-			&user.Consent_src, &user.CreatedAt, &user.Updatedat, 
-			&user.Consent_Updated,
+		baseSelect + ` WHERE email = $1`,
+		*params.Email,
+		).Scan(
+			&user.UserID, &user.FirstName, &user.LastName,
+            &user.Username, &user.Email, &user.PhoneNumber, &user.PasswordHash,
+            &user.Locale, &user.Country, &user.Address,
+            &user.UserType, &user.IsVerified, &user.IsAgree,
+            &user.EmailConsent, &user.SmsConsent, &user.Consent_src,
+            &user.CreatedAt, &user.Updatedat, &user.Consent_Updated,
 		)
-	} else if params.Email == nil && params.Username != nil {
+	} else {
 		err = us.db.QueryRowContext(ctx,
-			`SELECT user_id, firstname, lastname, username, email, phone_number, passwordhashed, user_locale, user_country, user_address, user_type, is_verified, is_agree, email_consent, sms_consent, consent_src, created_at, updated_at, consent_updated_at FROM mkt_users
-			WHERE email = $1`,
-			params.Username,
-		).Scan(&user.UserID, 
-			&user.FirstName, &user.LastName, &user.Username, 
-			&user.Email, &user.PhoneNumber, &user.PasswordHash, 
-			&user.Locale, &user.Country, &user.Address, &user.UserType, 
-			&user.IsVerified, &user.IsAgree, &user.EmailConsent, &user.SmsConsent, 
-			&user.Consent_src, &user.CreatedAt, &user.Updatedat, 
-			&user.Consent_Updated,
+			baseSelect + ` WHERE username = $1`,
+			*params.Username,
+		).Scan(
+			&user.UserID, &user.FirstName, &user.LastName,
+            &user.Username, &user.Email, &user.PhoneNumber, &user.PasswordHash,
+            &user.Locale, &user.Country, &user.Address,
+            &user.UserType, &user.IsVerified, &user.IsAgree,
+            &user.EmailConsent, &user.SmsConsent, &user.Consent_src,
+            &user.CreatedAt, &user.Updatedat, &user.Consent_Updated,
 		)
 	}
 
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err 
+	}
 
 	return user, nil
 }
 
-func (us *UserStore) GetUserByUsername(ctx context.Context, username *string) (*models.User, error) {
-	user := &models.User{}
-
-	err := us.db.QueryRowContext(ctx,
-		`SELECT user_id, firstname, lastname, username, 
-		email, phone_number, passwordhashed, user_locale, 
-		user_country, user_address, user_type, is_verified, 
-		is_agree, email_consent, sms_consent, consent_src, 
-		created_at, updated_at, consent_updated_at FROM mkt_users 
-		WHERE username = $1`,
-		username,
-	).Scan(&user.UserID, 
-		&user.FirstName, &user.LastName, &user.Username, 
-		&user.Email, &user.PhoneNumber, &user.PasswordHash, 
-		&user.Locale, &user.Country, &user.Address, &user.UserType, 
-		&user.IsVerified, &user.IsAgree, &user.EmailConsent, &user.SmsConsent, 
-		&user.Consent_src, &user.CreatedAt, &user.Updatedat, 
-		&user.Consent_Updated,
-	)
-	if err != nil { return nil, err }
-
-	return user, nil
-}
-
-func (us *UserStore) GetUserByID(ctx context.Context, user_id *string) (*models.User, error) {
+func (us *UserStore) FetchUserByID(ctx context.Context, user_id *string) (*models.User, error) {
 	user := &models.User{}
 
 	err := us.db.QueryRowContext(ctx,
 		`SELECT user_id, firstname, lastname, username, email, phone_number, 
-		passwordhashed, user_locale, user_country, user_address, user_type, 
-		is_verified, is_agree, email_consent, sms_consent, consent_src, created_at, 
-		updated_at, consent_updated_at FROM mkt_users 
+			user_locale, user_country, user_address, user_type, 
+			is_verified, is_agree, email_consent, sms_consent, 
+			consent_src, created_at, 
+			updated_at, consent_updated_at FROM mkt_users 
 		WHERE user_id = $1`,
 		user_id,
 	).Scan(&user.UserID, 
 		&user.FirstName, &user.LastName, &user.Username, 
-		&user.Email, &user.PhoneNumber, &user.PasswordHash, 
-		&user.Locale, &user.Country, &user.Address, &user.UserType, 
+		&user.Email, &user.PhoneNumber, &user.Locale, 
+		&user.Country, &user.Address, &user.UserType, 
 		&user.IsVerified, &user.IsAgree, &user.EmailConsent, &user.SmsConsent, 
 		&user.Consent_src, &user.CreatedAt, &user.Updatedat, 
 		&user.Consent_Updated,
@@ -255,28 +242,28 @@ func (us *UserStore) GetUserByID(ctx context.Context, user_id *string) (*models.
 	return user, nil
 }
 
-func (us *UserStore) GetPassword(ctx context.Context, params *UserProfileParams) (*string, error) {
+func (us *UserStore) FetchPassword(ctx context.Context, params *UserProfileParams) (*string, error) {
     user := &models.User{}
 	var err error
 
 	switch {
 		case params.Email != nil:
 			err = us.db.QueryRowContext(ctx,
-				`SELECT passwordhashed from mkt_users
+				`SELECT password_hash from mkt_users
 				WHERE email = $1`,	
 				params.Email,
 			).Scan(&user.PasswordHash)
 		
 		case params.UserId != nil:
 			err = us.db.QueryRowContext(ctx,
-				`SELECT passwordhashed FROM mkt_users 
+				`SELECT password_hash FROM mkt_users 
 				WHERE user_id = $1`,
 				params.UserId,
 			).Scan(&user.PasswordHash)
 
 		case params.Username != nil:
 			err = us.db.QueryRowContext(ctx,
-				`SELECT passwordhashed FROM mkt_users
+				`SELECT password_hash FROM mkt_users
 				WHERE username = $1`,
 				params.Username,
 			).Scan(&user.PasswordHash)
@@ -331,8 +318,8 @@ func (us *UserStore) SearchUser(ctx context.Context, params *UserSearchParams) (
 	for rows.Next() {
 		u := models.User{}
 		if err := rows.Scan(
-			u.UserID, u.Username,
-			u.Country, u.CreatedAt, 
+			&u.UserID, &u.Username,
+			&u.Country, &u.CreatedAt, 
 		); err != nil {
 			return nil, err
 		}

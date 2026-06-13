@@ -16,6 +16,7 @@ import (
 	"os"
 
 	"github.com/subosito/gotenv"
+	"go.uber.org/zap"
 )
 
 func main() {
@@ -35,10 +36,10 @@ func main() {
 	Logger.LoggerInit(cfg.ENVIRONMENT_STATUS)
 	defer Logger.Log.Sync()
 
-	slog.Info("Connecting to database")
+	Logger.Log.Info("Connecting to database")
 	db := database.NewDatabaseConnection(cfg.DB_CONF.DATABASE)
-
-	slog.Info("Initializing repository")
+	
+	Logger.Log.Info("Initializing repository")
 	userStore 	 := repository.NewUserStore(db)
 	storeStore 	 := repository.NewStoresStore(db)
 	productStore := repository.NewProductStore(db)
@@ -46,16 +47,26 @@ func main() {
 	tokenStore 	 := repository.NewTokenStore(db)
 	cartStore 	 := repository.NewCartStore(db)
 
-	slog.Info("Initializing Service")
+	Logger.Log.Info("Initializing Service")
 	emailService := emailSrvc.NewSGMailManager(
 		cfg.SENDGRID_CONF.SENDGRID_SECRET, 
 		cfg.SENDGRID_CONF.VERIFICATION_SECRET,
+		cfg.SENDGRID_CONF.TEST_EMAIL,
+		cfg.SENDGRID_CONF.DOMAIN_EMAIL,
 		emailSrvc.SGTemplate{
-			TEMP_EMAILCONFIRMATION: cfg.SENDGRID_CONF.TEMP_EMAILCONFIRMATION,
-			TEMP_PASSRESET: cfg.SENDGRID_CONF.TEMP_PASSRESET,
+			T_UserVerification: cfg.SENDGRID_CONF.TEMPLATE_USER_VERIFICATION,
+			T_PassReset: cfg.SENDGRID_CONF.TEMPLATE_PASS_RESET,
+			T_OrderConfirmation: cfg.SENDGRID_CONF.TEMPLATE_ORDER_CONFIRMATION,
 		},
 		userStore,
 	)
+
+	if err := emailService.Validate(); err != nil {
+		Logger.Log.Error("Missing dependency", zap.Error(err))
+		os.Exit(1)
+	}
+	
+	Logger.Log.Info("Emailing Service started")
 
 	cacheService := redis.NewRedisService(
 		userStore,
@@ -63,6 +74,7 @@ func main() {
 		storeStore,
 		cfg,
 	)
+	Logger.Log.Info("Cache Service started")
 
 	success_url := net.JoinHostPort(cfg.SERV_CONF.FrontendHOST, cfg.SERV_CONF.FrontendPORT) + "/success"
     cancel_url := net.JoinHostPort(cfg.SERV_CONF.FrontendHOST, cfg.SERV_CONF.FrontendPORT) + "/cancel"
@@ -71,10 +83,11 @@ func main() {
 		success_url,
 		cancel_url,
 	)
+	Logger.Log.Info("Payment Service started")
 
 	txManager := services.NewTxManager(db, productStore, orderStore, storeStore)
 
-	slog.Info("Starting Server")
+	Logger.Log.Info("Starting Server")
 	serverManager := &server.ServerManager{
 		Users: userStore,
 		Stores: storeStore,
@@ -90,8 +103,7 @@ func main() {
 		SUDOSecret: []byte(cfg.SERV_CONF.SUDO_SECRET),
 	}
 
-	serverManager.Start(cfg)
-	
-	slog.Info("Shutting Down")
+	serverManager.Start(cfg)	
+	Logger.Log.Info("Shutting Down")
 	os.Exit(0)
 }

@@ -16,7 +16,7 @@ import (
 type LoginRequest struct {
 	Email		 string `json:"email"    binding:"omitempty,email"`
 	Username 	 string `json:"username" binding:"omitempty"`
-	Password 	 string	`json:"password" binding:"required"`
+	Password 	 string	`json:"password" binding:"required,min=8"`
 }
 
 func (uc *UserManager)LoginUser(prison *middlewares.LoginPrison) gin.HandlerFunc {
@@ -36,11 +36,11 @@ func (uc *UserManager)LoginUser(prison *middlewares.LoginPrison) gin.HandlerFunc
 				Email: &req.Email,
 			},
 		})
-        if err != nil {
-			Logger.Log.Error("Error", zap.Error(err))
-            c.Error(middlewares.ErrUnauthorized("Invalid credentials"))
-            return
-        }
+		if err != nil {
+			Logger.Log.Error("Error while retrieving user", zap.Error(err))
+			c.Error(middlewares.ErrInternal("Failed to fetch user data"))
+			return
+		}
 
 		locked, remaining := prison.IsLocked(key)
 		if locked {

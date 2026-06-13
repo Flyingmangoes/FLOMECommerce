@@ -11,9 +11,9 @@ import (
 	Logger "backend/src/utils/logger"
 	"backend/src/validators"
 	"encoding/json"
-	"fmt"
+
 	"net/http"
-	"net/url"
+
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -194,7 +194,6 @@ func (pm *ProductManager) RemoveProduct() gin.HandlerFunc {
 func (pm *ProductManager) SearchProduct() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req SearchProductRequest
-
 		if err := c.ShouldBindQuery(&req); err != nil {
 			Logger.Log.Error("Failed to bind query", zap.Error(err))
 			c.Error(middlewares.ErrBadRequest("Failed to read client request"))
@@ -226,13 +225,13 @@ func (pm *ProductManager) SearchProduct() gin.HandlerFunc {
 			PagFilter: filter,
 		}
 
-		url, _ := url.Parse(fmt.Sprintf("products:%s", c.Request.URL))
-		cacheKey := pm.Cache.GenerateCacheKey(url)
-
+		cacheKey := pm.Cache.GenerateCacheKey("products", c.Request.URL.String())
 		cached, err := pm.Cache.Get(c.Request.Context(), cacheKey)
+		Logger.Log.Info("cached", zap.Any("cached value", cached))
 		if err == nil && cached != nil {
 			var page utils.Page[models.Product]
-			if err :=  json.Unmarshal(cached, &page); err != nil {
+			if err :=  json.Unmarshal(cached, &page); err == nil {
+				Logger.Log.Info("build", zap.Any("page", page))
 				c.JSON(http.StatusOK, page)
 				return
 			}
@@ -248,10 +247,21 @@ func (pm *ProductManager) SearchProduct() gin.HandlerFunc {
 		page, err := utils.Build(products, filter.Limit, func(p models.Product) (time.Time, string) {
 			return p.CreatedAt, p.ProductID			
 		})
-
 		if err != nil {
 			c.Error(middlewares.ErrInternal("Failed to build page"))
 			return
+		}
+
+		Logger.Log.Info("products", zap.Any("array", products))
+		Logger.Log.Info("build", zap.Any("page", page))
+
+		cacheValue, err := json.Marshal(page)
+		if err != nil {
+			Logger.Log.Debug("Failed to marshal page", zap.Error(err))
+		} else {
+			if err := pm.Cache.Set(c.Request.Context(), cacheKey, string(cacheValue)); err != nil {
+				Logger.Log.Debug("Failed to set cache", zap.Error(err))
+			}
 		}
 
 		c.JSON(http.StatusOK, page)

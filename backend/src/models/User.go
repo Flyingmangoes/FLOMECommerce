@@ -9,7 +9,7 @@ type User struct {
 	Username		string		`db:"username"`
 	Email 			string 		`db:"email"`
 	PhoneNumber		string		`db:"phone_number"`
-	PasswordHash 	string 		`db:"passwordhashed"`
+	PasswordHash 	string 		`db:"password_hash"`
 	Locale 			string 		`db:"user_locale"`
 	Country			string		`db:"user_country"`
 	Address			string		`db:"user_address"`

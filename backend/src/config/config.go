@@ -51,18 +51,20 @@ type StripeConfig struct {
 }
 
 type SendgridConfig struct {
-	VERIFICATION_SECRET 	string
-	SENDGRID_SECRET 		string
-	TEST_EMAIL				string
+	VERIFICATION_SECRET 		string
+	SENDGRID_SECRET 			string
+	TEST_EMAIL					string
+	DOMAIN_EMAIL				string
 
-	TEMP_EMAILCONFIRMATION 	string
-	TEMP_PASSRESET 			string
+	TEMPLATE_USER_VERIFICATION 	string
+	TEMPLATE_PASS_RESET 		string
+	TEMPLATE_ORDER_CONFIRMATION	string
 }
 
 type RedisConfig struct {
 	REDIS_PORT 	string
 	REDIS_HOST 	string
-	TTL_M 		int
+	CACHE_TTL 	int
 }
 
 func (a *ConfigManager) Validate() error {
@@ -107,17 +109,14 @@ func NewConfig() *ConfigManager {
 			DATABASE: os.Getenv("DATABASE"),
 		},
 		SERV_CONF: &ServerConfig{
-			HOST: os.Getenv("SERVER_HOST"),
-			PORT: os.Getenv("SERVER_PORT"),
-
-			ProxyHOST: os.Getenv("PROXY_HOST"),
-			ProxyPORT: os.Getenv("PROXY_PORT"),
-
-			FrontendHOST: os.Getenv("FRONTEND_HOST"),
-			FrontendPORT: os.Getenv("FRONTEND_PORT"),
-
-			JWT_SECRET: os.Getenv("JWT_SECRET"),
-			SUDO_SECRET: os.Getenv("SUDO_SECRET"),
+			HOST: 							os.Getenv("SERVER_HOST"),
+			PORT: 							os.Getenv("SERVER_PORT"),
+			ProxyHOST: 						os.Getenv("PROXY_HOST"),
+			ProxyPORT: 						os.Getenv("PROXY_PORT"),
+			FrontendHOST: 					os.Getenv("FRONTEND_HOST"),
+			FrontendPORT: 					os.Getenv("FRONTEND_PORT"),
+			JWT_SECRET: 					os.Getenv("JWT_SECRET"),
+			SUDO_SECRET: 					os.Getenv("SUDO_SECRET"),
 		},
 		APP_CONF: &AppConfig{
 			RETRY_LOGIN_COOLDOWN: 10,
@@ -128,23 +127,24 @@ func NewConfig() *ConfigManager {
 			BURST: 3,
 		},
 		STRIPE_CONF: &StripeConfig{
-			STRIPE_PUBLIC_KEY: os.Getenv("STRIPE_PUBLISHABLE_KEY"),
-			STRIPE_SECRET_KEY: os.Getenv("STRIPE_SECRET_KEY"),
-			STRIPE_WEBHOOK_SECRET: os.Getenv("STRIPE_WEBHOOK_SECRET"),
+			STRIPE_PUBLIC_KEY: 				os.Getenv("STRIPE_PUBLISHABLE_KEY"),
+			STRIPE_SECRET_KEY: 				os.Getenv("STRIPE_SECRET_KEY"),
+			STRIPE_WEBHOOK_SECRET: 			os.Getenv("STRIPE_WEBHOOK_SECRET"),
 		},
 		SENDGRID_CONF: &SendgridConfig{
-			SENDGRID_SECRET: os.Getenv("SENDGRID_SECRET"),
-			VERIFICATION_SECRET: os.Getenv("VERIFICATION_SECRET"),
-			TEST_EMAIL: os.Getenv("SENDGRID_TEST_EMAIL"),
-			
-			TEMP_EMAILCONFIRMATION: os.Getenv("EMAIL_CONFIRMATION_TEMPLATE"),
-			TEMP_PASSRESET: os.Getenv("PASS_RESET_TEMPLATE"),
+			SENDGRID_SECRET: 				os.Getenv("SENDGRID_SECRET"),
+			VERIFICATION_SECRET: 			os.Getenv("VERIFICATION_SECRET"),
+			TEST_EMAIL: 					os.Getenv("SENDGRID_TEST_EMAIL"),
+			DOMAIN_EMAIL: 					os.Getenv("SENDGRID_DOMAIN_EMAIL"),
+			TEMPLATE_USER_VERIFICATION: 	os.Getenv("USER_VERIFICATION_TEMPLATE"),
+			TEMPLATE_ORDER_CONFIRMATION: 	os.Getenv("ORDER_CONFIRMATION_TEMPLATE"),
+			TEMPLATE_PASS_RESET: 			os.Getenv("PASS_RESET_TEMPLATE"),
 		},
 		ENVIRONMENT_STATUS: os.Getenv("ENVIRONMENT"),
 		REDIS_CONF: &RedisConfig{
-			REDIS_PORT: os.Getenv("REDIS_PORT"),
-			REDIS_HOST: os.Getenv("REDIS_HOST"),
-			TTL_M: 5,
+			REDIS_PORT: 					os.Getenv("REDIS_PORT"),
+			REDIS_HOST: 					os.Getenv("REDIS_HOST"),
+			CACHE_TTL: 5,
 		},
 	}
 }

@@ -297,9 +297,9 @@ func (ps *ProductStore) SearchProduct(ctx context.Context, params *ProductSearch
 	for rows.Next(){
 		p := models.Product{}
 		if err := rows.Scan(
-			p.Name, p.Desc, p.ProductIMG, p.StoreID,
-			p.Price, p.Category, p.Rating, p.Availability,
-			p.CreatedAt, p.UpdatedAt,
+			&p.ProductID, &p.Name, &p.Desc, &p.ProductIMG, &p.StoreID,
+			&p.Price, &p.Category, &p.Rating, &p.Availability,
+			&p.CreatedAt, &p.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}

@@ -7,7 +7,9 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	glide "github.com/valkey-io/valkey-glide/go/v2"
@@ -17,8 +19,8 @@ import (
 )
 
 type RedisInterface interface {
-	GenerateCacheKey(url *url.URL) string
-	Set(ctx context.Context, cacheKey, cacheValue string) error
+	GenerateCacheKey(prefix string, rawQuery string) string
+	Set(ctx context.Context, cacheKey string, cacheValue string) error
 	Get(ctx context.Context, cacheKey string) ([]byte, error)
 	Del(ctx context.Context, cacheKey string) error
 	Clear(ctx context.Context, cacheKeys []string) error
@@ -60,7 +62,7 @@ func NewRedisService(
 	return &RedisManager{
 		REDIS_PORT: cfg.REDIS_CONF.REDIS_PORT,
 		REDIS_HOST: cfg.REDIS_CONF.REDIS_HOST,
-		CACHE_TTL: time.Duration(cfg.REDIS_CONF.TTL_M * int(time.Minute)), 
+		CACHE_TTL: time.Duration(cfg.REDIS_CONF.CACHE_TTL * int(time.Minute)), 
 		VClient: valkey_client,
 		Users: u,
 		Products: p,
@@ -78,10 +80,10 @@ func (rm *RedisManager) ConnectionCheck() {
 	Logger.Log.Info("Connected", zap.String("response", res))
 }
 
-func(rm *RedisManager)Set(ctx context.Context, cacheKey, cacheValue string) error {
+func(rm *RedisManager)Set(ctx context.Context, cacheKey string, cacheValue string) error {
 	opts := new(options.SetOptions).SetExpiry(&options.Expiry{
 		Type: "EX", // in seconds
-		Duration: uint64(rm.CACHE_TTL * time.Minute / time.Second),
+		Duration: uint64(rm.CACHE_TTL.Seconds()),
 	})
 
 	res, err := rm.VClient.SetWithOptions(ctx, cacheKey, cacheValue, *opts)
@@ -111,6 +113,19 @@ func(rm *RedisManager)Clear(ctx context.Context, cacheKeys []string) error {
 	return err
 }
 
-func(rm *RedisManager)GenerateCacheKey(url *url.URL) string {
-	return fmt.Sprintf("%s", url)
+func(rm *RedisManager)GenerateCacheKey(prefix, rawQuery string) string {
+	params, _ := url.ParseQuery(rawQuery)
+
+	keys := make([]string, 0, len(params))
+	for k := range params {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	parts := make([]string, 0, len(keys))
+	for _, k := range keys {
+		parts = append(parts, fmt.Sprintf("%s=%s", k, params.Get(k)))
+	}
+
+	return fmt.Sprintf("%s:%s", prefix, strings.Join(parts, ":"))
 }

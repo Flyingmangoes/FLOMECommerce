@@ -25,22 +25,22 @@ type UserManager struct {
 }
 
 type UserRegisterRequest struct {
-    FirstName    string `json:"firstName"   binding:"required"`
-    LastName     string `json:"lastName"    binding:"required"`
-    Username     string `json:"username"    binding:"required"`
+    FirstName    	string 	`json:"firstName"   binding:"required"`
+    LastName     	string 	`json:"lastName"    binding:"required"`
+    Username     	string 	`json:"username"    binding:"required"`
 
-    Email        string `json:"email"       binding:"required,email"`
-	PhoneNumber	 string `json:"phoneNumber" binding:"omitempty"`
-    Password     string `json:"password"    binding:"required,min=8"`
-    UserLocale 	 string `json:"userLocale"  binding:"required"`
-	UserCountry  string `json:"userCountry" binding:"required"`
-	UserAddress  string `json:"userAddress" binding:"required"`
+    Email       	string 	`json:"email"       binding:"required,email"`
+	PhoneNumber		string 	`json:"phoneNumber" binding:"omitempty"`
+    Password     	string 	`json:"password"    binding:"required,min=8"`
+    UserLocale 	 	string 	`json:"userLocale"  binding:"required"`
+	UserCountry  	string 	`json:"userCountry" binding:"required"`
+	UserAddress  	string 	`json:"userAddress" binding:"required"`
 	
-    UserType     string `json:"userType"    binding:"required"`
-	IsAgree		 bool 	`json:"userAgreed" binding:"required"`
-	EmailConsent bool	`json:"emailConsent" binding:"omitempty"`
-	SmsConsent	 bool	`json:"smsConsent" binding:"omitempty"`	
-	ConsentSource string `json:"consentSrc"`	
+    UserType     	string 	`json:"userType"    binding:"required"`
+	IsAgreed	 	bool 	`json:"isAgreed" binding:"required"`
+	EmailConsent  	bool	`json:"emailConsent" binding:"omitempty"`
+	SmsConsent	  	bool	`json:"smsConsent" binding:"omitempty"`	
+	ConsentSource 	string 	`json:"consentSrc" binding:"omitempty"`	
 }
 
 type userResponse struct {
@@ -54,7 +54,7 @@ type userResponse struct {
     UserLocale 	 	string    	`json:"userLocale"`
 	UserCountry  	string	  	`json:"userCountry"`
 	UserAddress  	string    	`json:"userAddress"`
-	IsAgree		 	bool 	  	`json:"isAgree"`
+	IsAgreed		bool 	  	`json:"isAgreed"`
     IsVerified   	bool      	`json:"isVerified"` 
     CreatedAt    	time.Time 	`json:"createdAt"`
 	UpdatedAt 	 	*time.Time 	`json:"updatedAt"`
@@ -78,7 +78,7 @@ func toUserResponse(u *models.User) userResponse {
 		UserCountry:  u.Country,
 		UserAddress:  u.Address,
         IsVerified:   u.IsVerified,
-		IsAgree: 	  u.IsAgree,
+		IsAgreed: 	  u.IsAgree,
         CreatedAt:    u.CreatedAt,
 		ConsentUpdated: u.Consent_Updated,
 		UpdatedAt: u.Updatedat,
@@ -116,7 +116,7 @@ func (uc *UserManager) RegisterUser() gin.HandlerFunc {
 			PhoneNumber: &req.PhoneNumber,
 			UserType: &req.UserType,
 		
-			IsAgree: &req.IsAgree,
+			IsAgree: &req.IsAgreed,
 			EmailConsent: &req.EmailConsent,
 			SmsConsent: &req.SmsConsent,
 			ConsentSource: &req.ConsentSource,
