@@ -71,7 +71,7 @@ func (uc *UserManager)UpdateUser() gin.HandlerFunc {
 			SmsConsent: req.NewSmsConsent,
 		}
 		
-		hashed_password, err := uc.Users.GetPassword(c.Request.Context(), params)
+		hashed_password, err := uc.Users.FetchPassword(c.Request.Context(), params)
 		if err != nil {
     		c.Error(middlewares.ErrInternal("Failed to fetch user"))
     		return

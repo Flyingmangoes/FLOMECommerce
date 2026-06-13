@@ -3,6 +3,7 @@ package email_services
 import (
 	"backend/src/repository"
 	Logger "backend/src/utils/logger"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -31,21 +32,24 @@ type SGMailManager struct {
 	SG_SECRET 				string
 	VERIFICATION_SECRET 	string
 	TEST_EMAIL 				string
+	DOMAIN_EMAIL 			string
 	SGTemplate
 }	
 
 type SGTemplate struct{
-	TEMP_EMAILCONFIRMATION 	string
-	TEMP_ORDERCONFIRMATION 	string
-	TEMP_PASSRESET 		  	string
+	T_UserVerification 		string
+	T_PassReset 			string
+	T_OrderConfirmation 	string
 }
 
-func NewSGMailManager(sg_secret, v_secret string, template SGTemplate, us repository.UserStoreInterface) *SGMailManager {
+func NewSGMailManager(sg_secret, v_secret, test_email, domain_email string, template SGTemplate, us repository.UserStoreInterface) *SGMailManager {
 	return &SGMailManager{
 		SG_SECRET: sg_secret,
 		VERIFICATION_SECRET: v_secret,
 		Users: us,
 		SGTemplate: template,
+		TEST_EMAIL: test_email,
+		DOMAIN_EMAIL: domain_email,
 	}
 }
 
@@ -66,19 +70,20 @@ type Mail struct {
 }
 
 const (
-	EmailConfirmation MailType = iota + 1
+	UserVerification MailType = iota + 1
 	PassReset 
 	OrderConfirmation
 )
 
 var typeList = map[MailType]string{
-	EmailConfirmation: "Mail_Confirmation",
+	OrderConfirmation: "Order_Confirmation",
+	UserVerification: "User_Verification",
 	PassReset: "Pass_Reset",
 }
 
 const (
-	MailEndpoint 	string = "/v3/mail/send"
-	MailHost 	 	string = "https://api.sendgrid.com"
+	MailEndpoint string = "/v3/mail/send"
+	MailHost 	 string = "https://api.sendgrid.com"
 )
 
 func(sg *SGMailManager) CreateMail(mailReq *Mail) []byte {
@@ -88,14 +93,14 @@ func(sg *SGMailManager) CreateMail(mailReq *Mail) []byte {
 	m.SetFrom(from)
 
 	switch mailReq.mailTyp {
-		case EmailConfirmation: {
-			m.SetTemplateID(sg.TEMP_EMAILCONFIRMATION)
+		case UserVerification: {
+			m.SetTemplateID(sg.T_UserVerification)
 		}
 		case PassReset: {
-			m.SetTemplateID(sg.TEMP_PASSRESET)
+			m.SetTemplateID(sg.T_PassReset)
 		}
 		case OrderConfirmation: {
-			m.SetTemplateID(sg.TEMP_ORDERCONFIRMATION)
+			m.SetTemplateID(sg.T_OrderConfirmation)
 		}
 	default:
 		Logger.Log.Error("Unknown Mail type", zap.Int("type", int(mailReq.mailTyp)))
@@ -145,3 +150,25 @@ func(sg *SGMailManager) NewMail(params *MailServiceParams) *Mail {
 		data: params.MailData,
 	}
 }
+
+func(sg *SGMailManager) Validate() error {
+	switch {
+		case sg.T_UserVerification == "" : {
+			return fmt.Errorf("Missing User Verification template")
+		}
+		case sg.T_PassReset == "": {
+			return fmt.Errorf("Missing Password Reset template")
+		}
+		case sg.T_OrderConfirmation == "": {
+			return fmt.Errorf("Missing Order template")
+		}
+		case sg.TEST_EMAIL == "": {
+			return fmt.Errorf("Missing test email")
+		}
+		case sg.DOMAIN_EMAIL == "": {
+			return fmt.Errorf("Missing domain email")
+		}
+	}
+
+	return nil
+} 

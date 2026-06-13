@@ -18,20 +18,20 @@ func LoggerInit(env string) {
 		NameKey:        "logger",
 		CallerKey:      "caller",
 		MessageKey:     "message",
-		EncodeTime:     zapcore.TimeEncoderOfLayout("2006/01/02 15:04:05"),
-		EncodeLevel:    zapcore.CapitalLevelEncoder,
+		EncodeTime:     zapcore.TimeEncoderOfLayout("[2006/01/02] [15:04:05]"),
+		EncodeLevel:    zapcore.CapitalLevelEncoder, 
 		EncodeCaller:   zapcore.ShortCallerEncoder,
 		EncodeDuration: zapcore.StringDurationEncoder,
 		ConsoleSeparator: " ",
 	}
-
+	
 	JSONEncoderCfg := zapcore.EncoderConfig{
 		TimeKey:        "timestamp",
 		LevelKey:       "level",
 		NameKey:        "logger",
 		CallerKey:      "caller",
 		MessageKey:     "message",
-		EncodeTime:     zapcore.TimeEncoderOfLayout("2006/01/02 15:04:05"),
+		EncodeTime:     zapcore.TimeEncoderOfLayout("[2006/01/02] [15:04:05]"),
 		EncodeLevel:    zapcore.CapitalLevelEncoder,
 		EncodeCaller:   zapcore.ShortCallerEncoder,
 		EncodeDuration: zapcore.StringDurationEncoder,

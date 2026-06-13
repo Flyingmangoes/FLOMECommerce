@@ -9,9 +9,8 @@ import (
 	Logger "backend/src/utils/logger"
 	"backend/src/validators"
 	"encoding/json"
-	"fmt"
 	"net/http"
-	"net/url"
+	
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -125,7 +124,7 @@ func (sm *StoreManager) UpdateStore() gin.HandlerFunc {
 		ownerId := c.GetString("userId")
         storeId := c.GetString("storeId") 
 
-		hashed_password, err := sm.Users.GetPassword(c.Request.Context(), &repo.UserProfileParams{
+		hashed_password, err := sm.Users.FetchPassword(c.Request.Context(), &repo.UserProfileParams{
 			BaseParams: repo.BaseParams{ UserId: &ownerId },
 		})
 		if err != nil {
@@ -253,13 +252,13 @@ func (sm *StoreManager) SearchStore() gin.HandlerFunc{
 			PagFilter: filter,
 		}
 
-		url, _ := url.Parse(fmt.Sprintf("stores:%s", c.Request.URL))
-		cacheKey := sm.Cache.GenerateCacheKey(url)
-
+		cacheKey := sm.Cache.GenerateCacheKey("stores", c.Request.URL.String())
 		cached, err := sm.Cache.Get(c.Request.Context(), cacheKey)
+		Logger.Log.Info("cached", zap.Any("cached value", cached))
 		if err == nil && cached != nil {
 			var page utils.Page[models.Store]
-			if err := json.Unmarshal(cached, &page); err != nil {
+			if err := json.Unmarshal(cached, &page); err == nil {
+				Logger.Log.Info("build", zap.Any("page", page))
 				c.JSON(http.StatusOK, page)
 				return
 			}
@@ -279,6 +278,19 @@ func (sm *StoreManager) SearchStore() gin.HandlerFunc{
 			c.Error(middlewares.ErrInternal("Failed to build page"))
 			return
 		}
+
+		Logger.Log.Info("build", zap.Any("page", page))
+		Logger.Log.Info("store", zap.Any("array", stores))
+
+		cacheValue, err := json.Marshal(page)
+		if err != nil {
+			Logger.Log.Debug("Failed to marshal page")
+		}else{
+			if err := sm.Cache.Set(c.Request.Context(), cacheKey, string(cacheValue)); err != nil {
+				Logger.Log.Debug("Failed to cache value", zap.Error(err))
+			}
+		}
+		
 		c.JSON(http.StatusOK, page)
 	}
 }

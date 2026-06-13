@@ -5,30 +5,30 @@ package controllers
 //
 
 type StoreRegisterRequest struct {	
-	StoreName 	 string `json:"storeName"`
-	StoreDesc 	 string `json:"storeDesc"`
-	StoreIMG 	 string `json:"storeIMG"`
+	StoreName 	 string `json:"storeName" binding:"required,min=3"`
+	StoreDesc 	 string `json:"storeDesc" binding:"required"`
+	StoreIMG 	 string `json:"storeIMG" binding:"required"`
 
-	Locale 		 string	`json:"storeLocale"`
-	Country		 string	`json:"storeCountry"`
-	Address		 string	`json:"storeAddress"`
+	Locale 		 string	`json:"storeLocale" binding:"required"`
+	Country		 string	`json:"storeCountry" binding:"required"`
+	Address		 string	`json:"storeAddress" binding:"required"`
 
-	PhoneNumber  string	`json:"storePhoneNumber"`
-	SupportEmail string	`json:"storeSupportEmail"`
+	PhoneNumber  string	`json:"storePhoneNumber" binding:"required"`
+	SupportEmail string	`json:"storeSupportEmail" binding:"required,email"`
 
-	Instagram	 string `json:"storeInstagram"`
-	Tiktok		 string	`json:"storeTiktok"`
-	Website		 string	`json:"storeWebsite"`	
+	Instagram	 string `json:"storeInstagram" binding:"required"`
+	Tiktok		 string	`json:"storeTiktok" binding:"required"`
+	Website		 string	`json:"storeWebsite" binding:"required"`	
 }
 
 type StoreUpdateRequest struct {
 	OwnerPassword 	string `json:"password" binding:"required"`
 
-	NewName    		*string `json:"newStoreName" binding:"omitempty"`
+	NewName    		*string `json:"newStoreName" binding:"omitempty,min=3"`
 	NewDesc 		*string `json:"newStoreDesc" binding:"omitempty"`
 	NewImage		*string `json:"newStorePic" binding:"omitempty"`
 	NewPhoneNumber  *string `json:"newPhoneNumber" binding:"omitempty"`
-	NewSupportEmail *string `json:"newSupportEmail" binding:"omitempty"`
+	NewSupportEmail *string `json:"newSupportEmail" binding:"omitempty,email"`
 
     NewLocale  		*string `json:"newLocale" binding:"omitempty"`
 	NewCountry		*string `json:"newCountry" binding:"omitempty"`
@@ -58,12 +58,12 @@ type SearchStoreRequest struct {
 //
 
 type RegisterProductRequest struct {
-	ProductName 	string 	`json:"productName"`
-	ImageUrl 		string 	`json:"imageUrl"`
-	Price 			float64 `json:"price"`
-	Desc 			string  `json:"desc"`
-	Category 		string	`json:"category"`
-	Availability 	int		`json:"availability"`
+	ProductName 	string 	`json:"productName" binding:"required"`
+	ImageUrl 		string 	`json:"imageUrl" binding:"required"`
+	Price 			float64 `json:"price" binding:"required"`
+	Desc 			string  `json:"desc" binding:"required"`
+	Category 		string	`json:"category" binding:"required"`
+	Availability 	int		`json:"availability" binding:"required"`
 }
 
 type UpdateProductRequest struct {

@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS mkt_ecommerce.mkt_users(
     lastname VARCHAR(50) NOT NULL,
     username VARCHAR(50) UNIQUE NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
-    passwordhashed TEXT NOT NULL,
+    password_hash TEXT NOT NULL,
     user_type VARCHAR(20) NOT NULL,
     is_verified BOOLEAN NOT NULL DEFAULT false,
     is_agree BOOLEAN NOT NULL DEFAULT false, 

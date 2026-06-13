@@ -25,7 +25,7 @@ func (uc *UserManager)DeleteUser() gin.HandlerFunc {
 		}
 
 		requester_id := c.GetString("userId")
-		password, err := uc.Users.GetPassword(c.Request.Context(), &repository.UserProfileParams{
+		password, err := uc.Users.FetchPassword(c.Request.Context(), &repository.UserProfileParams{
 			BaseParams: repository.BaseParams{UserId: &requester_id},
 		})
 		

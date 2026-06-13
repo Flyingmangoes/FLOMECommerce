@@ -12,11 +12,11 @@ import (
 	"go.uber.org/zap"
 )
 
-func(sg *SGMailManager) SendVerificationMail() gin.HandlerFunc {
+func(sg *SGMailManager) SendUserVerificationMail() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		user_id := c.GetString("userId")
 
-		user, err := sg.Users.GetUserByID(c.Request.Context(), &user_id)
+		user, err := sg.Users.FetchUserByID(c.Request.Context(), &user_id)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				Logger.Log.Error("Data not found")
@@ -28,7 +28,7 @@ func(sg *SGMailManager) SendVerificationMail() gin.HandlerFunc {
 			return
 		}
 
-		v_token, expires, err := jwt.GenerateEmailVerificationToken(user_id, []byte(sg.VERIFICATION_SECRET))
+		verification_token, expires, err := jwt.GenerateUserVerificationToken(user_id, []byte(sg.VERIFICATION_SECRET))
 		if err != nil {
 			Logger.Log.Error("Error in generating token", zap.Error(err))
 			c.Error(middlewares.ErrInternal("Failed to generate token"))
@@ -38,12 +38,12 @@ func(sg *SGMailManager) SendVerificationMail() gin.HandlerFunc {
 		params := &MailServiceParams{
 			From: sg.TEST_EMAIL,
 			To: []string{user.Email},
-			Subject: "Email Verification for Flommerce Account",
-			MailType: EmailConfirmation,
+			Subject: "Verified your Account",
+			MailType: UserVerification,
 			MailData: &MailData{
 				Username: user.Username,
 				UserEmail: user.Email,
-				Token: v_token,
+				Token: verification_token,
 				Expiration: &expires,
 			},
 		}
@@ -57,16 +57,29 @@ func(sg *SGMailManager) SendVerificationMail() gin.HandlerFunc {
 
 		c.JSON(http.StatusOK, gin.H{
 			"response": utils.EXIT_SUCCESS,
-			"detail": user.Email,
+			"detail": gin.H{
+				"info": "Sended",
+				"email": user.Email,
+			},
 		})
 	}
 }
 
-func(sg *SGMailManager) VerifyEmail() gin.HandlerFunc {
+func(sg *SGMailManager) VerifyUserVerification() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		verified_id := c.GetString("verifiedUserId")
+		token := c.GetHeader("X-Verification-Token")
+		if token == "" {
+			c.Error(middlewares.ErrBadRequest("Missing required token"))
+			return 
+		}
 
-		user, err := sg.Users.VerifyUser(c.Request.Context(), verified_id)
+		claims, err := jwt.VerifyUserVerificationToken(token, []byte(sg.VERIFICATION_SECRET))
+		if err != nil {
+			c.Error(middlewares.ErrUnauthorized("Invalid or Expired token"))
+			return
+		}
+
+		user, err := sg.Users.VerifyUser(c.Request.Context(), claims.ID)
 		if err != nil {
 			Logger.Log.Error("Failed to verified user", zap.Error(err))
 			c.Error(middlewares.ErrInternal("Failed to verified user"))
@@ -81,5 +94,29 @@ func(sg *SGMailManager) VerifyEmail() gin.HandlerFunc {
 				"email": user.Email,
 			},
 		})
+	}
+}
+
+func (sg *SGMailManager) SendPassResetMail() gin.HandlerFunc {
+	return func(c *gin.Context) {
+
+	}
+}
+
+func (sg *SGMailManager) VerifiyPassReset() gin.HandlerFunc {
+	return func(c *gin.Context) {
+
+	}
+}
+
+func (sg *SGMailManager) SendOrderConfirmation() gin.HandlerFunc {
+	return func(c *gin.Context) {
+
+	}
+}
+
+func (sg *SGMailManager) VerifyOrderConfirmation() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		
 	}
 }

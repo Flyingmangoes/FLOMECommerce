@@ -23,7 +23,7 @@ type AuthClaims struct {
     jwt.RegisteredClaims
 }
 
-type EmailClaims struct {
+type UserVerificationClaims struct {
     UserID      string `json:"userId"`
     MailType    string `json:"mailType"`
     jwt.RegisteredClaims
@@ -98,10 +98,10 @@ func GenerateRefreshToken(userID, userType string, secret []byte) (string, time.
     return signed, expiresAt, err
 }
 
-func GenerateEmailVerificationToken(user_id string, secret []byte) (string, time.Time, error) {
+func GenerateUserVerificationToken(user_id string, secret []byte) (string, time.Time, error) {
     expiresAt := time.Now().Add((5 * time.Minute))
     
-    claims := EmailClaims{
+    claims := UserVerificationClaims{
         UserID: user_id,
         RegisteredClaims: jwt.RegisteredClaims{
             ExpiresAt: jwt.NewNumericDate(expiresAt),
@@ -163,8 +163,8 @@ func VerifySudoToken(tokenString string, secret []byte) (*SudoClaims, error) {
     return claims, nil
 }
 
-func VerifyEmailToken(tokenString string, secret []byte)(*EmailClaims, error) {
-    token, err := jwt.ParseWithClaims(tokenString, &EmailClaims{}, func(t *jwt.Token) (interface{}, error) {
+func VerifyUserVerificationToken(tokenString string, secret []byte)(*UserVerificationClaims, error) {
+    token, err := jwt.ParseWithClaims(tokenString, &UserVerificationClaims{}, func(t *jwt.Token) (interface{}, error) {
         if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
             return nil, ErrInvalidToken
         }
@@ -179,7 +179,7 @@ func VerifyEmailToken(tokenString string, secret []byte)(*EmailClaims, error) {
         return nil, ErrInvalidToken
     }
 
-    claims, ok := token.Claims.(*EmailClaims)
+    claims, ok := token.Claims.(*UserVerificationClaims)
     if !ok || !token.Valid {
         return nil, ErrInvalidToken
     }

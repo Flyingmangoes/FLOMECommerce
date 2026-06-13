@@ -13,6 +13,7 @@ import (
 
 func registerRoutes(r *gin.Engine, sm *ServerManager, lp *middlewares.LoginPrison) {
 	userCtrl := &authHandler.UserManager{
+        Cart:      sm.Carts,
         Users:     sm.Users,
         Tokens:    sm.Tokens,
         JWTSecret: sm.JWTSecret,
@@ -64,18 +65,13 @@ func registerRoutes(r *gin.Engine, sm *ServerManager, lp *middlewares.LoginPriso
             auth.POST("/users",     userCtrl.RegisterUser())
             auth.POST("/refresh",   userCtrl.Refresh())
             auth.POST("/logout",    userCtrl.LogoutUser())
-
-            verificationAuth := r.Group("/verify")
-            verificationAuth.Use(middlewares.VerificationMiddleware(sm.VERIFICATION_SECRET))
-            auth.POST("/request", emailCtrl.SendVerificationMail())
-            auth.POST("",         emailCtrl.VerifyEmail())    
         }
 
-        api := r.Group("/api")
+        api := public.Group("/api")
         {
-            api.GET("/users", userCtrl.SearchUser())
-            api.GET("/products", prdctCtrl.SearchProduct())
-            api.GET("/stores", storeCtrl.SearchStore())
+            api.GET("/users",       userCtrl.SearchUser())
+            api.GET("/products",    prdctCtrl.SearchProduct())
+            api.GET("/stores",      storeCtrl.SearchStore())
         }
 
         webhook:= public.Group("/webhook")
@@ -95,9 +91,11 @@ func registerRoutes(r *gin.Engine, sm *ServerManager, lp *middlewares.LoginPriso
     {
         user := protected.Group("/user")
         {
+            user.POST("/verify/request", emailCtrl.SendUserVerificationMail())
+            user.POST("/verify",         emailCtrl.VerifyUserVerification())    
             user.POST("/register-store", storeCtrl.RegisterStore())
 
-            sudoUser := user.Group("/sudo")
+            sudoUser := user.Group("/sudo-required")
             sudoUser.Use(middlewares.SudoMiddleware(string(sm.JWTSecret)))
             {
                 sudoUser.PUT("", 
@@ -112,7 +110,7 @@ func registerRoutes(r *gin.Engine, sm *ServerManager, lp *middlewares.LoginPriso
             }
         }
 
-        store := r.Group("/store")
+        store := protected.Group("/store")
         store.Use(middlewares.StoreMiddleware(sm.Stores))
         store.Use(middlewares.SudoMiddleware(string(sm.JWTSecret)))
         {
@@ -134,7 +132,7 @@ func registerRoutes(r *gin.Engine, sm *ServerManager, lp *middlewares.LoginPriso
                     prdctCtrl.RegisterProduct(),
                 )
 
-                sudoProduct := product.Group("/sudo")
+                sudoProduct := product.Group("/sudo-required")
                 sudoProduct.Use(middlewares.SudoMiddleware(string(sm.JWTSecret)))
                 {
                     sudoProduct.PUT("", 
@@ -157,8 +155,16 @@ func registerRoutes(r *gin.Engine, sm *ServerManager, lp *middlewares.LoginPriso
                 middlewares.AuthorizationMiddleware(services.ActionOrderCreate), 
                 orderCtrl.CreateOrder(),
             )
+            
+            order.POST("/verify/requests", 
+                sm.Email.SendOrderConfirmation(),
+            )
 
-            sudoOrder := order.Group("/sudo")
+            order.POST("/verify", 
+                sm.Email.VerifyOrderConfirmation(),
+            )
+
+            sudoOrder := order.Group("/sudo-required")
             sudoOrder.Use(middlewares.SudoMiddleware(string(sm.JWTSecret)))
             {
                 order.DELETE("", 
