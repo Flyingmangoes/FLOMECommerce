@@ -2,7 +2,6 @@ package repository
 
 import (
 	"backend/src/models"
-	"backend/src/utils"
 	"context"
 	"database/sql"
 	"fmt"
@@ -16,35 +15,6 @@ type StoreStoreInterface interface {
 	GetStoreByID(ctx context.Context, store_id string) (*models.Store, error)
 	FetchStoreID(ctx context.Context, store_id string)(string, error)
 	SearchStore(ctx context.Context, params *StoreSearchParams) ([]models.Store, error)
-}
-
-type StoreProfileParams struct {
-	BaseParams
-    StoreId      *string
-    // Identifiers
-    StoreName    *string
-    StoreDesc    *string
-    StorePic     *string
-    IsActive     *bool
-
-    // Contact
-    PhoneNumber  *string
-    SupportEmail *string
-
-    // Social Media
-    Instagram    *string
-    Facebook     *string
-    Tiktok       *string
-    Website      *string
-}
-
-type StoreSearchParams struct {
-	Query 			*string	
-	StoreName 		*string 	
-	StoreCountry 	*string 	
-	SortBy 			*string		
-	SortOrder 		*string		
-	utils.PagFilter
 }
 
 type StoreStore struct {
@@ -65,7 +35,7 @@ func (ss *StoreStore) CreateStore(ctx context.Context, params *StoreProfileParam
 	defer tx.Rollback()
 
 	err = tx.QueryRowContext(ctx,
-		`INSERT INTO mkt_stores (owner_id, store_name, store_desc, 
+		`INSERT INTO mkt_ecommerce.mkt_stores (owner_id, store_name, store_desc, 
 		store_pic, store_locale, store_country, 
 		store_address, store_phone_number, store_support_email, 
 		store_instagram, store_tiktok, store_website)
@@ -146,7 +116,7 @@ func (ss *StoreStore) UpdateStore(ctx context.Context, params *StoreProfileParam
 
 func (ss *StoreStore) DeleteStore(ctx context.Context, params *StoreProfileParams) error {
 	result, err := ss.db.ExecContext(ctx, 
-		`DELETE FROM mkt_stores
+		`DELETE FROM mkt_ecommerce.mkt_stores
 		WHERE store_id = $1 AND owner_id = $2`,
 		params.StoreId, params.UserId,
 	)

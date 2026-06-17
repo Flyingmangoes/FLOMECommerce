@@ -26,7 +26,7 @@ import (
 
 type ProductManager struct {
 	Stores	   repo.StoreStoreInterface
-	Cache 	   redis.RedisInterface
+	Cache 	   cache_service.RedisInterface
 	Products   repo.ProductStoreInterface
 	JWTSecret []byte
 }

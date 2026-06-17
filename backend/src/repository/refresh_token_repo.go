@@ -25,7 +25,7 @@ func NewTokenStore(db *sql.DB) *TokenStore {
 
 func (ts *TokenStore) SaveRefreshToken(ctx context.Context, userID, token string, expiresAt time.Time) (error) {
 	_, err := ts.db.ExecContext(ctx,
-		`INSERT INTO mkt_refresh_tokens (user_id, token, expires_at)
+		`INSERT INTO mkt_ecommerce.mkt_refresh_tokens (user_id, token, expires_at)
 		VALUES ($1, $2, $3)`,
 		userID, token, expiresAt,
 	)
@@ -42,7 +42,7 @@ func (ts *TokenStore) GetRefreshToken(ctx context.Context, token string) (*model
 
 	err := ts.db.QueryRowContext(ctx,
 		`SELECT token_id, user_id, token, expires_at, created_at
-		FROM mkt_refresh_tokens
+		FROM mkt_ecommerce.mkt_refresh_tokens
 		WHERE token = $1`,
 		token,
 	).Scan(&rt.TokenID, &rt.UserID, &rt.Token, &rt.ExpiresAt, &rt.CreatedAt)
@@ -56,7 +56,7 @@ func (ts *TokenStore) GetRefreshToken(ctx context.Context, token string) (*model
 
 func (ts *TokenStore) DeleteRefreshToken(ctx context.Context, token string) error {
 	result, err := ts.db.ExecContext(ctx,
-		`DELETE FROM mkt_refresh_tokens WHERE token = $1`, token,
+		`DELETE FROM mkt_ecommerce.mkt_refresh_tokens WHERE token = $1`, token,
 	)
 
 	if err != nil {
@@ -77,7 +77,7 @@ func (ts *TokenStore) DeleteRefreshToken(ctx context.Context, token string) erro
 
 func (ts *TokenStore) DeleteAllUserTokens(ctx context.Context, userID string) error {
 	result, err := ts.db.ExecContext(ctx,
-		`DELETE FROM mkt_refresh_tokens WHERE user_id = $1`, userID,
+		`DELETE FROM mkt_ecommerce.mkt_refresh_tokens WHERE user_id = $1`, userID,
 	)
 
 	if err != nil {

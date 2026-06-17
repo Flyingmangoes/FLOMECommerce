@@ -1,15 +1,8 @@
 package utils
 
-type Action string
-type TokenType int
 type Environment string
 type Status string
 type OrderStatus string
-
-const (
-	SUDO_TOKEN 		TokenType = iota + 1
-	ACCESS_TOKEN
-)
 
 const (
 	DEVELOPMENT 	Environment = "DEVELOPMENT"

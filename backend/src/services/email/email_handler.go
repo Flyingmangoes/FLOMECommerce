@@ -6,6 +6,7 @@ import (
 	"backend/src/utils/jwt"
 	Logger "backend/src/utils/logger"
 	"database/sql"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -28,12 +29,14 @@ func(sg *SGMailManager) SendUserVerificationMail() gin.HandlerFunc {
 			return
 		}
 
-		verification_token, expires, err := jwt.GenerateUserVerificationToken(user_id, []byte(sg.VERIFICATION_SECRET))
+		token, expires, err := jwt.GenerateUserVerificationToken(user_id, []byte(sg.USER_VERIFICATION_SECRET))
 		if err != nil {
 			Logger.Log.Error("Error in generating token", zap.Error(err))
 			c.Error(middlewares.ErrInternal("Failed to generate token"))
 			return
 		}
+
+		token_url := fmt.Sprintf("http://%s/v2/user/verify?token=%s", sg.SERVER_URL, token)
 
 		params := &MailServiceParams{
 			From: sg.TEST_EMAIL,
@@ -41,9 +44,11 @@ func(sg *SGMailManager) SendUserVerificationMail() gin.HandlerFunc {
 			Subject: "Verified your Account",
 			MailType: UserVerification,
 			MailData: &MailData{
+				DomainName: "Flommerce",
+				SupportEmail: "support@flommerce.com",
+				FirstName: user.FirstName,
 				Username: user.Username,
-				UserEmail: user.Email,
-				Token: verification_token,
+				TokenUrl: token_url,
 				Expiration: &expires,
 			},
 		}
@@ -67,19 +72,23 @@ func(sg *SGMailManager) SendUserVerificationMail() gin.HandlerFunc {
 
 func(sg *SGMailManager) VerifyUserVerification() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		token := c.GetHeader("X-Verification-Token")
-		if token == "" {
-			c.Error(middlewares.ErrBadRequest("Missing required token"))
-			return 
+		var req struct {
+			Token string `form:"token"`
 		}
 
-		claims, err := jwt.VerifyUserVerificationToken(token, []byte(sg.VERIFICATION_SECRET))
+		if err := c.ShouldBindQuery(&req); err != nil {
+			Logger.Log.Error("Failed to bind query", zap.Error(err))
+			c.Error(middlewares.ErrBadRequest("Failed to read client request"))
+			return
+		}
+
+		claims, err := jwt.VerifyUserVerificationToken(req.Token, []byte(sg.USER_VERIFICATION_SECRET))
 		if err != nil {
 			c.Error(middlewares.ErrUnauthorized("Invalid or Expired token"))
 			return
 		}
 
-		user, err := sg.Users.VerifyUser(c.Request.Context(), claims.ID)
+		user, err := sg.Users.VerifyUser(c.Request.Context(), claims.UserID)
 		if err != nil {
 			Logger.Log.Error("Failed to verified user", zap.Error(err))
 			c.Error(middlewares.ErrInternal("Failed to verified user"))
@@ -117,6 +126,6 @@ func (sg *SGMailManager) SendOrderConfirmation() gin.HandlerFunc {
 
 func (sg *SGMailManager) VerifyOrderConfirmation() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		
+
 	}
 }

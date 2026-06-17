@@ -106,7 +106,7 @@ func (a *ConfigManager) Validate() error {
 func NewConfig() *ConfigManager {
 	return &ConfigManager{
 		DB_CONF: &DBConfig{
-			DATABASE: os.Getenv("DATABASE"),
+			DATABASE: os.Getenv("POSTGRES_URL"),
 		},
 		SERV_CONF: &ServerConfig{
 			HOST: 							os.Getenv("SERVER_HOST"),

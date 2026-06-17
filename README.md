@@ -30,16 +30,3 @@ Implemented so far:
     18. Prevent Insecure Direct Object Reference(IDOR) by define authorization for every type of user
     19. User Search
 ```
-
-## Tested Feature
-```
-
-```
-
-### HEADER KECIL
-## HEADER SEDANG
-# HEADER GEDE
-
-```
-IT WORKS
-```

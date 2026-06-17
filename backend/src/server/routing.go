@@ -67,6 +67,8 @@ func registerRoutes(r *gin.Engine, sm *ServerManager, lp *middlewares.LoginPriso
             auth.POST("/logout",    userCtrl.LogoutUser())
         }
 
+        public.GET("/user/verify", emailCtrl.VerifyUserVerification())    
+
         api := public.Group("/api")
         {
             api.GET("/users",       userCtrl.SearchUser())
@@ -92,36 +94,29 @@ func registerRoutes(r *gin.Engine, sm *ServerManager, lp *middlewares.LoginPriso
         user := protected.Group("/user")
         {
             user.POST("/verify/request", emailCtrl.SendUserVerificationMail())
-            user.POST("/verify",         emailCtrl.VerifyUserVerification())    
             user.POST("/register-store", storeCtrl.RegisterStore())
+        }
 
-            sudoUser := user.Group("/sudo-required")
-            sudoUser.Use(middlewares.SudoMiddleware(string(sm.JWTSecret)))
-            {
-                sudoUser.PUT("", 
+        sudoUser := protected.Group("/sudo/user")
+        sudoUser.Use(middlewares.SudoMiddleware(string(sm.SUDOSecret)))
+        {
+            sudoUser.PUT("", 
                 middlewares.AuthorizationMiddleware(services.ActionProfileUpdate), 
                 userCtrl.UpdateUser(),
             )
 
-                sudoUser.DELETE("", 
+            sudoUser.DELETE("", 
                 middlewares.AuthorizationMiddleware(services.ActionProfileDelete), 
                 userCtrl.DeleteUser(),
-                )
-            }
+            )
         }
 
         store := protected.Group("/store")
         store.Use(middlewares.StoreMiddleware(sm.Stores))
-        store.Use(middlewares.SudoMiddleware(string(sm.JWTSecret)))
         {
             store.PUT("", 
                 middlewares.AuthorizationMiddleware(services.ActionStoreUpdate), 
                 storeCtrl.UpdateStore(),
-            )
-
-            store.DELETE("", 
-                middlewares.AuthorizationMiddleware(services.ActionStoreDelete), 
-                storeCtrl.DeleteStore(),
             )
 
             product := store.Group("/product")
@@ -131,21 +126,30 @@ func registerRoutes(r *gin.Engine, sm *ServerManager, lp *middlewares.LoginPriso
                     middlewares.AuthorizationMiddleware(services.ActionProductCreate), 
                     prdctCtrl.RegisterProduct(),
                 )
-
-                sudoProduct := product.Group("/sudo-required")
-                sudoProduct.Use(middlewares.SudoMiddleware(string(sm.JWTSecret)))
-                {
-                    sudoProduct.PUT("", 
-                        middlewares.AuthorizationMiddleware(services.ActionProductUpdate), 
-                        prdctCtrl.UpdateProduct(),
-                    )
-
-                    sudoProduct.DELETE("", 
-                        middlewares.AuthorizationMiddleware(services.ActionProductDelete), 
-                        prdctCtrl.RemoveProduct(),
-                    )
-                }
             }
+
+            sudoProduct := store.Group("/sudo/product")
+            sudoProduct.Use(middlewares.SudoMiddleware(string(sm.SUDOSecret)))
+            {
+                sudoProduct.PUT("", 
+                    middlewares.AuthorizationMiddleware(services.ActionProductUpdate), 
+                    prdctCtrl.UpdateProduct(),                    
+                )
+
+                sudoProduct.DELETE("", 
+                    middlewares.AuthorizationMiddleware(services.ActionProductDelete), 
+                    prdctCtrl.RemoveProduct(),
+                )
+            }
+        }
+
+        sudoStore := protected.Group("/sudo/store")
+        sudoStore.Use(middlewares.SudoMiddleware(string(sm.SUDOSecret)))
+        {
+            sudoStore.DELETE("", 
+                middlewares.AuthorizationMiddleware(services.ActionStoreDelete), 
+                storeCtrl.DeleteStore(),                
+            )            
         }
         
         order := protected.Group("/order")
@@ -163,16 +167,17 @@ func registerRoutes(r *gin.Engine, sm *ServerManager, lp *middlewares.LoginPriso
             order.POST("/verify", 
                 sm.Email.VerifyOrderConfirmation(),
             )
-
-            sudoOrder := order.Group("/sudo-required")
-            sudoOrder.Use(middlewares.SudoMiddleware(string(sm.JWTSecret)))
-            {
-                order.DELETE("", 
-                    middlewares.AuthorizationMiddleware(services.ActionOrderCancel), 
-                    orderCtrl.CancelOrder(),
-                )
-            }
         }
+
+        sudoOrder := protected.Group("/sudo/order")
+        sudoOrder.Use(middlewares.SudoMiddleware(string(sm.JWTSecret)))
+        {
+            order.DELETE("", 
+                middlewares.AuthorizationMiddleware(services.ActionOrderCancel), 
+                orderCtrl.CancelOrder(),
+            )
+        }
+            
 
         cart := protected.Group("/cart")
         cart.Use(middlewares.AuthMiddlewares(string(sm.JWTSecret)))

@@ -2,11 +2,9 @@ package repository
 
 import (
 	"backend/src/models"
-	"backend/src/utils"
 	"context"
 	"database/sql"
 	"fmt"
-	"time"
 )
 
 type UserStoreInterface interface {
@@ -14,54 +12,13 @@ type UserStoreInterface interface {
 	UpdateUser(ctx context.Context, params *UserProfileParams) (*models.User, error)
 	DeleteUser(ctx context.Context, params *UserProfileParams) (error)
 	LoginUser(ctx context.Context, params *UserProfileParams) (*models.User, error)
+	ResetPassword(ctx context.Context, params *UserProfileParams)(error)
 
 	FetchUserByID(ctx context.Context, user_id *string) (*models.User, error)
 	FetchPassword(ctx context.Context, params *UserProfileParams) (*string, error)
 
 	VerifyUser(ctx context.Context, verified_id string) (*models.User, error)
 	SearchUser(ctx context.Context, params *UserSearchParams) ([]models.User, error)
-}
-
-type BaseParams struct {
-	UserId 			*string
-	Email 			*string
-	Username 		*string
-
-	Locale			*string
-	Country			*string
-	Address 		*string
-}
-
-type UserProfileParams struct {	
-	BaseParams
-	PhoneNumber		*string
-	HashedPassword  *string
-
-	//For updating (only for the password)
-	NewPasswordHashed 	*string
-
-	FirstName		*string
-	LastName		*string
-	UserType 		*string
-
-	EmailConsent	*bool
-	SmsConsent		*bool
-	ConsentUpdatedAt *time.Time
-	ConsentSource	*string
-
-	//Extra Section
-	IsAgree			*bool
-	IsVerified		*bool	
-	CreatedAt		*time.Time
-	UpdatedAt		*time.Time
-}
-
-type UserSearchParams struct {
-	Query 		*string
-	Username 	*string
-	SortBy 		*string
-	SortOrder 	*string
-	utils.PagFilter
 }
 
 type UserStore struct {
@@ -103,7 +60,11 @@ func (us *UserStore)CreateUser(ctx context.Context, params *UserProfileParams) (
 		&user.IsAgree, &user.EmailConsent, &user.SmsConsent, 
 		&user.Consent_src, &user.CreatedAt,
 	)
-	if err != nil { return nil, err }
+
+	if err != nil {
+		return nil, err 
+	}
+
 	if err = tx.Commit(); err != nil {
 		return nil, err
 	}
@@ -143,23 +104,29 @@ func (us *UserStore)UpdateUser(ctx context.Context, params *UserProfileParams) (
 		&user.Address, &user.EmailConsent, &user.SmsConsent, 
 		&user.Consent_Updated, &user.Updatedat,
 	)
-	if err != nil { return nil, err }
+
+	if err != nil {
+		return nil, err 
+	}
 
 	return user, nil
 }
 
 func (us *UserStore)DeleteUser(ctx context.Context, params *UserProfileParams) error {
 	result, err := us.db.ExecContext(ctx, 
-		`DELETE FROM mkt_users
+		`DELETE FROM mkt_ecommerce.mkt_users
 		WHERE user_id = $1`,
 		params.UserId, 
 	)
-	if err != nil { return err }
+
+	if err != nil {
+		return err 
+	}
 
 	rows, err := result.RowsAffected()
 	if err != nil { return err }
 	if rows == 0 {
-		return fmt.Errorf("user not found or credentials do not match")
+		return fmt.Errorf("User not found or credentials didn't match")
 	}
 
 	return nil
@@ -226,7 +193,8 @@ func (us *UserStore) FetchUserByID(ctx context.Context, user_id *string) (*model
 			user_locale, user_country, user_address, user_type, 
 			is_verified, is_agree, email_consent, sms_consent, 
 			consent_src, created_at, 
-			updated_at, consent_updated_at FROM mkt_users 
+			updated_at, consent_updated_at 
+		FROM mkt_ecommerce.mkt_users 
 		WHERE user_id = $1`,
 		user_id,
 	).Scan(&user.UserID, 
@@ -237,7 +205,9 @@ func (us *UserStore) FetchUserByID(ctx context.Context, user_id *string) (*model
 		&user.Consent_src, &user.CreatedAt, &user.Updatedat, 
 		&user.Consent_Updated,
 	)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err 
+	}
 
 	return user, nil
 }
@@ -249,29 +219,32 @@ func (us *UserStore) FetchPassword(ctx context.Context, params *UserProfileParam
 	switch {
 		case params.Email != nil:
 			err = us.db.QueryRowContext(ctx,
-				`SELECT password_hash from mkt_users
+				`SELECT password_hash from mkt_ecommerce.mkt_users
 				WHERE email = $1`,	
 				params.Email,
 			).Scan(&user.PasswordHash)
 		
 		case params.UserId != nil:
 			err = us.db.QueryRowContext(ctx,
-				`SELECT password_hash FROM mkt_users 
+				`SELECT password_hash FROM mkt_ecommerce.mkt_users 
 				WHERE user_id = $1`,
 				params.UserId,
 			).Scan(&user.PasswordHash)
 
 		case params.Username != nil:
 			err = us.db.QueryRowContext(ctx,
-				`SELECT password_hash FROM mkt_users
+				`SELECT password_hash FROM mkt_ecommerce.mkt_users
 				WHERE username = $1`,
 				params.Username,
 			).Scan(&user.PasswordHash)
 
 		default:
-			return nil, fmt.Errorf("at least one identifier must be provided")
+			return nil, fmt.Errorf("at least one identifier required")
 	}
-	if err != nil { return nil, err }
+
+	if err != nil {
+		return nil, err 
+	}
 
     return &user.PasswordHash, nil
 }		
@@ -283,7 +256,7 @@ func (us *UserStore) VerifyUser(ctx context.Context, verified_id string) (*model
 		`UPDATE mkt_ecommerce.mkt_users SET
 			is_verified = true,
 			updated_at = NOW()
-		WHERE user_id = $2
+		WHERE user_id = $1
 		RETURNING user_id, email`,
 		verified_id,
 	).Scan(&user.UserID, &user.Email)
@@ -328,4 +301,49 @@ func (us *UserStore) SearchUser(ctx context.Context, params *UserSearchParams) (
 	}
 
 	return users, rows.Err()
+}
+
+func(us *UserStore) ResetPassword(ctx context.Context, params *UserProfileParams) error {
+	var results sql.Result; var err error
+
+	const query string = `
+		UPDATE mkt_ecommerce.mkt_users SET
+			password_hash = COALESCE($1, password_hash),
+			updated_at = NOW()
+	`
+
+	switch {
+		case params.Email != nil:{
+			results, err = us.db.ExecContext(
+				ctx, 
+				query + `WHERE email = $1`, 
+				params.Email,
+			)
+		}
+		case params.Username != nil:{
+			results, err = us.db.ExecContext(
+				ctx,
+				query + `WHERE username = $1`,
+				params.Username,
+			)
+		}
+		default: {
+			return fmt.Errorf("at least one identifier is required")
+		}
+	}
+
+	if err != nil {
+		return err
+	}
+
+	rows, err := results.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rows == 0 {
+		return fmt.Errorf("User not found or credentials didn't match")
+	}
+
+	return nil
 }

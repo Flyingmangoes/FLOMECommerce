@@ -1,4 +1,4 @@
-package redis
+package cache_service
 
 import (
 	"backend/src/config"
@@ -6,15 +6,13 @@ import (
 	Logger "backend/src/utils/logger"
 	"context"
 	"fmt"
+	"net"
 	"net/url"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
-	glide "github.com/valkey-io/valkey-glide/go/v2"
-	glide_config "github.com/valkey-io/valkey-glide/go/v2/config"
-	"github.com/valkey-io/valkey-glide/go/v2/options"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 
@@ -33,7 +31,7 @@ type RedisManager struct {
 	REDIS_PORT		string
 	REDIS_HOST  	string
 	CACHE_TTL		time.Duration
-	VClient			*glide.Client
+	Client			*redis.Client
 }	
 
 func NewRedisService(
@@ -42,28 +40,15 @@ func NewRedisService(
 	s repository.StoreStoreInterface, 
 	cfg *config.ConfigManager,
 ) *RedisManager {
-	port, err := strconv.Atoi(cfg.REDIS_CONF.REDIS_PORT)
-	if err != nil {
-		Logger.Log.Error("Failed to get port", zap.Error(err))
-		return nil
-	}
-
-	vg_cfg := glide_config.NewClientConfiguration().WithAddress(&glide_config.NodeAddress{
-		Host: cfg.REDIS_CONF.REDIS_HOST,
-		Port: port,
+	redis_client:= redis.NewClient(&redis.Options{
+		Addr: net.JoinHostPort(cfg.REDIS_CONF.REDIS_HOST, cfg.REDIS_CONF.REDIS_PORT),
 	})
-
-	valkey_client, err := glide.NewClient(vg_cfg)
-	if err != nil {
-		Logger.Log.Error("Failed to initialize valkey service", zap.Error(err))
-		return nil
-	}
 
 	return &RedisManager{
 		REDIS_PORT: cfg.REDIS_CONF.REDIS_PORT,
 		REDIS_HOST: cfg.REDIS_CONF.REDIS_HOST,
 		CACHE_TTL: time.Duration(cfg.REDIS_CONF.CACHE_TTL * int(time.Minute)), 
-		VClient: valkey_client,
+		Client: redis_client,
 		Users: u,
 		Products: p,
 		Stores: s,
@@ -71,46 +56,29 @@ func NewRedisService(
 }
 
 func (rm *RedisManager) ConnectionCheck() {
-	res, err := rm.VClient.Ping(context.Background())
+	err := rm.Client.Ping(context.Background()).Err()
 	if err != nil {
-		Logger.Log.Error("Error", zap.Error(err))
-		return
+		Logger.Log.Error("Failed to connect to redis", zap.Error(err))
 	}
 
-	Logger.Log.Info("Connected", zap.String("response", res))
+	Logger.Log.Info("Connected", zap.String("response", "OK"))
 }
 
 func(rm *RedisManager)Set(ctx context.Context, cacheKey string, cacheValue string) error {
-	opts := new(options.SetOptions).SetExpiry(&options.Expiry{
-		Type: "EX", // in seconds
-		Duration: uint64(rm.CACHE_TTL.Seconds()),
-	})
-
-	res, err := rm.VClient.SetWithOptions(ctx, cacheKey, cacheValue, *opts)
-	if err != nil || res.Value() != "OK"{
-		return err
-	}
-
-	return nil
+	return rm.Client.Set(ctx, cacheKey, cacheValue, rm.CACHE_TTL).Err()
 }
 
 func(rm *RedisManager)Get(ctx context.Context, cacheKey string) ([]byte, error) {
-	result, err := rm.VClient.Get(ctx, cacheKey)
-	if err != nil {
-		return nil, err
-	}
-
-	return []byte(result.Value()), nil
+	val, err := rm.Client.Get(ctx, cacheKey).Bytes()
+	return val, err
 }
 
 func(rm *RedisManager)Del(ctx context.Context, cacheKey string) error {
-	_, err := rm.VClient.Del(ctx , []string{cacheKey})
-	return err
+	return rm.Client.Del(ctx , cacheKey).Err()
 }
 
 func(rm *RedisManager)Clear(ctx context.Context, cacheKeys []string) error {
-	_, err := rm.VClient.Del(ctx, cacheKeys)
-	return err
+	return rm.Client.Del(ctx, cacheKeys...).Err()
 }
 
 func(rm *RedisManager)GenerateCacheKey(prefix, rawQuery string) string {

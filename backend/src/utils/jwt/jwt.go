@@ -1,7 +1,6 @@
 package jwt
 
 import (
-	"backend/src/utils"
 	"errors"
 	"fmt"
 	"time"
@@ -17,71 +16,59 @@ var (
 )
 
 type AuthClaims struct {
-    UserID          string  `json:"userId"`
-    UserType        string  `json:"userType"`
-    UserVerified    bool    `json:"userStatus"`
+    UserID          string      `json:"userId"`
+    UserType        string      `json:"userType"`
+    UserVerified    bool        `json:"userVerified"`
     jwt.RegisteredClaims
 }
 
 type UserVerificationClaims struct {
-    UserID      string `json:"userId"`
-    MailType    string `json:"mailType"`
+    UserID          string      `json:"userId"`
+    MailType        string      `json:"mailType"`
     jwt.RegisteredClaims
 }; 
 
 type SudoClaims struct {
-    UserID      string       `json:"userId"`
-    Action      utils.Action `json:"action"`
+    UserID          string       `json:"userId"`
+    UserType        string       `json:"userType"`
     jwt.RegisteredClaims
 }
 
-func GenerateAnyToken(userID, userType string, status bool, usage utils.TokenType, action *utils.Action, secret []byte) (string, error) {
+func GenerateAccessToken(
+    userID, 
+    userType string, 
+    verifiedStatus bool, 
+    secret []byte,
+) (string, error) {
     if userID == "" || userType == "" {
-        return "", fmt.Errorf("required params cannot be empty")
+        return "", fmt.Errorf("Missing required identifier")
     }
 
-    if usage == utils.SUDO_TOKEN && action != nil {
-        claims := SudoClaims{
-            UserID: userID,
-            Action: *action,
-            RegisteredClaims: jwt.RegisteredClaims{
-                ExpiresAt: jwt.NewNumericDate(time.Now().Add(2 * time.Minute)),
-                IssuedAt: jwt.NewNumericDate(time.Now()),
-            },
-        }
-
-        token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	    tokenString, err := token.SignedString(secret)
-	    if err != nil {
-    		return "", err
-    	}
-        
-	    return tokenString, nil
-    } else if usage == utils.ACCESS_TOKEN {
-        claims := AuthClaims{
-            UserID: userID,
-            UserType: userType,
-            UserVerified: status,
-            RegisteredClaims: jwt.RegisteredClaims{
-                ExpiresAt: jwt.NewNumericDate(time.Now().Add(15 * time.Minute)),
-                IssuedAt: jwt.NewNumericDate(time.Now()),
-            },
-        }
-
-        token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
-	    tokenString, err := token.SignedString(secret)
-	    if err != nil {
-    		return "", err
-	    }
-
-	    return tokenString, nil
-    } else {
-        return "", fmt.Errorf("Unknown usage type %d", usage)
+    claims := AuthClaims{
+        UserID: userID,
+        UserType: userType,
+        UserVerified: verifiedStatus,
+        RegisteredClaims: jwt.RegisteredClaims{
+            ExpiresAt: jwt.NewNumericDate(time.Now().Add(15 * time.Minute)),
+            IssuedAt: jwt.NewNumericDate(time.Now()),            
+        },
     }
+
+    token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	tokenString, err := token.SignedString(secret)
+	if err != nil {
+    	return "", err
+	}
+
+	return tokenString, nil
 }
 
-func GenerateRefreshToken(userID, userType string, secret []byte) (string, time.Time, error) {
+func GenerateRefreshToken(
+    userID, 
+    userType string, 
+    secret []byte,
+) (string, time.Time, error) {
     expiresAt := time.Now().Add(3 * 24 * time.Hour)
     claims := &AuthClaims{
         UserID: userID,
@@ -98,9 +85,39 @@ func GenerateRefreshToken(userID, userType string, secret []byte) (string, time.
     return signed, expiresAt, err
 }
 
-func GenerateUserVerificationToken(user_id string, secret []byte) (string, time.Time, error) {
-    expiresAt := time.Now().Add((5 * time.Minute))
-    
+func GenerateSudoToken(
+    user_id, 
+    user_type string, 
+    secret []byte,
+)(string, error) {
+    if user_id == "" && user_type == "" {
+        return "", fmt.Errorf("Missing required identifier")
+    }
+
+    claims := SudoClaims{
+        UserID: user_id,
+        UserType: user_type,
+        RegisteredClaims: jwt.RegisteredClaims{
+            ExpiresAt: jwt.NewNumericDate(time.Now().Add(5 * time.Minute)),
+            IssuedAt: jwt.NewNumericDate(time.Now()),
+        },        
+    }
+
+    token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString(secret)
+	if err != nil {
+    	return "", err
+    }
+        
+	return tokenString, nil
+}
+
+func GenerateUserVerificationToken(
+    user_id string, 
+    secret []byte,
+) (string, time.Time, error) {    
+    expiresAt := time.Now().Add(24 *time.Hour)
+
     claims := UserVerificationClaims{
         UserID: user_id,
         RegisteredClaims: jwt.RegisteredClaims{
