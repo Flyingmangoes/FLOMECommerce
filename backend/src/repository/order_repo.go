@@ -14,21 +14,6 @@ type OrderStoreInterface interface {
 	UpdateOrderStatus(ctx context.Context, order_id, status string) error
 }
 
-type OrderItemInput struct {
-    ProductID *string
-    Price     *float64
-    Quantity  *int
-}
-
-type OrderStoreParams struct {
-	BaseParams
-    OrderID    *string
-    TotalPrice *float64
-    Status     *string
-    Location   *string
-    ProductList []OrderItemInput
-}
-
 type OrderStore struct {
 	db *sql.DB
 }
@@ -43,7 +28,8 @@ func (os *OrderStore)CreateOrder(ctx context.Context, tx *sql.Tx, params *OrderS
 	var err error
 
 	err = tx.QueryRowContext(ctx,
-	`INSERT INTO mkt_orders(buyer_id, buyer_email, price_total, location, status)
+	`INSERT INTO mkt_ecommerce.mkt_orders(buyer_id, buyer_email, 
+	price_total, location, status)
 	VALUES($1, $2, $3, $4, $5)
 	RETURNING order_id, buyer_id, buyer_email, price_total, location, status, created_at`,
 	params.UserId, params.BaseParams.Email, params.TotalPrice, 
@@ -59,7 +45,7 @@ func (os *OrderStore)CreateOrder(ctx context.Context, tx *sql.Tx, params *OrderS
 		order_item := &models.OrderItem{}
 
     	err = tx.QueryRowContext(ctx,
-        	`INSERT INTO mkt_order_items(order_id, product_id, quantity, price)
+        	`INSERT INTO mkt_ecommerce.mkt_order_items(order_id, product_id, quantity, price)
         	VALUES($1, $2, $3, $4)
         	RETURNING order_item_id, order_id, product_id, quantity, price`,
         	order.ID, item.ProductID, item.Quantity, item.Price,
@@ -77,7 +63,7 @@ func (os *OrderStore)CreateOrder(ctx context.Context, tx *sql.Tx, params *OrderS
 
 func (os *OrderStore)RemoveOrder(ctx context.Context, tx *sql.Tx, params *OrderStoreParams) error {
 	results, err := tx.ExecContext(ctx,
-		`DELETE FROM mkt_orders
+		`DELETE FROM mkt_ecommerce.mkt_orders
 		WHERE order_id = $1 AND buyer_id = $2`,
 		params.OrderID, params.UserId,
 	)

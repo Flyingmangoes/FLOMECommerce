@@ -142,7 +142,7 @@ func (uc *UserManager) RegisterUser() gin.HandlerFunc {
 			return
 		}
 
-		accessToken, err := jwt.GenerateAnyToken(user.UserID, user.UserType, user.IsVerified, utils.ACCESS_TOKEN, nil, uc.JWTSecret)
+		accessToken, err := jwt.GenerateAccessToken(user.UserID, user.UserType, user.IsVerified, uc.JWTSecret)
 		if err != nil {
 			Logger.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrInternal("Failed to generate token"))

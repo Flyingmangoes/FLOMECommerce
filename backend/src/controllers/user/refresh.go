@@ -2,7 +2,6 @@ package auth_controllers
 
 import (
 	"backend/src/middlewares"
-	"backend/src/utils"
 	"backend/src/utils/jwt"
 	Logger "backend/src/utils/logger"
 	"net/http"
@@ -43,7 +42,7 @@ func (uc *UserManager)Refresh() gin.HandlerFunc {
 			return
 		}
 
-		newAccess, err := jwt.GenerateAnyToken(claims.UserID, claims.UserType, claims.UserVerified, utils.ACCESS_TOKEN, nil, uc.JWTSecret)
+		newAccess, err := jwt.GenerateAccessToken(claims.UserID, claims.UserType, claims.UserVerified, uc.JWTSecret)
 		if err != nil {
 			Logger.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrInternal("Failed to create token"))

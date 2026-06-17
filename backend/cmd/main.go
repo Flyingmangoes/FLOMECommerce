@@ -12,7 +12,6 @@ import (
 	Logger "backend/src/utils/logger"
 	"fmt"
 	"log/slog"
-	"net"
 	"os"
 
 	"github.com/subosito/gotenv"
@@ -48,27 +47,16 @@ func main() {
 	cartStore 	 := repository.NewCartStore(db)
 
 	Logger.Log.Info("Initializing Service")
-	emailService := emailSrvc.NewSGMailManager(
-		cfg.SENDGRID_CONF.SENDGRID_SECRET, 
-		cfg.SENDGRID_CONF.VERIFICATION_SECRET,
-		cfg.SENDGRID_CONF.TEST_EMAIL,
-		cfg.SENDGRID_CONF.DOMAIN_EMAIL,
-		emailSrvc.SGTemplate{
-			T_UserVerification: cfg.SENDGRID_CONF.TEMPLATE_USER_VERIFICATION,
-			T_PassReset: cfg.SENDGRID_CONF.TEMPLATE_PASS_RESET,
-			T_OrderConfirmation: cfg.SENDGRID_CONF.TEMPLATE_ORDER_CONFIRMATION,
-		},
-		userStore,
-	)
+	emailService := emailSrvc.NewSGMailManager(cfg, userStore)
 
 	if err := emailService.Validate(); err != nil {
 		Logger.Log.Error("Missing dependency", zap.Error(err))
 		os.Exit(1)
 	}
-	
+
 	Logger.Log.Info("Emailing Service started")
 
-	cacheService := redis.NewRedisService(
+	cacheService := cache_service.NewRedisService(
 		userStore,
 		productStore,
 		storeStore,
@@ -76,12 +64,10 @@ func main() {
 	)
 	Logger.Log.Info("Cache Service started")
 
-	success_url := net.JoinHostPort(cfg.SERV_CONF.FrontendHOST, cfg.SERV_CONF.FrontendPORT) + "/success"
-    cancel_url := net.JoinHostPort(cfg.SERV_CONF.FrontendHOST, cfg.SERV_CONF.FrontendPORT) + "/cancel"
-	paymentService := paymentSrvc.NewPaymentService(cfg.STRIPE_CONF.STRIPE_SECRET_KEY, 
-		cfg.STRIPE_CONF.STRIPE_WEBHOOK_SECRET,
-		success_url,
-		cancel_url,
+	url := paymentSrvc.NewStripeURL(cfg)
+	paymentService := paymentSrvc.NewPaymentService(
+		cfg.STRIPE_CONF,
+		url[0], url[1],
 	)
 	Logger.Log.Info("Payment Service started")
 

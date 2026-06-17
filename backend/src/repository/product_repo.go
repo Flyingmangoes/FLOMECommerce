@@ -2,11 +2,10 @@ package repository
 
 import (
 	"backend/src/models"
-	"backend/src/utils"
+	
 	"context"
 	"database/sql"
 	"fmt"
-	"time"
 )
 
 type ProductStoreInterface interface {
@@ -21,37 +20,6 @@ type ProductStoreInterface interface {
 
 	UpdateRating(ctx context.Context, params *ProductProfileParams) (*models.Product, error)
     DeductStock(ctx context.Context, tx *sql.Tx, items []OrderItemInput) error
-}
-
-type ProductProfileParams struct {
-	// Identifier Section
-	ProductID 		*string
-	StoreId 		*string
-	Name 			*string
-
-	// Profile Section
-	Url 			*string
-	ImageUrl 		*string
-	Price 			*float64
-	Rating 			*float64
-	Desc 			*string
-	Category 		*string
-	Availability 	*int
-
-	// Extra Section
-	CreatedAt *time.Time
-	UpdatedAt *time.Time
-}
-
-type ProductSearchParams struct {
-	Query 		*string
-	Category 	*string
-	StoreID 	*string
-	MinPrice 	*float64
-	MaxPrice 	*float64
-	SortBy 		*string
-	SortOrder 	*string
-	utils.PagFilter
 }
 
 type ProductStore struct {
@@ -107,7 +75,7 @@ func (ps *ProductStore) UpdateProduct(ctx context.Context, params *ProductProfil
 	defer tx.Rollback()
 
 	err := tx.QueryRowContext(ctx,
-		`UPDATE mkt_products SET 
+		`UPDATE mkt_ecommerce.mkt_products SET 
 			product_name	= COALESCE ($1, product_name),
 			product_desc	= COALESCE ($2, product_desc),
 			product_pic		= COALESCE ($3, product_pic),
@@ -142,7 +110,7 @@ func (ps *ProductStore) UpdateProduct(ctx context.Context, params *ProductProfil
 
 func (ps *ProductStore)RemoveProduct(ctx context.Context, params *ProductProfileParams) error {
 	results, err := ps.db.ExecContext(ctx,
-		`DELETE FROM mkt_products
+		`DELETE FROM mkt_ecommerce.mkt_products
 		WHERE product_id = $1 AND store_id = $2`,
 		params.ProductID, params.StoreId,
 	)
@@ -172,7 +140,10 @@ func (ps *ProductStore)GetProductForUpdate(ctx context.Context, tx *sql.Tx, orde
 		product := &models.Product{}
 
 		err := tx.QueryRowContext(ctx,
-			`SELECT product_id, product_name, product_desc, store_id, product_pic, price, rating, availability, created_at, updated_at FROM mkt_products
+			`SELECT product_id, product_name, product_desc, store_id, 
+				product_pic, price, rating, 
+				availability, created_at, updated_at 
+			FROM mkt_ecommerce.mkt_products
 			WHERE product_id = $1`,
 			p.ProductID,
 		).Scan(&product.ProductID, &product.Name, 
@@ -196,8 +167,10 @@ func (ps *ProductStore) GetProductByID(ctx context.Context, product_id string) (
 	product := &models.Product{}
 	
 	err := ps.db.QueryRowContext(ctx,
-		`SELECT product_id, product_name, product_desc, store_id, product_pic, price, rating, availability, created_at, updated_at 
-		FROM mkt_products WHERE product_id = $1`,
+		`SELECT product_id, product_name, product_desc, 
+			store_id, product_pic, price, rating, 
+			availability, created_at, updated_at 
+		FROM mkt_ecommerce.mkt_products WHERE product_id = $1`,
 		product_id,
 	).Scan(&product.ProductID, &product.Name,
 		&product.Desc, &product.StoreID,
@@ -218,8 +191,8 @@ func (ps *ProductStore) UpdateRating(ctx context.Context, params *ProductProfile
 	product := &models.Product{}
 	
 	err := ps.db.QueryRow(
-		`UPDATE mkt_products SET
-		rating = COALESCE($1, rating)
+		`UPDATE mkt_ecommerce.mkt_products SET
+			rating = COALESCE($1, rating)
 		WHERE product_id = $2
 		RETURNING product_id, rating`,
 		params.Rating, params.ProductID,
@@ -235,8 +208,8 @@ func (ps *ProductStore) UpdateRating(ctx context.Context, params *ProductProfile
 func (ps *ProductStore) DeductStock(ctx context.Context, tx *sql.Tx, items []OrderItemInput) error {
     for _, item := range items {
         result, err := tx.ExecContext(ctx,
-            `UPDATE mkt_products 
-            SET availability = availability - $1
+            `UPDATE mkt_ecommerce.mkt_products SET 
+				availability = availability - $1
             WHERE product_id = $2 AND availability >= $1`,
             item.Quantity, item.ProductID,
         )

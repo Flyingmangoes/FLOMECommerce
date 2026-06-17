@@ -19,15 +19,6 @@ type CartStoreInterface interface {
 	GetCartItems(ctx context.Context, params *CartProfileParams)([]*models.CartItem, error)
 }
 
-type CartProfileParams struct {
-	BaseParams
-	CartID 		*string
-	CartItemsID *string
-	ProductID 	*string
-	StoreID 	*string
-	Quantity 	*int
-}
-
 type CartStore struct {
 	db *sql.DB
 }
@@ -71,7 +62,8 @@ func (cs *CartStore) AddCartItem(ctx context.Context, params *CartProfileParams)
 		`INSERT INTO mkt_ecommerce.mkt_cart_items (cart_id, product_id, store_id, quantity)
 		VALUES ($1, $2, $3, $4)
 		ON CONFLICT(cart_id, product_id)
-		DO UPDATE SET quantity = mkt_ecommerce.mkt_cart_items.quantity + EXCLUDED.quantity
+		DO UPDATE SET 
+			quantity = mkt_ecommerce.mkt_cart_items.quantity + EXCLUDED.quantity
 		RETURNING cart_item_id, cart_id, product_id, store_id, quantity`,
 		params.CartID, params.ProductID, params.StoreID, params.Quantity,
 	).Scan(&cart_item.ID, &cart_item.CartID, 

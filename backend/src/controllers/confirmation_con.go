@@ -19,9 +19,14 @@ func (sc *SudoManager) GenerateConfirmation() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userId := c.GetString("userId")
 		userType := c.GetString("userType")
-		userStatus := c.GetBool("userStatus")
+		userVerified := c.GetBool("userVerified")
 
-		access, err := jwt.GenerateAnyToken(userId, userType, userStatus, utils.SUDO_TOKEN, nil, []byte(sc.SUDOSecret))
+		if !userVerified {
+			c.Error(middlewares.ErrUnauthorized("Invalid user"))
+			return
+		}
+
+		access, err := jwt.GenerateSudoToken(userId, userType, []byte(sc.SUDOSecret))
 		if err != nil {
 			Logger.Log.Error("Failed to generate token", zap.Error(err))
 			c.Error(middlewares.ErrInternal("Failed to generate token"))
@@ -31,7 +36,6 @@ func (sc *SudoManager) GenerateConfirmation() gin.HandlerFunc {
 		c.Header("X-Sudo-Token", "Sudo" + access)
 		c.JSON(http.StatusOK, gin.H{
 			"response": utils.EXIT_SUCCESS,
-			//removed in production
 			"token": access,
 		})
 	}

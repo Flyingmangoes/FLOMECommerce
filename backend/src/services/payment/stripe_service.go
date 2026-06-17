@@ -1,9 +1,11 @@
 package payment_service
 
 import (
+	"backend/src/config"
 	Logger "backend/src/utils/logger"
 	"context"
 	"fmt"
+	"net"
 	"time"
 
 	"github.com/stripe/stripe-go/v85"
@@ -27,19 +29,30 @@ type ItemDetail struct {
     ImageUrl    string
 }
 
-func NewPaymentService(secretKey, webhookKey, successURL, cancelURL string) *PaymentService {
+func NewPaymentService(cfg *config.StripeConfig, successURL, cancelURL string) *PaymentService {
 	return &PaymentService{
 		SuccessURL: successURL,
 		CancelURL: cancelURL,
-		WebhookKey: webhookKey,
-		StripeClient: stripe.NewClient(secretKey),
+		WebhookKey: cfg.STRIPE_WEBHOOK_SECRET,
+		StripeClient: stripe.NewClient(cfg.STRIPE_SECRET_KEY),
 	}
+}
+
+func NewStripeURL(cfg *config.ConfigManager)([]string){
+	u := make([]string,0)
+	fhp := net.JoinHostPort(cfg.SERV_CONF.FrontendHOST, cfg.SERV_CONF.FrontendPORT)
+
+	success := fmt.Sprintf("http://%s/success", fhp)
+	cancel := fmt.Sprintf("http://%s/cancel", fhp)
+
+	u = append(u, success, cancel)
+	return u
 }
 
 func(ps *PaymentService) CreateCheckoutSession(ctx context.Context, orderID, buyerEmail string, items []ItemDetail) (*stripe.CheckoutSession, error) {
 	lineItems := make([]*stripe.CheckoutSessionCreateLineItemParams, 0, len(items))
 
-	for _, item := range items{
+	for _, item := range items{	
 		priceInCents := int64(item.Price * 100)
 
 		lineItems = append(lineItems, &stripe.CheckoutSessionCreateLineItemParams{

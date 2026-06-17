@@ -29,7 +29,7 @@ type ServerManager struct {
 	Email 		*emailSrvc.SGMailManager
 	Payment 	*paymentSrvc.PaymentService
 	Tx			*services.TxManager
-	Cacher		redis.RedisInterface
+	Cacher		cache_service.RedisInterface
 	
 	JWTSecret			[]byte
 	SUDOSecret 			[]byte

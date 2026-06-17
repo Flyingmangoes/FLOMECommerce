@@ -3,7 +3,6 @@ package auth_controllers
 import (
 	"backend/src/middlewares"
 	"backend/src/repository"
-	"backend/src/utils"
 	"backend/src/utils/jwt"
 	Logger "backend/src/utils/logger"
 	"backend/src/validators"
@@ -60,7 +59,7 @@ func (uc *UserManager)LoginUser(prison *middlewares.LoginPrison) gin.HandlerFunc
 
 		prison.Release(key)
 
-		accessToken, err := jwt.GenerateAnyToken(user.UserID, user.UserType, user.IsVerified, utils.ACCESS_TOKEN, nil, uc.JWTSecret)
+		accessToken, err := jwt.GenerateAccessToken(user.UserID, user.UserType, user.IsVerified, uc.JWTSecret)
 		if err != nil {
 			Logger.Log.Error("Error", zap.Error(err))
 			c.Error(middlewares.ErrInternal("Failed to generate token"))

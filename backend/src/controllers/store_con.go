@@ -60,7 +60,7 @@ type StoreManager struct {
 	Users 		repo.UserStoreInterface
 	Stores    	repo.StoreStoreInterface
     Tokens   	repo.TokenStoreInterface
-	Cache 		redis.RedisInterface
+	Cache 		cache_service.RedisInterface
 	JWTSecret 	[]byte
 }
 

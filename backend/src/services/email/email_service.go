@@ -1,11 +1,13 @@
 package email_services
 
 import (
+	"backend/src/config"
 	"backend/src/repository"
 	Logger "backend/src/utils/logger"
 	"fmt"
 	"strconv"
 	"time"
+	"net"
 
 	"github.com/sendgrid/sendgrid-go"
 	"github.com/sendgrid/sendgrid-go/helpers/mail"
@@ -28,11 +30,11 @@ type MailServiceParams struct {
 }
 
 type SGMailManager struct {
-	Users 				repository.UserStoreInterface
-	SG_SECRET 				string
-	VERIFICATION_SECRET 	string
+	Users 			repository.UserStoreInterface
+	PROD_EMAIL				string
 	TEST_EMAIL 				string
 	DOMAIN_EMAIL 			string
+	SGContext
 	SGTemplate
 }	
 
@@ -42,22 +44,37 @@ type SGTemplate struct{
 	T_OrderConfirmation 	string
 }
 
-func NewSGMailManager(sg_secret, v_secret, test_email, domain_email string, template SGTemplate, us repository.UserStoreInterface) *SGMailManager {
+type SGContext struct {
+	SERVER_URL 					string
+	SG_SECRET 					string
+	USER_VERIFICATION_SECRET 	string
+}
+
+func NewSGMailManager(cfg *config.ConfigManager, us repository.UserStoreInterface) *SGMailManager {
 	return &SGMailManager{
-		SG_SECRET: sg_secret,
-		VERIFICATION_SECRET: v_secret,
 		Users: us,
-		SGTemplate: template,
-		TEST_EMAIL: test_email,
-		DOMAIN_EMAIL: domain_email,
+		TEST_EMAIL: cfg.SENDGRID_CONF.TEST_EMAIL,
+		PROD_EMAIL: cfg.SENDGRID_CONF.DOMAIN_EMAIL,
+		DOMAIN_EMAIL: cfg.SENDGRID_CONF.DOMAIN_EMAIL,
+		SGContext: SGContext{
+			SERVER_URL: net.JoinHostPort(cfg.SERV_CONF.HOST, cfg.SERV_CONF.PORT),
+			SG_SECRET: cfg.SENDGRID_CONF.SENDGRID_SECRET,
+			USER_VERIFICATION_SECRET: cfg.SENDGRID_CONF.VERIFICATION_SECRET,
+		},
+		SGTemplate: SGTemplate{
+			T_UserVerification: cfg.SENDGRID_CONF.TEMPLATE_USER_VERIFICATION,
+			T_PassReset: cfg.SENDGRID_CONF.TEMPLATE_PASS_RESET,
+			T_OrderConfirmation: cfg.SENDGRID_CONF.TEMPLATE_ORDER_CONFIRMATION,
+		},
 	}
 }
 
 type MailData struct {
+	DomainName 		string 		`json:"domainName"`
 	Username 		string		`json:"username"`
-	UserEmail 		string		`json:"userEmail"`
+	FirstName		string		`json:"firstName"`
 	SupportEmail 	string		`json:"supportEmail"`
-	Token 			string		`json:"token"`
+	TokenUrl 		string		`json:"token"`
 	Expiration 		*time.Time 	`json:"expires"`
 }
 
@@ -115,10 +132,12 @@ func(sg *SGMailManager) CreateMail(mailReq *Mail) []byte {
 	}
 
 	p.AddTos(tos...)
-	p.SetDynamicTemplateData("Username", mailReq.data.Username)
-	p.SetDynamicTemplateData("User_Email", mailReq.data.UserEmail)
-	p.SetDynamicTemplateData("Support_Email", mailReq.data.SupportEmail)
-	p.SetDynamicTemplateData("Code", mailReq.data.Token)
+	p.SetDynamicTemplateData("domainName", mailReq.data.DomainName)
+	p.SetDynamicTemplateData("firstName", mailReq.data.FirstName)
+	p.SetDynamicTemplateData("username", mailReq.data.Username)
+	p.SetDynamicTemplateData("verificationUrl", mailReq.data.TokenUrl)
+	p.SetDynamicTemplateData("supportEmail", mailReq.data.SupportEmail)
+	p.SetDynamicTemplateData("currentYear", time.Now().Year())
 
 	m.AddPersonalizations(p)
 	return mail.GetRequestBody(m)
