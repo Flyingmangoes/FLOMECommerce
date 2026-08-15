@@ -1,5 +1,3 @@
-CREATE EXTENSION IF NOT EXISTS "pqcrypto";
-
 CREATE TABLE IF NOT EXISTS mkt_ecommerce.mkt_products(
     product_id      UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
     store_id        UUID          NOT NULL REFERENCES mkt_ecommerce.mkt_stores(store_id) ON DELETE CASCADE,
@@ -15,7 +13,7 @@ CREATE TABLE IF NOT EXISTS mkt_ecommerce.mkt_products(
     updated_at      TIMESTAMPTZ
 );
 
-CREATE INDEX idx_mkt_products_store_id ON mkt_ecommerce.mkt_products(store_id);
-CREATE INDEX idx_mkt_products_store_category ON mkt_ecommerce.mkt_products(category);
+CREATE INDEX IF NOT EXISTS idx_mkt_products_store_id ON mkt_ecommerce.mkt_products(store_id);
+CREATE INDEX IF NOT EXISTS idx_mkt_products_store_category ON mkt_ecommerce.mkt_products(category);
 
 

@@ -1,4 +1,4 @@
-package services
+package auth
 
 import(
 	Logger"backend/src/utils/logger"
@@ -11,8 +11,8 @@ type AccountType string
 
 const (
 	AccountGuestUser		AccountType = "GUEST_USER"
-	AccountVerifiedUser 	AccountType = "VERIFIED_USER"
-	AccountMerchant 		AccountType = "MERCHANT"
+	AccountUnverified		AccountType = "UNVERIFIED_USER"
+	AccountVerified 		AccountType = "VERIFIED_USER"
 	AccountAdmin 			AccountType = "ADMIN"
 )
 
@@ -35,7 +35,7 @@ const (
 	ActionOrderDelete 	 	Action = "order:delete"
 	ActionOrderSelfRead  	Action = "order:read"
 
-	ActionCartSelfRead   	Action = "cart:read"
+	ActionCartRead   		Action = "cart:read"
 	ActionCartAdd 		 	Action = "cart:add"
 	ActionCartUpdate 	 	Action = "cart:update"
 	ActionCartClear 	 	Action = "cart:clear"
@@ -47,7 +47,13 @@ var AuthorizationList = map[AccountType][]Action{
 		ActionProductRead,
 		ActionStoreRead,
 	},
-	AccountVerifiedUser: {
+	AccountUnverified: {
+		ActionStoreRead,
+		ActionProductRead,
+		ActionCartRead,
+		ActionProfileDelete,
+	},
+	AccountVerified: {
 		ActionProfileUpdate,
 		ActionProfileDelete,
 		ActionProductRead,
@@ -58,15 +64,6 @@ var AuthorizationList = map[AccountType][]Action{
 		ActionCartRemove,
 		ActionCartClear,
 		ActionCartUpdate,
-	},
-	AccountMerchant: {
-		ActionProductCreate,
-		ActionProductDelete,
-		ActionProductUpdate,
-		ActionProductRead,
-		ActionStoreRead,
-		ActionStoreUpdate,
-		ActionStoreDelete,
 	},
 	AccountAdmin: {
 		ActionProfileUpdate, 
@@ -86,36 +83,35 @@ var AuthorizationList = map[AccountType][]Action{
 	},
 }
 
-const (
-	allowed bool = true
-	notAllowed bool = false
-)
-
-func VerifyAuthorization(user_account AccountType, user_action Action) (bool, error) {
-	if user_account == "" || user_action == "" {
-		return false, fmt.Errorf("Any of the parameter cannot be empty")
+func VerifyAuthorization(
+		userId string, 
+		userAccount AccountType, 
+		userAction Action,
+	) (bool, error) {
+	if userAccount == "" || userAction == "" {
+		return false, fmt.Errorf("Missing identifier")
 	}
 
-	action_list, exists := AuthorizationList[user_account]
+	actionList, exists := AuthorizationList[userAccount]
 	if !exists {
-		Logger.Log.Error("Unknown account type", zap.String("type", string(user_account)))
-		return false, fmt.Errorf("Unknown Account type: %s", string(user_account))
+		return false, fmt.Errorf("Invalid Account type: %s", string(userAccount))
 	}
 
-	if !getAllowedAction(action_list, user_action){
-		return notAllowed, fmt.Errorf("Action not authorized for this user")
+	isAllowed := getAllowedAction(actionList, userAction)
+	if !isAllowed {
+		return false, fmt.Errorf("Action not authorized for this user")
 	}
 
-	return allowed, nil
+	return isAllowed, nil
 }
 
-func getAllowedAction(actions []Action, user_action Action) bool {
-	for _,  allowed_action := range actions {
-		if user_action != allowed_action {
-			return notAllowed
+func getAllowedAction(actions []Action, userAction Action) bool {
+	for _,  action := range actions {
+		if userAction != action {
+			return false
 		}
 	}
 
-	return allowed
+	return true
 }
 

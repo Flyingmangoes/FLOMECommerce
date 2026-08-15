@@ -1,8 +1,9 @@
 package middlewares
 
 import (
-	"backend/src/services"
-	"backend/src/utils/jwt"
+	terror "backend/src/error"
+	"backend/src/services/auth"
+	jwt_service "backend/src/utils/JWT"
 	"strings"
 	"sync"
 	"time"
@@ -14,39 +15,40 @@ func AuthMiddlewares(secret string) gin.HandlerFunc {
 	return func (c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			c.Error(ErrUnauthorized("Missing authorization header"))
+			c.Error(terror.ErrUnauthorized("Missing authorization header"))
 			c.Abort()
 			return
 		}
 
 		parts := strings.SplitN(authHeader, " ", 2) 
 		if len(parts) != 2 || parts[0] != "Bearer" {
-			c.Error(ErrUnauthorized("Invalid authorization format"))
+			c.Error(terror.ErrUnauthorized("Invalid authorization format"))
 			c.Abort()
 			return 
 		}
 
-		claims, err := jwt.VerifyAccessToken(parts[1], []byte(secret))
+		claims, err := jwt_service.VerifyAccessToken(parts[1], []byte(secret))
 		if err != nil {
-			c.Error(ErrUnauthorized(err.Error()))
+			c.Error(terror.ErrUnauthorized(err.Error()))
             c.Abort()
             return
 		}
 
 		c.Set("userVerified", claims.UserVerified)
-		c.Set("userId", 	claims.UserID)
-        c.Set("userType", 	claims.UserType)
+		c.Set("userId", claims.UserID)
+        c.Set("userType", claims.UserType)
         c.Next()
 	}
 }        
 
-func AuthorizationMiddleware(action services.Action) gin.HandlerFunc {
+func AuthorizationMiddleware(action auth.Action) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		userId := c.GetString("userId")
 		userType := c.GetString("userType")
 
-		ok, err := services.VerifyAuthorization(services.AccountType(userType), action)
+		ok, err := auth.VerifyAuthorization(userId, auth.AccountType(userType), action)
 		if err != nil  || !ok {
-			c.Error(ErrUnauthorized("Invalid user"))
+			c.Error(terror.ErrUnauthorized("Invalid user"))
 			c.Abort()
 			return
 		}

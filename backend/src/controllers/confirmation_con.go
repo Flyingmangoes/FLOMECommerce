@@ -1,10 +1,9 @@
 package controllers
 
 import (
-	"backend/src/middlewares"
-	"backend/src/utils"
-	"backend/src/utils/jwt"
-	Logger "backend/src/utils/logger"
+	terror "backend/src/error"
+	jwt_service "backend/src/utils/JWT"
+	logger_system "backend/src/utils/LoggerSystem"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -22,20 +21,19 @@ func (sc *SudoManager) GenerateConfirmation() gin.HandlerFunc {
 		userVerified := c.GetBool("userVerified")
 
 		if !userVerified {
-			c.Error(middlewares.ErrUnauthorized("Invalid user"))
+			c.Error(terror.ErrUnauthorized("Invalid user"))
 			return
 		}
 
-		access, err := jwt.GenerateSudoToken(userId, userType, []byte(sc.SUDOSecret))
+		access, err := jwt_service.GenerateSudoToken(userId, userType, []byte(sc.SUDOSecret))
 		if err != nil {
-			Logger.Log.Error("Failed to generate token", zap.Error(err))
-			c.Error(middlewares.ErrInternal("Failed to generate token"))
+			logger_system.Log.Error("Failed to generate token", zap.Error(err))
+			c.Error(terror.ErrInternal("Failed to generate token"))
 			return
 		}
 
 		c.Header("X-Sudo-Token", "Sudo" + access)
 		c.JSON(http.StatusOK, gin.H{
-			"response": utils.EXIT_SUCCESS,
 			"token": access,
 		})
 	}

@@ -1,11 +1,13 @@
-package auth_controllers
+package user
 
 import (
+	user_type "backend/src/controllers/user/types"
+	terror "backend/src/error"
 	"backend/src/middlewares"
 	"backend/src/repository"
-	"backend/src/utils/jwt"
-	Logger "backend/src/utils/logger"
-	"backend/src/validators"
+	"backend/src/services/auth"
+	jwt_service "backend/src/utils/JWT"
+	logger_system "backend/src/utils/LoggerSystem"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -24,8 +26,8 @@ func (uc *UserManager)LoginUser(prison *middlewares.LoginPrison) gin.HandlerFunc
 
 		var req LoginRequest
 		if err := c.ShouldBindBodyWithJSON(&req); err != nil {
-			Logger.Log.Error("Error", zap.Error(err))
-			c.Error(middlewares.ErrBadRequest("Failed to read client request"))
+			logger_system.Log.Error("Error", zap.Error(err))
+			c.Error(terror.ErrBadRequest("Failed to read client request"))
 			return
 		}
 
@@ -36,8 +38,8 @@ func (uc *UserManager)LoginUser(prison *middlewares.LoginPrison) gin.HandlerFunc
 			},
 		})
 		if err != nil {
-			Logger.Log.Error("Error while retrieving user", zap.Error(err))
-			c.Error(middlewares.ErrInternal("Failed to fetch user data"))
+			logger_system.Log.Error("Error while retrieving user", zap.Error(err))
+			c.Error(terror.ErrInternal("Failed to fetch user data"))
 			return
 		}
 
@@ -50,42 +52,42 @@ func (uc *UserManager)LoginUser(prison *middlewares.LoginPrison) gin.HandlerFunc
             return
 		}
 
-		if err := validators.ValidatePassword(user.PasswordHash, req.Password); err != nil {
-			Logger.Log.Error("Error", zap.Error(err))
+		if err := auth.ValidatePassword(user.PasswordHash, req.Password); err != nil {
+			logger_system.Log.Error("Error", zap.Error(err))
 			prison.RecordFailure(key)
-            c.Error(middlewares.ErrUnauthorized("Invalid credentials"))
+            c.Error(terror.ErrUnauthorized("Invalid credentials"))
             return
         }
 
 		prison.Release(key)
 
-		accessToken, err := jwt.GenerateAccessToken(user.UserID, user.UserType, user.IsVerified, uc.JWTSecret)
+		accessToken, err := jwt_service.GenerateAccessToken(user.UserID, user.UserType, user.IsVerified, uc.JWTSecret)
 		if err != nil {
-			Logger.Log.Error("Error", zap.Error(err))
-			c.Error(middlewares.ErrInternal("Failed to generate token"))
+			logger_system.Log.Error("Error", zap.Error(err))
+			c.Error(terror.ErrInternal("Failed to generate token"))
 			return
 		}
 
-		refreshToken, expiresAt, err := jwt.GenerateRefreshToken(user.UserID, user.UserType, uc.JWTSecret)
+		refreshToken, expiresAt, err := jwt_service.GenerateRefreshToken(user.UserID, user.UserType, uc.JWTSecret)
 		if err != nil {
-			Logger.Log.Error("Error", zap.Error(err))
-			c.Error(middlewares.ErrInternal("Failed to generate refresh token"))
+			logger_system.Log.Error("Error", zap.Error(err))
+			c.Error(terror.ErrInternal("Failed to generate refresh token"))
 			return 
 		}
 
 		if err := uc.Tokens.SaveRefreshToken(c.Request.Context(), user.UserID, refreshToken, expiresAt); err != nil {
-			Logger.Log.Error("Error", zap.Error(err))
-			c.Error(middlewares.ErrInternal("Failed to save session"))
+			logger_system.Log.Error("Error", zap.Error(err))
+			c.Error(terror.ErrInternal("Failed to save session"))
     		return
 		}
 
 		c.Header("Authorization", "Bearer" + accessToken)
 		c.Header("X-Refresh-Token", refreshToken)
 
-		Logger.Log.Info("Login process completed")
+		logger_system.Log.Info("Login process completed")
 		c.JSON(http.StatusOK, gin.H{
 			"response": "login success",
-			"detail": toUserResponse(user),
+			"detail": user_type.CreateUserResponse(user),
 
 			// for postman remove after make frontend
 			"token": gin.H{

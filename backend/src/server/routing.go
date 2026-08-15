@@ -193,7 +193,7 @@ func registerRoutes(r *gin.Engine, sm *ServerManager, lp *middlewares.LoginPriso
             )
 
             cart.GET("", 
-                middlewares.AuthorizationMiddleware(services.ActionCartSelfRead), 
+                middlewares.AuthorizationMiddleware(services.ActionCartRead), 
                 cartCtrl.GetCarts(),
             )
 

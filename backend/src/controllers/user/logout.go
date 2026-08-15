@@ -1,8 +1,8 @@
-package auth_controllers
+package user
 
 import (
-	"backend/src/middlewares"
-	Logger "backend/src/utils/logger"
+	terror "backend/src/error"
+	logger_system "backend/src/utils/LoggerSystem"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -18,12 +18,12 @@ func (uc *UserManager)LogoutUser() gin.HandlerFunc {
 
 		err = uc.Tokens.DeleteAllUserTokens(c.Request.Context(), id)
 		if err != nil {
-			Logger.Log.Error("Error", zap.Error(err))
-			c.Error(middlewares.ErrInternal("Failed to remove user token"))
+			logger_system.Log.Error("Error", zap.Error(err))
+			c.Error(terror.ErrInternal("Failed to remove user token"))
 			return
 		}
 
-		Logger.Log.Info("Logout process completed")
+		logger_system.Log.Info("Logout process completed")
 		c.JSON(http.StatusOK, gin.H{"response": "success"})
 	}	
 }
