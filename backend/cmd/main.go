@@ -9,7 +9,7 @@ import (
 	emailSrvc "backend/src/services/email"
 	paymentSrvc "backend/src/services/payment"
 	"backend/src/services/redis"
-	Logger "backend/src/utils/logger"
+	logger_system "backend/src/utils/LoggerSystem"
 	"fmt"
 	"log/slog"
 	"os"
@@ -32,51 +32,48 @@ func main() {
 	}
 
 	slog.Info("Initializing System Logger")
-	Logger.LoggerInit(cfg.ENVIRONMENT_STATUS)
-	defer Logger.Log.Sync()
+	logger_system.LoggerInit(cfg.ENVIRONMENT_STATUS)
+	defer logger_system.Log.Sync()
 
-	Logger.Log.Info("Connecting to database")
+	logger_system.Log.Info("Connecting to database")
 	db := database.NewDatabaseConnection(cfg.DB_CONF.DATABASE)
 	
-	Logger.Log.Info("Initializing repository")
+	logger_system.Log.Info("Initializing repository")
 	userStore 	 := repository.NewUserStore(db)
-	storeStore 	 := repository.NewStoresStore(db)
 	productStore := repository.NewProductStore(db)
 	orderStore 	 := repository.NewOrderStore(db)
 	tokenStore 	 := repository.NewTokenStore(db)
 	cartStore 	 := repository.NewCartStore(db)
 
-	Logger.Log.Info("Initializing Service")
+	logger_system.Log.Info("Initializing Service")
 	emailService := emailSrvc.NewSGMailManager(cfg, userStore)
 
 	if err := emailService.Validate(); err != nil {
-		Logger.Log.Error("Missing dependency", zap.Error(err))
+		logger_system.Log.Error("Missing dependency", zap.Error(err))
 		os.Exit(1)
 	}
 
-	Logger.Log.Info("Emailing Service started")
+	logger_system.Log.Info("Emailing Service started")
 
 	cacheService := cache_service.NewRedisService(
 		userStore,
 		productStore,
-		storeStore,
 		cfg,
 	)
-	Logger.Log.Info("Cache Service started")
+	logger_system.Log.Info("Cache Service started")
 
 	url := paymentSrvc.NewStripeURL(cfg)
 	paymentService := paymentSrvc.NewPaymentService(
 		cfg.STRIPE_CONF,
 		url[0], url[1],
 	)
-	Logger.Log.Info("Payment Service started")
+	logger_system.Log.Info("Payment Service started")
 
-	txManager := services.NewTxManager(db, productStore, orderStore, storeStore)
+	txManager := services.NewTxManager(db, productStore, orderStore)
 
-	Logger.Log.Info("Starting Server")
+	logger_system.Log.Info("Starting Server")
 	serverManager := &server.ServerManager{
 		Users: userStore,
-		Stores: storeStore,
 		Products: productStore,
 		Orders: orderStore,
 		Carts: cartStore,
@@ -90,6 +87,6 @@ func main() {
 	}
 
 	serverManager.Start(cfg)	
-	Logger.Log.Info("Shutting Down")
+	logger_system.Log.Info("Shutting Down")
 	os.Exit(0)
 }

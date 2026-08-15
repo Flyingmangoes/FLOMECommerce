@@ -1,4 +1,4 @@
-package validators
+package auth
 
 import (
 	"backend/src/repository"

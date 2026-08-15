@@ -1,104 +1,35 @@
-package auth_controllers
+package user
 
 import (
-	"backend/src/middlewares"
-	"backend/src/models"
-	repo"backend/src/repository"
-	"backend/src/services"
+	user_type "backend/src/controllers/user/types"
+	terror "backend/src/error"
+	repo "backend/src/repository"
+	"backend/src/services/auth"
 	"backend/src/utils"
-	"backend/src/utils/jwt"
-	Logger"backend/src/utils/logger"
+	jwt_service "backend/src/utils/JWT"
+	logger_system "backend/src/utils/LoggerSystem"
 	"errors"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/lib/pq"
 	"go.uber.org/zap"
 )
 
-type UserManager struct {
-    Users    	repo.UserStoreInterface
-	Cart 		repo.CartStoreInterface
-    Tokens   	repo.TokenStoreInterface
-	JWTSecret 	[]byte
-}
-
-type UserRegisterRequest struct {
-    FirstName    	string 	`json:"firstName"   binding:"required"`
-    LastName     	string 	`json:"lastName"    binding:"required"`
-    Username     	string 	`json:"username"    binding:"required"`
-
-    Email       	string 	`json:"email"       binding:"required,email"`
-	PhoneNumber		string 	`json:"phoneNumber" binding:"omitempty"`
-    Password     	string 	`json:"password"    binding:"required,min=8"`
-    UserLocale 	 	string 	`json:"userLocale"  binding:"required"`
-	UserCountry  	string 	`json:"userCountry" binding:"required"`
-	UserAddress  	string 	`json:"userAddress" binding:"required"`
-	
-    UserType     	string 	`json:"userType"    binding:"required"`
-	IsAgreed	 	bool 	`json:"isAgreed" binding:"required"`
-	EmailConsent  	bool	`json:"emailConsent" binding:"omitempty"`
-	SmsConsent	  	bool	`json:"smsConsent" binding:"omitempty"`	
-	ConsentSource 	string 	`json:"consentSrc" binding:"omitempty"`	
-}
-
-type userResponse struct {
-	UserID       	string    	`json:"userId"`
-    FirstName    	string    	`json:"firstName"`
-    LastName    	string    	`json:"lastName"`
-    Username   	  	string    	`json:"username"`
-	PhoneNumber		string	  	`json:"phoneNumber"`
-    Email        	string    	`json:"email"`
-    UserType     	string    	`json:"userType"`
-    UserLocale 	 	string    	`json:"userLocale"`
-	UserCountry  	string	  	`json:"userCountry"`
-	UserAddress  	string    	`json:"userAddress"`
-	IsAgreed		bool 	  	`json:"isAgreed"`
-    IsVerified   	bool      	`json:"isVerified"` 
-    CreatedAt    	time.Time 	`json:"createdAt"`
-	UpdatedAt 	 	*time.Time 	`json:"updatedAt"`
-	ConsentUpdated 	*time.Time 	`json:"consentUpdated"`
-}
-
-//
-// USER HANDLER IMPLEMENTATION
-//
-
-func toUserResponse(u *models.User) userResponse {
-    return userResponse{
-        UserID:       u.UserID,
-        FirstName:    u.FirstName,
-        LastName:     u.LastName,
-        Username:     u.Username,
-        Email:        u.Email,
-		PhoneNumber:  u.PhoneNumber,
-        UserType:     u.UserType,
-        UserLocale:   u.Locale,
-		UserCountry:  u.Country,
-		UserAddress:  u.Address,
-        IsVerified:   u.IsVerified,
-		IsAgreed: 	  u.IsAgree,
-        CreatedAt:    u.CreatedAt,
-		ConsentUpdated: u.Consent_Updated,
-		UpdatedAt: u.Updatedat,
-    }
-}
-
 func (uc *UserManager) RegisterUser() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req UserRegisterRequest
+		var req user_type.UserRegisterRequest
 
 		if err := c.ShouldBindBodyWithJSON(&req); err != nil {
-			Logger.Log.Error("Error", zap.Error(err))
-			c.Error(middlewares.ErrBadRequest("Failed to read client request:"))
+			logger_system.Log.Error("Error", zap.Error(err))
+			c.Error(terror.ErrBadRequest("Failed to read client request:"))
 			return
 		}
 
-		hashedpass, err := services.Hashing([]byte(req.Password))
+		hashedpass, err := auth.Hashing([]byte(req.Password))
 		if err != nil {
-			Logger.Log.Error("Error", zap.Error(err))
-			c.Error(middlewares.ErrInternal("Failed to hash password"))
+			logger_system.Log.Error("Error", zap.Error(err))
+			c.Error(terror.ErrInternal("Failed to hash password"))
 			return
 		}
 
@@ -112,9 +43,9 @@ func (uc *UserManager) RegisterUser() gin.HandlerFunc {
 			},
 			FirstName: &req.FirstName,
 			LastName: &req.LastName,
+			UserType: utils.PINT(repo.UserUnverified),
 			HashedPassword: utils.PSTRING(string(hashedpass)),
 			PhoneNumber: &req.PhoneNumber,
-			UserType: &req.UserType,
 		
 			IsAgree: &req.IsAgreed,
 			EmailConsent: &req.EmailConsent,
@@ -124,52 +55,51 @@ func (uc *UserManager) RegisterUser() gin.HandlerFunc {
 
 		user, err := uc.Users.CreateUser(c.Request.Context(), params)
 		if err != nil {
-			Logger.Log.Error("Error", zap.Error(err))
+			logger_system.Log.Error("Error", zap.Error(err))
 			var PgErr *pq.Error
 			if errors.As(err, &PgErr) && PgErr.Code == "23505" {
-				c.Error(middlewares.ErrConflict("User already exists"))
+				c.Error(terror.ErrConflict("User already exists"))
 				return
 			}
 
-			c.Error(middlewares.ErrInternal("Failed to create user"))
+			c.Error(terror.ErrInternal("Failed to create user"))
 			return
 		}
 
 		cart, err := uc.Cart.CreateCart(c.Request.Context(), user.UserID)
 		if err != nil {
-			Logger.Log.Error("Error", zap.Error(err))
-			c.Error(middlewares.ErrInternal("failed to create cart"))
+			logger_system.Log.Error("Error", zap.Error(err))
+			c.Error(terror.ErrInternal("failed to create cart"))
 			return
 		}
 
-		accessToken, err := jwt.GenerateAccessToken(user.UserID, user.UserType, user.IsVerified, uc.JWTSecret)
+		accessToken, err := jwt_service.GenerateAccessToken(user.UserID, user.UserType, user.IsVerified, uc.JWTSecret)
 		if err != nil {
-			Logger.Log.Error("Error", zap.Error(err))
-			c.Error(middlewares.ErrInternal("Failed to generate token"))
+			logger_system.Log.Error("Error", zap.Error(err))
+			c.Error(terror.ErrInternal("Failed to generate token"))
 			return
 		}
 
-		refreshToken, expiresAt, err := jwt.GenerateRefreshToken(user.UserID, user.UserType, uc.JWTSecret)
+		refreshToken, expiresAt, err := jwt_service.GenerateRefreshToken(user.UserID, user.UserType, uc.JWTSecret)
 		if err != nil {
-			Logger.Log.Error("Error", zap.Error(err))
-			c.Error(middlewares.ErrInternal("Failed to generate refresh token"))
+			logger_system.Log.Error("Error", zap.Error(err))
+			c.Error(terror.ErrInternal("Failed to generate refresh token"))
 			return 
 		}
 
 		if err := uc.Tokens.SaveRefreshToken(c.Request.Context(), user.UserID, refreshToken, expiresAt); err != nil {
- 	   		Logger.Log.Error("Error", zap.Error(err))
-			c.Error(middlewares.ErrInternal("Failed to save session"))
+ 	   		logger_system.Log.Error("Error", zap.Error(err))
+			c.Error(terror.ErrInternal("Failed to save session"))
     		return
 		}
 
 		c.Header("Authorization", "Bearer" + accessToken)
 		c.Header("X-Refresh-Token", refreshToken)
 
-		Logger.Log.Info("Register process completed")
+		logger_system.Log.Info("Register process completed")
 		c.JSON(http.StatusCreated, gin.H{
-			"response": "user created",
 			"detail": gin.H{
-				"user": toUserResponse(user),
+				"user": user_type.CreateUserResponse(user),
 				"cart": cart,
 			},
 

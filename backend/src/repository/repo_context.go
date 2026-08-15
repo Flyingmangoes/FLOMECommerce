@@ -21,7 +21,7 @@ type UserProfileParams struct {
 	NewPasswordHashed 	*string
 	FirstName			*string
 	LastName			*string
-	UserType 			*string
+	UserType 			*int
 	EmailConsent		*bool
 	SmsConsent			*bool
 	ConsentUpdatedAt 	*time.Time
@@ -37,7 +37,6 @@ type UserSearchParams struct {
 	Username 			*string
 	SortBy 				*string
 	SortOrder 			*string
-	utils.PagFilter
 }
 
 type StoreProfileParams struct {
@@ -61,7 +60,6 @@ type StoreSearchParams struct {
 	StoreCountry 	*string 	
 	SortBy 			*string		
 	SortOrder 		*string		
-	utils.PagFilter
 }
 
 type ProductProfileParams struct {
@@ -86,7 +84,6 @@ type ProductSearchParams struct {
 	MaxPrice 	*float64
 	SortBy 		*string
 	SortOrder 	*string
-	utils.PagFilter
 }
 
 type OrderItemInput struct {

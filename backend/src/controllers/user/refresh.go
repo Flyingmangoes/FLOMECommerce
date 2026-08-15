@@ -1,9 +1,9 @@
-package auth_controllers
+package user
 
 import (
-	"backend/src/middlewares"
-	"backend/src/utils/jwt"
-	Logger "backend/src/utils/logger"
+	terror "backend/src/error"
+	jwt_service "backend/src/utils/JWT"
+	logger_system "backend/src/utils/LoggerSystem"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -17,57 +17,56 @@ func (uc *UserManager)Refresh() gin.HandlerFunc {
 		}
 
 		if err := c.ShouldBindBodyWithJSON(&req); err != nil {
-			Logger.Log.Error("Error", zap.Error(err))
-			c.Error(middlewares.ErrInternal("Failed to read request"))
+			logger_system.Log.Error("Error", zap.Error(err))
+			c.Error(terror.ErrInternal("Failed to read request"))
 			return
 		}
 
-		claims, err := jwt.VerifyAccessToken(req.RefreshToken, uc.JWTSecret)
+		claims, err := jwt_service.VerifyAccessToken(req.RefreshToken, uc.JWTSecret)
 		if err != nil {
-			Logger.Log.Error("Error", zap.Error(err))
-			c.Error(middlewares.ErrUnauthorized("Invalid or expired refresh token"))
+			logger_system.Log.Error("Error", zap.Error(err))
+			c.Error(terror.ErrUnauthorized("Invalid or expired refresh token"))
 			return
 		}
 
 		stored, err := uc.Tokens.GetRefreshToken(c.Request.Context(), req.RefreshToken)
 		if err != nil {
-			Logger.Log.Error("Error", zap.Error(err))
-			c.Error(middlewares.ErrUnauthorized("Refresh token not found"))
+			logger_system.Log.Error("Error", zap.Error(err))
+			c.Error(terror.ErrUnauthorized("Refresh token not found"))
 			return
 		}
 
 		if err := uc.Tokens.DeleteRefreshToken(c.Request.Context(), stored.Token); err != nil {
-			Logger.Log.Error("Error", zap.Error(err))
-			c.Error(middlewares.ErrInternal("Failed to rotate token"))
+			logger_system.Log.Error("Error", zap.Error(err))
+			c.Error(terror.ErrInternal("Failed to rotate token"))
 			return
 		}
 
-		newAccess, err := jwt.GenerateAccessToken(claims.UserID, claims.UserType, claims.UserVerified, uc.JWTSecret)
+		newAccess, err := jwt_service.GenerateAccessToken(claims.UserID, claims.UserType, claims.UserVerified, uc.JWTSecret)
 		if err != nil {
-			Logger.Log.Error("Error", zap.Error(err))
-			c.Error(middlewares.ErrInternal("Failed to create token"))
+			logger_system.Log.Error("Error", zap.Error(err))
+			c.Error(terror.ErrInternal("Failed to create token"))
 			return
 		}
 
-		newRefresh, expiresAt, err := jwt.GenerateRefreshToken(claims.UserID, claims.UserType, uc.JWTSecret)
+		newRefresh, expiresAt, err := jwt_service.GenerateRefreshToken(claims.UserID, claims.UserType, uc.JWTSecret)
 		if err != nil {
-			Logger.Log.Error("Error", zap.Error(err))
-			c.Error(middlewares.ErrInternal("Failed to create refresh token"))
+			logger_system.Log.Error("Error", zap.Error(err))
+			c.Error(terror.ErrInternal("Failed to create refresh token"))
 			return
 		}
 
 		if err := uc.Tokens.SaveRefreshToken(c.Request.Context(), claims.UserID, newRefresh, expiresAt); err != nil {
-			Logger.Log.Error("Error", zap.Error(err))
-			c.Error(middlewares.ErrInternal("Failed to save refresh token"))
+			logger_system.Log.Error("Error", zap.Error(err))
+			c.Error(terror.ErrInternal("Failed to save refresh token"))
 			return
 		}
 
 		c.Header("Authorization", "Bearer" + newAccess)
 		c.Header("X-Refresh-Token", newRefresh)
 
-		Logger.Log.Info("Refresh process completed")
+		logger_system.Log.Info("Refresh process completed")
 		c.JSON(http.StatusOK, gin.H{
-			"response": "success",
 			"token": gin.H{
 				"access_token": newAccess,
 				"refresh_token": newRefresh,
