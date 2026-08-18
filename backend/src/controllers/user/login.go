@@ -4,7 +4,7 @@ import (
 	user_type "backend/src/controllers/user/types"
 	terror "backend/src/error"
 	"backend/src/middlewares"
-	"backend/src/repository"
+	repo_type "backend/src/repository/types"
 	"backend/src/services/auth"
 	jwt_service "backend/src/utils/JWT"
 	logger_system "backend/src/utils/LoggerSystem"
@@ -31,8 +31,8 @@ func (uc *UserManager)LoginUser(prison *middlewares.LoginPrison) gin.HandlerFunc
 			return
 		}
 
-		user, err := uc.Users.LoginUser(c.Request.Context(), &repository.UserProfileParams{
-			BaseParams: repository.BaseParams{
+		user, err := uc.Users.Login(c.Request.Context(), &repo_type.UserProfileParams{
+			BaseParams: repo_type.BaseParams{
 				Username: &req.Username,
 				Email: &req.Email,
 			},
@@ -52,7 +52,7 @@ func (uc *UserManager)LoginUser(prison *middlewares.LoginPrison) gin.HandlerFunc
             return
 		}
 
-		if err := auth.ValidatePassword(user.PasswordHash, req.Password); err != nil {
+		if err := auth_service.ValidatePassword(user.PasswordHash, req.Password); err != nil {
 			logger_system.Log.Error("Error", zap.Error(err))
 			prison.RecordFailure(key)
             c.Error(terror.ErrUnauthorized("Invalid credentials"))
@@ -75,7 +75,7 @@ func (uc *UserManager)LoginUser(prison *middlewares.LoginPrison) gin.HandlerFunc
 			return 
 		}
 
-		if err := uc.Tokens.SaveRefreshToken(c.Request.Context(), user.UserID, refreshToken, expiresAt); err != nil {
+		if err := uc.Tokens.SaveToken(c.Request.Context(), user.UserID, refreshToken, expiresAt); err != nil {
 			logger_system.Log.Error("Error", zap.Error(err))
 			c.Error(terror.ErrInternal("Failed to save session"))
     		return

@@ -237,55 +237,5 @@ func (ps *ProductStore) DeductStock(ctx context.Context, tx *sql.Tx, items []rep
 }
 
 func (ps *ProductStore) Search(ctx context.Context, params *repo_type.ProductSearchParams) ([]models.Product, error) {
-	params.Normalize()
-
-	createdAt, id := params.CursorValues()
-
-
-	rows, err := ps.db.QueryContext(ctx,
-		`SELECT product_id, product_name, product_desc, product_pic, price,
-				category, rating, availability, created_at, updated_at
-		FROM mkt_ecommerce.mkt_products
-		WHERE
-			($1::timestamptz IS NULL OR (created_at, product_id) < ($1, $2::uuid))  AND
-			($3::varchar IS NULL OR product_name ILIKE '%' || $3 || '%') AND
-			($4::varchar IS NULL OR category = $4) 	AND
-			($5::uuid IS NULL OR store_id = $5)	 	AND
-			($6::numeric IS NULL OR price >= $6) 	AND
-			($7::numeric IS NULL OR price <= $7) 	AND
-	
-			availability > 0
-			
-		ORDER BY created_at DESC, product_id DESC
-		LIMIT $8`,
-		createdAt, id,
-		params.Query, 
-		params.Category,
-		params.StoreID,
-		params.MinPrice,
-		params.MaxPrice,
-		params.Limit +1,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	products := make([]models.Product, 0)
-	for rows.Next(){
-		p := models.Product{}
-		if err := rows.Scan(
-			&p.ProductID, &p.Name, 
-			&p.Desc, &p.ProductIMG,
-			&p.Price, &p.Category, 
-			&p.Rating, &p.Availability,
-			&p.CreatedAt, &p.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-
-		products = append(products, p)
-	}
-	
-	return products, rows.Err()
+	return nil, nil
 }

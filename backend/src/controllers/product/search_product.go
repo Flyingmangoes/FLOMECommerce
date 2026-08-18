@@ -4,7 +4,7 @@ import (
 	product_types "backend/src/controllers/product/types"
 	terror "backend/src/error"
 	"backend/src/models"
-	"backend/src/repository"
+	repo_type "backend/src/repository/types"
 	logger_system "backend/src/utils/LoggerSystem"
 	"encoding/json"
 	"net/http"
@@ -37,7 +37,7 @@ func (pm *ProductManager) SearchProduct() gin.HandlerFunc {
 
 		filter.Normalize()
 
-		params := &repository.ProductSearchParams{
+		params := &repo_type.ProductSearchParams{
 			Query: req.Query,
 			Category: req.Category,
 			StoreID: req.StoreID,
@@ -59,7 +59,7 @@ func (pm *ProductManager) SearchProduct() gin.HandlerFunc {
 			}
 		}
 
-		products, err := pm.Products.SearchProduct(c.Request.Context(), params)
+		products, err := pm.Products.Search(c.Request.Context(), params)
 		if err != nil {
 			logger_system.Log.Error("Failed to retrieve products", zap.Error(err))
 			c.Error(terror.ErrInternal("Failed to retrieve products"))
