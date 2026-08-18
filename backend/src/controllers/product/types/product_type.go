@@ -59,7 +59,6 @@ type productResponse struct {
 func CreateProductResponse(p *models.Product) productResponse {
 	return productResponse{
 		ProductId: p.ProductID,
-		StoreId: p.StoreID,
 		StoreName: p.Name,
 		StoreDesc: p.Desc,		
 		ProductIMG: p.ProductIMG,

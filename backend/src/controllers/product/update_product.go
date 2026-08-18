@@ -3,7 +3,7 @@ package product
 import (
 	product_types "backend/src/controllers/product/types"
 	terror "backend/src/error"
-	"backend/src/repository"
+	repo_type "backend/src/repository/types"
 	logger_system "backend/src/utils/LoggerSystem"
 	"net/http"
 
@@ -21,11 +21,8 @@ func (pm *ProductManager) UpdateProduct() gin.HandlerFunc {
 			return
 		}
 
-		storeId := c.GetString("storeId")
-
-		params := &repository.ProductProfileParams{
+		params := &repo_type.ProductProfileParams{
 			ProductID:  &req.ProductID,
-			StoreId: &storeId,
 			Name: req.NewProductName,	
 			Desc: req.NewProductDesc,
 			ImageUrl: req.NewImage,
@@ -34,7 +31,7 @@ func (pm *ProductManager) UpdateProduct() gin.HandlerFunc {
 			Availability: req.NewAvailability,
 		}
 
-		product, err := pm.Products.UpdateProduct(c.Request.Context(), params)
+		product, err := pm.Products.Update(c.Request.Context(), params)
 		if err != nil {
 			logger_system.Log.Error("detail", zap.Error(err))
 			c.Error(terror.ErrInternal("Failed to update product"))

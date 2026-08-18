@@ -33,13 +33,7 @@ type SearchUserRequest struct {
 	Limit 		int 		`form:"limit"`
 }
 
-type RemoveUserRequest struct {
-	Password    string  `json:"password" binding:"required"`
-}
-
 type UpdateUserRequest struct {
-	Password 		string 	`json:"password"`
-
     NewFirstname 	*string `json:"newFirstname" binding:"omitempty"`
     NewLastname  	*string `json:"newLastname"  binding:"omitempty"`
 	NewUsername  	*string `json:"newUsername"  binding:"omitempty,min=3"`

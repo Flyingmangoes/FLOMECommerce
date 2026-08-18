@@ -2,7 +2,7 @@ package payment_service
 
 import (
 	"backend/src/config"
-	Logger "backend/src/utils/logger"
+	logger_system "backend/src/utils/LoggerSystem"
 	"context"
 	"fmt"
 	"net"
@@ -38,15 +38,13 @@ func NewPaymentService(cfg *config.StripeConfig, successURL, cancelURL string) *
 	}
 }
 
-func NewStripeURL(cfg *config.ConfigManager)([]string){
-	u := make([]string,0)
-	fhp := net.JoinHostPort(cfg.SERV_CONF.FrontendHOST, cfg.SERV_CONF.FrontendPORT)
+func NewStripeURL(cfg *config.ConfigManager)(string, string){
+	joined := net.JoinHostPort(cfg.SERV_CONF.WebsiteHOST, cfg.SERV_CONF.WebsitePORT)
 
-	success := fmt.Sprintf("http://%s/success", fhp)
-	cancel := fmt.Sprintf("http://%s/cancel", fhp)
+	success := fmt.Sprintf("http://%s/success", joined)
+	cancel := fmt.Sprintf("http://%s/cancel", joined)
 
-	u = append(u, success, cancel)
-	return u
+	return success, cancel
 }
 
 func(ps *PaymentService) CreateCheckoutSession(ctx context.Context, orderID, buyerEmail string, items []ItemDetail) (*stripe.CheckoutSession, error) {
@@ -76,8 +74,8 @@ func(ps *PaymentService) CreateCheckoutSession(ctx context.Context, orderID, buy
 	success := fmt.Sprintf("http://%s?session_id={CHECKOUT_SESSION_ID}", ps.SuccessURL)
 	cancel := fmt.Sprintf("http://%s", ps.CancelURL)
 
-	Logger.Log.Debug("urls", zap.String("success url", success))
-	Logger.Log.Debug("urls", zap.String("cancel url", cancel))
+	logger_system.Log.Debug("urls", zap.String("success url", success))
+	logger_system.Log.Debug("urls", zap.String("cancel url", cancel))
 
 	params := &stripe.CheckoutSessionCreateParams{
 		LineItems: lineItems,

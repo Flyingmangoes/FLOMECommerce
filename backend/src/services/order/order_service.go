@@ -2,7 +2,7 @@ package order_services
 
 import (
 	"backend/src/models"
-	"backend/src/repository"
+	repo_type "backend/src/repository/types"
 	"backend/src/services"
 	"context"
 	"database/sql"
@@ -18,7 +18,7 @@ type PlaceOrderParams struct {
     BuyerEmail  		string
     CombinedLocation 	string
     Status      		string
-    ProductList 		[]repository.OrderItemInput
+    ProductList 		[]repo_type.OrderItemInput
 }
 
 type CancelOrderParams struct {
@@ -30,7 +30,7 @@ func (os *OrderService) PlaceOrder(ctx context.Context, params *PlaceOrderParams
 	var results *models.Order
 
 	err := os.Tx.WithTx(ctx, func(tx *sql.Tx) error {
-		products, err := os.Tx.Products.GetProductForUpdate(ctx, tx, params.ProductList)
+		products, err := os.Tx.Products.GetForUpdate(ctx, tx, params.ProductList)
 		if err != nil { return err }
 
 
@@ -50,11 +50,11 @@ func (os *OrderService) PlaceOrder(ctx context.Context, params *PlaceOrderParams
 
 		total := calculateTotal(products, params.ProductList)
 
-		orderItems := make([]repository.OrderItemInput, 0)
+		orderItems := make([]repo_type.OrderItemInput, 0)
 		for _, p := range params.ProductList {
 			for _, prod := range products {
 				if prod.ProductID == *p.ProductID {
-					orderItems = append(orderItems, repository.OrderItemInput{
+					orderItems = append(orderItems, repo_type.OrderItemInput{
 						ProductID: &prod.ProductID,
 						Price: &prod.Price,
 						Quantity: p.Quantity,
@@ -63,8 +63,8 @@ func (os *OrderService) PlaceOrder(ctx context.Context, params *PlaceOrderParams
 			}
 		}
 
-		order, _, err := os.Tx.Orders.CreateOrder(ctx, tx, &repository.OrderStoreParams{
-			BaseParams: repository.BaseParams{
+		order, _, err := os.Tx.Orders.Create(ctx, tx, &repo_type.OrderParams{
+			BaseParams: repo_type.BaseParams{
 				UserId: &params.BuyerID,
 				Email:  &params.BuyerEmail,
 			},
@@ -89,8 +89,8 @@ func (os *OrderService) PlaceOrder(ctx context.Context, params *PlaceOrderParams
 
 func (os *OrderService)CancelOrder(ctx context.Context, params *CancelOrderParams) error {
 	err := os.Tx.WithTx(ctx, func(tx *sql.Tx) error {
-		err := os.Tx.Orders.RemoveOrder(ctx, tx, &repository.OrderStoreParams{
-			BaseParams: repository.BaseParams{ UserId: &params.BuyerId },
+		err := os.Tx.Orders.Remove(ctx, tx, &repo_type.OrderParams{
+			BaseParams: repo_type.BaseParams{ UserId: &params.BuyerId },
 			OrderID: &params.OrderId,
 		})
 
@@ -106,7 +106,7 @@ func (os *OrderService)CancelOrder(ctx context.Context, params *CancelOrderParam
 	return nil
 }
 
-func calculateTotal(products []models.Product, productList []repository.OrderItemInput) float64 {
+func calculateTotal(products []models.Product, productList []repo_type.OrderItemInput) float64 {
 	priceMap := make(map[string]float64)
 	for _, p := range products {
 		priceMap[p.ProductID] = p.Price

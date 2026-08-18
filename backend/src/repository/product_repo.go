@@ -2,24 +2,24 @@ package repository
 
 import (
 	"backend/src/models"
-	
+	repo_type "backend/src/repository/types"
+
 	"context"
 	"database/sql"
 	"fmt"
 )
 
 type ProductStoreInterface interface {
-	CreateProduct(ctx context.Context, params *ProductProfileParams) (*models.Product, error)
-	UpdateProduct(ctx context.Context, params *ProductProfileParams) (*models.Product, error)
-	RemoveProduct(ctx context.Context, params *ProductProfileParams) error
+	Create(ctx context.Context, params *repo_type.ProductProfileParams) (*models.Product, error)
+	Update(ctx context.Context, params *repo_type.ProductProfileParams) (*models.Product, error)
+	Remove(ctx context.Context, params *repo_type.ProductProfileParams) error
 
-	GetProductByID(ctx context.Context, product_id string) (*models.Product, error)
-	GetProductForUpdate(ctx context.Context, tx *sql.Tx, orderInput []OrderItemInput) ([]models.Product, error)
-	FetchStoreID(ctx context.Context, product_id string)(string, error)
-	SearchProduct(ctx context.Context, params *ProductSearchParams) ([]models.Product, error)
+	Get(ctx context.Context, product_id string) (*models.Product, error)
+	GetForUpdate(ctx context.Context, tx *sql.Tx, orderInput []repo_type.OrderItemInput) ([]models.Product, error)
+	Search(ctx context.Context, params *repo_type.ProductSearchParams) ([]models.Product, error)
 
-	UpdateRating(ctx context.Context, params *ProductProfileParams) (*models.Product, error)
-    DeductStock(ctx context.Context, tx *sql.Tx, items []OrderItemInput) error
+	UpdateRating(ctx context.Context, params *repo_type.ProductProfileParams) (*models.Product, error)
+    DeductStock(ctx context.Context, tx *sql.Tx, items []repo_type.OrderItemInput) error
 }
 
 type ProductStore struct {
@@ -32,7 +32,7 @@ func NewProductStore(db *sql.DB) *ProductStore{
 
 
 
-func (ps *ProductStore) CreateProduct(ctx context.Context, params *ProductProfileParams) (*models.Product, error) {
+func (ps *ProductStore) Create(ctx context.Context, params *repo_type.ProductProfileParams) (*models.Product, error) {
 	product := &models.Product{}
 	tx, err := ps.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -42,15 +42,17 @@ func (ps *ProductStore) CreateProduct(ctx context.Context, params *ProductProfil
 	defer tx.Rollback()
 
 	err = tx.QueryRowContext(ctx,
-		`INSERT INTO mkt_products (product_name, product_desc, store_id, product_pic, price, category, availability)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
-		RETURNING product_id, product_name, product_desc, store_id, product_pic, price, category, rating, availability, created_at`,
-		params.Name, params.Desc, params.StoreId, 
+		`INSERT INTO mkt_products (product_name, product_desc, product_pic, price, category, availability)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING product_id, product_name, product_desc, 
+		product_pic, price, category, rating, availability, created_at`,
+		params.Name, params.Desc, 
 		params.ImageUrl, params.Price, params.Category,
 		params.Availability,
 	).Scan(&product.ProductID, 
-		&product.Name, &product.Desc, &product.StoreID, 
-		&product.ProductIMG, &product.Price, &product.Category, &product.Rating, 
+		&product.Name, &product.Desc, 
+		&product.ProductIMG, &product.Price, 
+		&product.Category, &product.Rating, 
 		&product.Availability, &product.CreatedAt,
 	)
 
@@ -67,7 +69,7 @@ func (ps *ProductStore) CreateProduct(ctx context.Context, params *ProductProfil
 
 
 
-func (ps *ProductStore) UpdateProduct(ctx context.Context, params *ProductProfileParams) (*models.Product, error) {
+func (ps *ProductStore) Update(ctx context.Context, params *repo_type.ProductProfileParams) (*models.Product, error) {
 	product := &models.Product{}
 
 	tx, _ := ps.db.BeginTx(ctx, nil)
@@ -83,15 +85,16 @@ func (ps *ProductStore) UpdateProduct(ctx context.Context, params *ProductProfil
 			category		= COALESCE ($5, category),
 			availability	= COALESCE ($6, availability),
 			updated_at		= NOW()
-		WHERE product_id = $7 AND store_id = $8
-		RETURNING product_id, product_name, product_desc, store_id, product_pic, price, category, availability, updated_at`,
-		params.Name, params.Desc, 
+		WHERE product_id = $7
+		RETURNING product_id, product_name, product_desc, product_pic, price, category, availability, updated_at`,
+		params.Name, 	 params.Desc, 
 	 	params.ImageUrl, params.Price, 
 		params.Category, params.Availability, 
-		params.ProductID, params.StoreId,
-	).Scan(&params.ProductID, &product.Name, 
-		&product.Desc, &product.StoreID, &product.ProductIMG, 
-		&product.Price, &product.Category, 
+		params.ProductID,
+	).Scan(
+		&params.ProductID, 	&product.Name, 
+		&product.Desc, 		&product.ProductIMG, 
+		&product.Price, 	&product.Category, 
 		&product.Availability, &product.UpdatedAt,
 	)
 
@@ -108,11 +111,11 @@ func (ps *ProductStore) UpdateProduct(ctx context.Context, params *ProductProfil
 
 
 
-func (ps *ProductStore)RemoveProduct(ctx context.Context, params *ProductProfileParams) error {
+func (ps *ProductStore)Remove(ctx context.Context, params *repo_type.ProductProfileParams) error {
 	results, err := ps.db.ExecContext(ctx,
 		`DELETE FROM mkt_ecommerce.mkt_products
-		WHERE product_id = $1 AND store_id = $2`,
-		params.ProductID, params.StoreId,
+		WHERE product_id = $1`,
+		params.ProductID,
 	)
 
 	if err != nil {
@@ -133,24 +136,25 @@ func (ps *ProductStore)RemoveProduct(ctx context.Context, params *ProductProfile
 
 
 
-func (ps *ProductStore)GetProductForUpdate(ctx context.Context, tx *sql.Tx, orderInput []OrderItemInput) ([]models.Product, error) {
+func (ps *ProductStore)GetForUpdate(ctx context.Context, tx *sql.Tx, orderInput []repo_type.OrderItemInput) ([]models.Product, error) {
 	products := []models.Product{}
 
 	for _, p := range orderInput {
 		product := &models.Product{}
 
 		err := tx.QueryRowContext(ctx,
-			`SELECT product_id, product_name, product_desc, store_id, 
+			`SELECT product_id, product_name, product_desc, 
 				product_pic, price, rating, 
 				availability, created_at, updated_at 
 			FROM mkt_ecommerce.mkt_products
 			WHERE product_id = $1`,
 			p.ProductID,
-		).Scan(&product.ProductID, &product.Name, 
-			&product.Desc, &product.StoreID, 
+		).Scan(
+			&product.ProductID, &product.Name, 
+			&product.Desc, 
 			&product.ProductIMG, &product.Price, 
-			&product.Rating, &product.Availability, &product.CreatedAt, 
-			&product.UpdatedAt,
+			&product.Rating, &product.Availability, 
+			&product.CreatedAt, &product.UpdatedAt,
 		)
 
 		if err != nil {
@@ -163,20 +167,21 @@ func (ps *ProductStore)GetProductForUpdate(ctx context.Context, tx *sql.Tx, orde
 	return products, nil
 }
 
-func (ps *ProductStore) GetProductByID(ctx context.Context, product_id string) (*models.Product, error) {
+func (ps *ProductStore) Get(ctx context.Context, product_id string) (*models.Product, error) {
 	product := &models.Product{}
 	
 	err := ps.db.QueryRowContext(ctx,
 		`SELECT product_id, product_name, product_desc, 
-			store_id, product_pic, price, rating, 
+			product_pic, price, rating, 
 			availability, created_at, updated_at 
 		FROM mkt_ecommerce.mkt_products WHERE product_id = $1`,
 		product_id,
-	).Scan(&product.ProductID, &product.Name,
-		&product.Desc, &product.StoreID,
+	).Scan(
+		&product.ProductID, &product.Name,
+		&product.Desc, 
 		&product.ProductIMG, &product.Price,
-		&product.Rating, &product.Availability, &product.CreatedAt,
-		&product.UpdatedAt,
+		&product.Rating, 	&product.Availability, 
+		&product.CreatedAt,	&product.UpdatedAt,
 	)
 
 	if err != nil {
@@ -187,7 +192,7 @@ func (ps *ProductStore) GetProductByID(ctx context.Context, product_id string) (
 }
 
 
-func (ps *ProductStore) UpdateRating(ctx context.Context, params *ProductProfileParams) (*models.Product, error) {
+func (ps *ProductStore) UpdateRating(ctx context.Context, params *repo_type.ProductProfileParams) (*models.Product, error) {
 	product := &models.Product{}
 	
 	err := ps.db.QueryRow(
@@ -205,7 +210,7 @@ func (ps *ProductStore) UpdateRating(ctx context.Context, params *ProductProfile
 	return product, nil
 }
 
-func (ps *ProductStore) DeductStock(ctx context.Context, tx *sql.Tx, items []OrderItemInput) error {
+func (ps *ProductStore) DeductStock(ctx context.Context, tx *sql.Tx, items []repo_type.OrderItemInput) error {
     for _, item := range items {
         result, err := tx.ExecContext(ctx,
             `UPDATE mkt_ecommerce.mkt_products SET 
@@ -231,14 +236,14 @@ func (ps *ProductStore) DeductStock(ctx context.Context, tx *sql.Tx, items []Ord
     return nil
 }
 
-func (ps *ProductStore) SearchProduct(ctx context.Context, params *ProductSearchParams) ([]models.Product, error) {
+func (ps *ProductStore) Search(ctx context.Context, params *repo_type.ProductSearchParams) ([]models.Product, error) {
 	params.Normalize()
 
 	createdAt, id := params.CursorValues()
 
 
 	rows, err := ps.db.QueryContext(ctx,
-		`SELECT product_id, product_name, product_desc, product_pic, store_id, price,
+		`SELECT product_id, product_name, product_desc, product_pic, price,
 				category, rating, availability, created_at, updated_at
 		FROM mkt_ecommerce.mkt_products
 		WHERE
@@ -270,8 +275,10 @@ func (ps *ProductStore) SearchProduct(ctx context.Context, params *ProductSearch
 	for rows.Next(){
 		p := models.Product{}
 		if err := rows.Scan(
-			&p.ProductID, &p.Name, &p.Desc, &p.ProductIMG, &p.StoreID,
-			&p.Price, &p.Category, &p.Rating, &p.Availability,
+			&p.ProductID, &p.Name, 
+			&p.Desc, &p.ProductIMG,
+			&p.Price, &p.Category, 
+			&p.Rating, &p.Availability,
 			&p.CreatedAt, &p.UpdatedAt,
 		); err != nil {
 			return nil, err
@@ -281,18 +288,4 @@ func (ps *ProductStore) SearchProduct(ctx context.Context, params *ProductSearch
 	}
 	
 	return products, rows.Err()
-}
-
-func (ps *ProductStore)FetchStoreID(ctx context.Context, product_id string) (string, error) {
-	product := &models.Product{}
-
-	err := ps.db.QueryRowContext(ctx,
-		`SELECT store_id FROM mkt_ecommerce.mkt_products 
-		WHERE product_id = $1`,
-		product_id,
-	).Scan(&product.StoreID)
-
-	if err != nil { return "", err}
-
-	return product.StoreID, nil
 }

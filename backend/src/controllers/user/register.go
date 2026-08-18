@@ -4,6 +4,7 @@ import (
 	user_type "backend/src/controllers/user/types"
 	terror "backend/src/error"
 	repo "backend/src/repository"
+	repo_type "backend/src/repository/types"
 	"backend/src/services/auth"
 	"backend/src/utils"
 	jwt_service "backend/src/utils/JWT"
@@ -33,19 +34,16 @@ func (uc *UserManager) RegisterUser() gin.HandlerFunc {
 			return
 		}
 
-		params := &repo.UserProfileParams{
-			BaseParams: repo.BaseParams{
+		params := &repo_type.UserProfileParams{
+			BaseParams: repo_type.BaseParams{
 				Email: &req.Email,
 				Username: &req.Username,
-				Locale: &req.UserLocale,
-				Country: &req.UserCountry,
-				Address: &req.UserAddress,
+				PhoneNumber: &req.PhoneNumber,
 			},
 			FirstName: &req.FirstName,
 			LastName: &req.LastName,
 			UserType: utils.PINT(repo.UserUnverified),
 			HashedPassword: utils.PSTRING(string(hashedpass)),
-			PhoneNumber: &req.PhoneNumber,
 		
 			IsAgree: &req.IsAgreed,
 			EmailConsent: &req.EmailConsent,
@@ -53,7 +51,7 @@ func (uc *UserManager) RegisterUser() gin.HandlerFunc {
 			ConsentSource: &req.ConsentSource,
 		}
 
-		user, err := uc.Users.CreateUser(c.Request.Context(), params)
+		user, err := uc.Users.Create(c.Request.Context(), params)
 		if err != nil {
 			logger_system.Log.Error("Error", zap.Error(err))
 			var PgErr *pq.Error
@@ -66,7 +64,7 @@ func (uc *UserManager) RegisterUser() gin.HandlerFunc {
 			return
 		}
 
-		cart, err := uc.Cart.CreateCart(c.Request.Context(), user.UserID)
+		cart, err := uc.Cart.Create(c.Request.Context(), user.UserID)
 		if err != nil {
 			logger_system.Log.Error("Error", zap.Error(err))
 			c.Error(terror.ErrInternal("failed to create cart"))
@@ -87,7 +85,7 @@ func (uc *UserManager) RegisterUser() gin.HandlerFunc {
 			return 
 		}
 
-		if err := uc.Tokens.SaveRefreshToken(c.Request.Context(), user.UserID, refreshToken, expiresAt); err != nil {
+		if err := uc.Tokens.SaveToken(c.Request.Context(), user.UserID, refreshToken, expiresAt); err != nil {
  	   		logger_system.Log.Error("Error", zap.Error(err))
 			c.Error(terror.ErrInternal("Failed to save session"))
     		return

@@ -2,8 +2,7 @@ package cache_service
 
 import (
 	"backend/src/config"
-	"backend/src/repository"
-	Logger "backend/src/utils/logger"
+	logger_system "backend/src/utils/LoggerSystem"
 	"context"
 	"fmt"
 	"net"
@@ -25,21 +24,13 @@ type RedisInterface interface {
 }
 
 type RedisManager struct {
-	Users 			repository.UserStoreInterface
-	Products 		repository.ProductStoreInterface
-	Stores 			repository.StoreStoreInterface
 	REDIS_PORT		string
 	REDIS_HOST  	string
 	CACHE_TTL		time.Duration
 	Client			*redis.Client
 }	
 
-func NewRedisService(
-	u repository.UserStoreInterface, 
-	p repository.ProductStoreInterface, 
-	s repository.StoreStoreInterface, 
-	cfg *config.ConfigManager,
-) *RedisManager {
+func NewRedisService(cfg *config.ConfigManager) *RedisManager {
 	redis_client:= redis.NewClient(&redis.Options{
 		Addr: net.JoinHostPort(cfg.REDIS_CONF.REDIS_HOST, cfg.REDIS_CONF.REDIS_PORT),
 	})
@@ -49,19 +40,16 @@ func NewRedisService(
 		REDIS_HOST: cfg.REDIS_CONF.REDIS_HOST,
 		CACHE_TTL: time.Duration(cfg.REDIS_CONF.CACHE_TTL * int(time.Minute)), 
 		Client: redis_client,
-		Users: u,
-		Products: p,
-		Stores: s,
 	}
 }
 
 func (rm *RedisManager) ConnectionCheck() {
 	err := rm.Client.Ping(context.Background()).Err()
 	if err != nil {
-		Logger.Log.Error("Failed to connect to redis", zap.Error(err))
+		logger_system.Log.Error("Failed to connect to redis", zap.Error(err))
 	}
 
-	Logger.Log.Info("Connected", zap.String("response", "OK"))
+	logger_system.Log.Info("Connected", zap.String("response", "OK"))
 }
 
 func(rm *RedisManager)Set(ctx context.Context, cacheKey string, cacheValue string) error {

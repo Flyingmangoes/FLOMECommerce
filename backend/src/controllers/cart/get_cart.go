@@ -2,7 +2,7 @@ package cart
 
 import (
 	terror "backend/src/error"
-	"backend/src/repository"
+	repo_type "backend/src/repository/types"
 	logger_system "backend/src/utils/LoggerSystem"
 	"database/sql"
 	"net/http"
@@ -14,8 +14,8 @@ import (
 func (cm *CartManager) GetCarts() gin.HandlerFunc {
 	return func (c *gin.Context) {
 		requester_id := c.GetString("userId")
-		cart, err := cm.Carts.GetCart(c.Request.Context(), &repository.CartProfileParams{
-			BaseParams: repository.BaseParams{
+		cart, err := cm.Carts.Get(c.Request.Context(), &repo_type.CartProfileParams{
+			BaseParams: repo_type.BaseParams{
 				UserId: &requester_id,
 			},
 		})
@@ -26,7 +26,7 @@ func (cm *CartManager) GetCarts() gin.HandlerFunc {
 			return
 		}
 
-		items, err := cm.Carts.GetCartItems(c.Request.Context(), &repository.CartProfileParams{
+		items, err := cm.Carts.GetItems(c.Request.Context(), &repo_type.CartProfileParams{
 			CartID: &cart.ID,
 		})
 		if err != nil {

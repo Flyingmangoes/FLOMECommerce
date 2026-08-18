@@ -9,10 +9,10 @@ import (
 )
 
 type TokenStoreInterface interface {
-	SaveRefreshToken(ctx context.Context, userID, token string, expiresAt time.Time) error
-    GetRefreshToken(ctx context.Context, token string) (*models.RefreshToken, error)
-    DeleteRefreshToken(ctx context.Context, token string) error
-    DeleteAllUserTokens(ctx context.Context, userID string) error
+	SaveToken(ctx context.Context, userID, token string, expiresAt time.Time) error
+    GetToken(ctx context.Context, token string) (*models.RefreshToken, error)
+    DeleteToken(ctx context.Context, token string) error
+    DeleteAllToken(ctx context.Context, userID string) error
 }
 
 type TokenStore struct {
@@ -23,7 +23,7 @@ func NewTokenStore(db *sql.DB) *TokenStore {
 	return &TokenStore{db: db}
 }
 
-func (ts *TokenStore) SaveRefreshToken(ctx context.Context, userID, token string, expiresAt time.Time) (error) {
+func (ts *TokenStore) SaveToken(ctx context.Context, userID, token string, expiresAt time.Time) (error) {
 	_, err := ts.db.ExecContext(ctx,
 		`INSERT INTO mkt_ecommerce.mkt_refresh_tokens (user_id, token, expires_at)
 		VALUES ($1, $2, $3)`,
@@ -37,7 +37,7 @@ func (ts *TokenStore) SaveRefreshToken(ctx context.Context, userID, token string
 	return nil
 }
 
-func (ts *TokenStore) GetRefreshToken(ctx context.Context, token string) (*models.RefreshToken, error) {
+func (ts *TokenStore) GetToken(ctx context.Context, token string) (*models.RefreshToken, error) {
 	rt := &models.RefreshToken{}
 
 	err := ts.db.QueryRowContext(ctx,
@@ -54,7 +54,7 @@ func (ts *TokenStore) GetRefreshToken(ctx context.Context, token string) (*model
 	return rt, nil
 }
 
-func (ts *TokenStore) DeleteRefreshToken(ctx context.Context, token string) error {
+func (ts *TokenStore) DeleteToken(ctx context.Context, token string) error {
 	result, err := ts.db.ExecContext(ctx,
 		`DELETE FROM mkt_ecommerce.mkt_refresh_tokens WHERE token = $1`, token,
 	)
@@ -75,7 +75,7 @@ func (ts *TokenStore) DeleteRefreshToken(ctx context.Context, token string) erro
 	return nil
 }
 
-func (ts *TokenStore) DeleteAllUserTokens(ctx context.Context, userID string) error {
+func (ts *TokenStore) DeleteAllToken(ctx context.Context, userID string) error {
 	result, err := ts.db.ExecContext(ctx,
 		`DELETE FROM mkt_ecommerce.mkt_refresh_tokens WHERE user_id = $1`, userID,
 	)

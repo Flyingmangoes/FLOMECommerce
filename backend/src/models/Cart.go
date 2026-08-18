@@ -10,6 +10,5 @@ type CartItem struct {
 	ID			string `db:"cart_item_id"`
 	CartID 		string `db:"cart_id"`
 	ProductID 	string `db:"product_id"`
-	StoreID 	string `db:"store_id"`
 	Quantity 	int	   `db:"quantity"`
 }

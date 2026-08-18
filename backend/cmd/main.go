@@ -6,12 +6,13 @@ import (
 	"backend/src/repository"
 	"backend/src/server"
 	"backend/src/services"
-	emailSrvc "backend/src/services/email"
-	paymentSrvc "backend/src/services/payment"
+	email_service "backend/src/services/email"
+	payment_service "backend/src/services/payment"
 	"backend/src/services/redis"
 	logger_system "backend/src/utils/LoggerSystem"
 	"fmt"
 	"log/slog"
+	"net"
 	"os"
 
 	"github.com/subosito/gotenv"
@@ -46,8 +47,10 @@ func main() {
 	cartStore 	 := repository.NewCartStore(db)
 
 	logger_system.Log.Info("Initializing Service")
-	emailService := emailSrvc.NewSGMailManager(cfg, userStore)
 
+	serverUrl := net.JoinHostPort(cfg.SERV_CONF.ServerHOST, cfg.SERV_CONF.ServerPORT)
+
+	emailService := email_service.NewSendgridManager(cfg.SENDGRID_CONF, serverUrl, userStore)
 	if err := emailService.Validate(); err != nil {
 		logger_system.Log.Error("Missing dependency", zap.Error(err))
 		os.Exit(1)
@@ -55,17 +58,12 @@ func main() {
 
 	logger_system.Log.Info("Emailing Service started")
 
-	cacheService := cache_service.NewRedisService(
-		userStore,
-		productStore,
-		cfg,
-	)
+	cacheService := cache_service.NewRedisService(cfg)
 	logger_system.Log.Info("Cache Service started")
 
-	url := paymentSrvc.NewStripeURL(cfg)
-	paymentService := paymentSrvc.NewPaymentService(
-		cfg.STRIPE_CONF,
-		url[0], url[1],
+	success, cancel := payment_service.NewStripeURL(cfg)
+	paymentService := payment_service.NewPaymentService(
+		cfg.STRIPE_CONF, success, cancel,
 	)
 	logger_system.Log.Info("Payment Service started")
 
@@ -73,8 +71,9 @@ func main() {
 
 	logger_system.Log.Info("Starting Server")
 	serverManager := &server.ServerManager{
+		EnvironmentStatus: cfg.ENVIRONMENT_STATUS,
 		Users: userStore,
-		Products: productStore,
+		Products: productStore,	
 		Orders: orderStore,
 		Carts: cartStore,
 		Tokens: tokenStore,
@@ -82,8 +81,11 @@ func main() {
 		Payment: paymentService,
 		Tx: txManager,
 		Cacher: cacheService,
-		JWTSecret: []byte(cfg.SERV_CONF.JWT_SECRET),
-		SUDOSecret: []byte(cfg.SERV_CONF.SUDO_SECRET),
+
+		ServerSecret: server.ServerSecret{
+			JwtSecret: []byte(cfg.SERV_CONF.JWT_SECRET),
+			SudoSecret: []byte(cfg.SERV_CONF.SUDO_SECRET),
+		},
 	}
 
 	serverManager.Start(cfg)	

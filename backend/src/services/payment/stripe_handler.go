@@ -1,13 +1,13 @@
 package payment_service
 
 import (
-	repo"backend/src/repository"
-	"backend/src/middlewares"
-	Logger"backend/src/utils/logger"
+	error_service "backend/src/error"
+	repo "backend/src/repository"
+	logger_system "backend/src/utils/LoggerSystem"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
-	"fmt"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stripe/stripe-go/v85"
@@ -17,7 +17,6 @@ import (
 type PaymentManager struct {
 	Products 	repo.ProductStoreInterface
 	Orders 		repo.OrderStoreInterface
-	Store 		repo.StoreStoreInterface
 	Payment 	*PaymentService
 }
 
@@ -31,25 +30,18 @@ func (pm *PaymentManager) CheckoutOrder() gin.HandlerFunc {
 		buyerId := c.GetString("userId")
 		items := make([]ItemDetail, 0)
 
-		orders, order_items, err := pm.Orders.GetOrders(c.Request.Context(), buyerId)
+		orders, order_items, err := pm.Orders.Get(c.Request.Context(), buyerId)
 		if err != nil {
-			Logger.Log.Error("Failed retrieve order data",zap.Error(err))
-			c.Error(middlewares.ErrInternal("Retrieve order data failed"))
+			logger_system.Log.Error("Failed retrieve order data",zap.Error(err))
+			c.Error(error_service.ErrInternal("Retrieve order data failed"))
 			return
 		}
 
 		for _, value := range order_items{
-			product, err := pm.Products.GetProductByID(c.Request.Context(), value.ProductID)
+			product, err := pm.Products.Get(c.Request.Context(), value.ProductID)
 			if err != nil {
-				Logger.Log.Error("Failed to retrieve product data", zap.Error(err))
-				c.Error(middlewares.ErrInternal("Failed to retrieve product data"))
-				return
-			}
-
-			store, err := pm.Store.GetStoreByID(c.Request.Context(), product.StoreID)
-			if err != nil {
-				Logger.Log.Error("Failed to retrieve store data", zap.Error(err))
-				c.Error(middlewares.ErrInternal("Failed to retrieve store data"))
+				logger_system.Log.Error("Failed to retrieve product data", zap.Error(err))
+				c.Error(error_service.ErrInternal("Failed to retrieve product data"))
 				return
 			}
 
@@ -57,7 +49,7 @@ func (pm *PaymentManager) CheckoutOrder() gin.HandlerFunc {
 				ProductID: value.ProductID,
 				ProductName: product.Name,
 				ProductDesc: product.Desc,
-				StoreName: store.StoreName,
+				StoreName: "Flomm",
 				Price: product.Price,
 				Quantity: value.Quantity,
 				ImageUrl: product.ProductIMG,
@@ -76,12 +68,12 @@ func (pm *PaymentManager) CheckoutOrder() gin.HandlerFunc {
 
 		sc, err := pm.Payment.CreateCheckoutSession(c.Request.Context(), orderId, buyerEmail, items)
 		if err != nil {
-			Logger.Log.Error("Failed to create checkout session", zap.Error(err))
-			c.Error(middlewares.ErrInternal("Create checkout failed"))
+			logger_system.Log.Error("Failed to create checkout session", zap.Error(err))
+			c.Error(error_service.ErrInternal("Create checkout failed"))
 			return
 		}
 
-		Logger.Log.Debug(fmt.Sprintf("Client redirected to: %s", sc.URL))
+		logger_system.Log.Debug(fmt.Sprintf("Client redirected to: %s", sc.URL))
 		c.Redirect(http.StatusFound, sc.URL)
 	}
 }
@@ -90,7 +82,7 @@ func(pm *PaymentManager) StripeWebhooks() gin.HandlerFunc {
 	return func (c *gin.Context)  {
 		payload, err := io.ReadAll(c.Request.Body)
 		if err != nil {
-			Logger.Log.Error("Failed to read request body", zap.Error(err))
+			logger_system.Log.Error("Failed to read request body", zap.Error(err))
 			c.Status(http.StatusBadRequest)
 			return
 		}
@@ -102,7 +94,7 @@ func(pm *PaymentManager) StripeWebhooks() gin.HandlerFunc {
 			pm.Payment.WebhookKey,
 		)
 		if err != nil {
-			Logger.Log.Error("Failed construct event", zap.Error(err))
+			logger_system.Log.Error("Failed construct event", zap.Error(err))
 			c.Status(http.StatusBadRequest)
 			return
 		}
@@ -116,8 +108,8 @@ func(pm *PaymentManager) StripeWebhooks() gin.HandlerFunc {
 			}
 
 			orderId := session.Metadata["order_id"]
-			pm.Orders.UpdateOrderStatus(c.Request.Context(), orderId, "paid")
-			Logger.Log.Info("Order paid", zap.String("order_id", orderId))
+			pm.Orders.UpdateStatus(c.Request.Context(), orderId, "paid")
+			logger_system.Log.Info("Order paid", zap.String("order_id", orderId))
 
 		case "checkout.session.expired":
 			var session stripe.CheckoutSession
@@ -127,11 +119,11 @@ func(pm *PaymentManager) StripeWebhooks() gin.HandlerFunc {
     		}
 
 			orderId := session.Metadata["order_id"]
-			pm.Orders.UpdateOrderStatus(c.Request.Context(), orderId, "cancelled")
-			Logger.Log.Info("Order cancelled", zap.String("order_id", orderId))
+			pm.Orders.UpdateStatus(c.Request.Context(), orderId, "cancelled")
+			logger_system.Log.Info("Order cancelled", zap.String("order_id", orderId))
 
 		default:
-			Logger.Log.Info("Unhandled event", zap.String("type", string(event.Type)))
+			logger_system.Log.Info("Unhandled event", zap.String("type", string(event.Type)))
 		}
 
 		c.Status(http.StatusOK)

@@ -3,7 +3,7 @@ package order
 import (
 	order_types "backend/src/controllers/order/types"
 	terror "backend/src/error"
-	"backend/src/repository"
+	repo_type "backend/src/repository/types"
 	order_services "backend/src/services/order"
 	logger_system "backend/src/utils/LoggerSystem"
 	"fmt"
@@ -25,8 +25,7 @@ func (om *OrderManager) CreateOrder() gin.HandlerFunc {
 
 		buyerId := c.GetString("userId")
 
-		user, err := om.Users.FetchUserByID(c.Request.Context(), &buyerId)
-
+		user, err := om.Users.Fetch(c.Request.Context(), &buyerId)
 		if err != nil {
     		c.Error(terror.ErrInternal("Failed to fetch user"))
     		return
@@ -35,14 +34,13 @@ func (om *OrderManager) CreateOrder() gin.HandlerFunc {
 		buyerEmail := user.Email
 
 		var location string;
-
         if req.BuyerLocation == nil {
             location = fmt.Sprintf("%s, %s", user.Country, user.Address)
 		}
 
-		items := make([]repository.OrderItemInput, 0)
+		items := make([]repo_type.OrderItemInput, 0)
 		for _, item := range req.Items {
-			items = append(items, repository.OrderItemInput{
+			items = append(items, repo_type.OrderItemInput{
 				ProductID: &item.ProductID,
 				Quantity: &item.Quantity,
 			})

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"backend/src/models"
+	repo_type "backend/src/repository/types"
 	"context"
 	"database/sql"
 	"fmt"
@@ -22,17 +23,16 @@ var user_type_list map[int]string = map[int]string{
 }
 
 type UserStoreInterface interface {
-	CreateUser(ctx context.Context, params *UserProfileParams) (*models.User, error)
-	UpdateUser(ctx context.Context, params *UserProfileParams) (*models.User, error)
-	DeleteUser(ctx context.Context, params *UserProfileParams) (error)
-	LoginUser(ctx context.Context, params *UserProfileParams) (*models.User, error)
-	ResetPassword(ctx context.Context, params *UserProfileParams)(error)
+	Create(ctx context.Context, params *repo_type.UserProfileParams) (*models.User, error)
+	Update(ctx context.Context, params *repo_type.UserProfileParams) (*models.User, error)
+	Delete(ctx context.Context, params *repo_type.UserProfileParams) (error)
+	Login(ctx context.Context, params *repo_type.UserProfileParams) (*models.User, error)
+	ResetPassword(ctx context.Context, params *repo_type.UserProfileParams)(error)
 
-	FetchUserByID(ctx context.Context, user_id *string) (*models.User, error)
-	FetchPassword(ctx context.Context, params *UserProfileParams) (*string, error)
+	Fetch(ctx context.Context, user_id *string) (*models.User, error)
+	FetchPassword(ctx context.Context, user_id string) (*string, error)
 
 	VerifyUser(ctx context.Context, verified_id string) (*models.User, error)
-	SearchUser(ctx context.Context, params *UserSearchParams) ([]models.User, error)
 }
 
 type UserStore struct {
@@ -43,7 +43,7 @@ func NewUserStore(db *sql.DB) *UserStore {
 	return &UserStore{db: db}
 }
 
-func (us *UserStore)CreateUser(ctx context.Context, params *UserProfileParams) (*models.User, error) {
+func (us *UserStore)Create(ctx context.Context, params *repo_type.UserProfileParams) (*models.User, error) {
 	const query string = `
 		INSERT INTO mkt_ecommerce.mkt_users (firstname, lastname, username, 
 				email, phone_number, password_hash, 
@@ -126,7 +126,7 @@ func (us *UserStore)CreateUser(ctx context.Context, params *UserProfileParams) (
 	return user, nil
 }
 
-func (us *UserStore)UpdateUser(ctx context.Context, params *UserProfileParams) (*models.User, error) {
+func (us *UserStore)Update(ctx context.Context, params *repo_type.UserProfileParams) (*models.User, error) {
 	user:= &models.User{}
 		
 	err := us.db.QueryRowContext(ctx, 
@@ -171,7 +171,7 @@ func (us *UserStore)UpdateUser(ctx context.Context, params *UserProfileParams) (
 	return user, nil
 }
 
-func (us *UserStore)DeleteUser(ctx context.Context, params *UserProfileParams) error {
+func (us *UserStore)Delete(ctx context.Context, params *repo_type.UserProfileParams) error {
 	result, err := us.db.ExecContext(ctx, 
 		`DELETE FROM mkt_ecommerce.mkt_users
 		WHERE user_id = $1`,
@@ -191,7 +191,7 @@ func (us *UserStore)DeleteUser(ctx context.Context, params *UserProfileParams) e
 	return nil
 }
 
-func (us *UserStore)LoginUser(ctx context.Context, params *UserProfileParams) (*models.User, error) {
+func (us *UserStore)Login(ctx context.Context, params *repo_type.UserProfileParams) (*models.User, error) {
 	user := &models.User{}
 	var err error
 
@@ -246,7 +246,7 @@ func (us *UserStore)LoginUser(ctx context.Context, params *UserProfileParams) (*
 	return user, nil
 }
 
-func (us *UserStore) FetchUserByID(ctx context.Context, user_id *string) (*models.User, error) {
+func (us *UserStore) Fetch(ctx context.Context, user_id *string) (*models.User, error) {
 	user := &models.User{}
 
 	err := us.db.QueryRowContext(ctx,
@@ -277,35 +277,14 @@ func (us *UserStore) FetchUserByID(ctx context.Context, user_id *string) (*model
 	return user, nil
 }
 
-func (us *UserStore) FetchPassword(ctx context.Context, params *UserProfileParams) (*string, error) {
+func (us *UserStore) FetchPassword(ctx context.Context, user_id string) (*string, error) {
     user := &models.User{}
-	var err error
-
-	switch {
-		case params.Email != nil:
-			err = us.db.QueryRowContext(ctx,
-				`SELECT password_hash from mkt_ecommerce.mkt_users
-				WHERE email = $1`,	
-				params.Email,
-			).Scan(&user.PasswordHash)
 		
-		case params.UserId != nil:
-			err = us.db.QueryRowContext(ctx,
-				`SELECT password_hash FROM mkt_ecommerce.mkt_users 
-				WHERE user_id = $1`,
-				params.UserId,
-			).Scan(&user.PasswordHash)
-
-		case params.Username != nil:
-			err = us.db.QueryRowContext(ctx,
-				`SELECT password_hash FROM mkt_ecommerce.mkt_users
-				WHERE username = $1`,
-				params.Username,
-			).Scan(&user.PasswordHash)
-
-		default:
-			return nil, fmt.Errorf("at least one identifier required")
-	}
+	err := us.db.QueryRowContext(ctx,
+		`SELECT password_hash FROM mkt_ecommerce.mkt_users 
+		WHERE user_id = $1`,
+		user_id,
+	).Scan(&user.PasswordHash)
 
 	if err != nil {
 		return nil, err 
@@ -332,45 +311,9 @@ func (us *UserStore) VerifyUser(ctx context.Context, verified_id string) (*model
 	return user, nil
 }
 
-func (us *UserStore) SearchUser(ctx context.Context, params *UserSearchParams) ([]models.User, error) {
-	params.Normalize()
-
-	createdAt, id := params.CursorValues()
-	
-	rows, err := us.db.QueryContext(ctx,
-		`SELECT user_id, username, user_country, created_at,
-		FROM mkt_ecommerce.mkt_users
-		WHERE
-			($1::timestamptz IS NULL OR (created_at, user_id) < ($1, $2::uuid)) AND
-			($3::varchar IS NULL OR username ILIKE '%' || $3 || '%') AND
-		ORDER BY created_at DESC, user_id DESC
-		LIMIT $4`,
-		createdAt, id,
-		params.Username, params.Limit,
-	)
-
-	if err != nil { return nil, err }
-	
-	defer rows.Close()
-
-	users := make([]models.User, 0)
-	for rows.Next() {
-		u := models.User{}
-		if err := rows.Scan(
-			&u.UserID, &u.Username,
-			&u.Country, &u.CreatedAt, 
-		); err != nil {
-			return nil, err
-		}
-
-		users = append(users, u)
-	}
-
-	return users, rows.Err()
-}
-
-func(us *UserStore) ResetPassword(ctx context.Context, params *UserProfileParams) error {
-	var results sql.Result; var err error
+func(us *UserStore) ResetPassword(ctx context.Context, params *repo_type.UserProfileParams) error {
+	var results sql.Result 
+	var err error
 
 	const query string = `
 		UPDATE mkt_ecommerce.mkt_users SET
