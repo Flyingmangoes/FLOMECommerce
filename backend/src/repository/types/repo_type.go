@@ -1,7 +1,6 @@
-package repository
+package repo_type
 
 import (
-	"backend/src/utils"
 	"time"
 )
 
@@ -9,19 +8,19 @@ type BaseParams struct {
 	UserId 				*string
 	Email 				*string
 	Username 			*string
-	Locale				*string
-	Country				*string
-	Address 			*string
+	PhoneNumber			*string
 }
 
 type UserProfileParams struct {	
 	BaseParams
-	PhoneNumber			*string
 	HashedPassword  	*string
 	NewPasswordHashed 	*string
 	FirstName			*string
 	LastName			*string
 	UserType 			*int
+	Locale				*string
+	Country				*string
+	Address 			*string
 	EmailConsent		*bool
 	SmsConsent			*bool
 	ConsentUpdatedAt 	*time.Time
@@ -32,39 +31,9 @@ type UserProfileParams struct {
 	UpdatedAt			*time.Time
 }
 
-type UserSearchParams struct {
-	Query 				*string
-	Username 			*string
-	SortBy 				*string
-	SortOrder 			*string
-}
-
-type StoreProfileParams struct {
-	BaseParams
-    StoreId      *string
-    StoreName    *string
-    StoreDesc    *string
-    StorePic     *string
-    IsActive     *bool
-    PhoneNumber  *string
-    SupportEmail *string
-    Instagram    *string
-    Facebook     *string
-    Tiktok       *string
-    Website      *string
-}
-
-type StoreSearchParams struct {
-	Query 			*string	
-	StoreName 		*string 	
-	StoreCountry 	*string 	
-	SortBy 			*string		
-	SortOrder 		*string		
-}
-
 type ProductProfileParams struct {
+	BaseParams
 	ProductID 		*string
-	StoreId 		*string
 	Name 			*string
 	ImageUrl 		*string
 	Price 			*float64
@@ -92,7 +61,7 @@ type OrderItemInput struct {
     Quantity  *int
 }
 
-type OrderStoreParams struct {
+type OrderParams struct {
 	BaseParams
     OrderID    *string
     TotalPrice *float64

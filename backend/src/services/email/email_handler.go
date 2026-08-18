@@ -1,10 +1,9 @@
 package email_services
 
 import (
-	"backend/src/middlewares"
-	"backend/src/utils"
-	"backend/src/utils/jwt"
-	Logger "backend/src/utils/logger"
+	error_service "backend/src/error"
+	jwt_service "backend/src/utils/JWT"
+	logger_system "backend/src/utils/LoggerSystem"
 	"database/sql"
 	"fmt"
 	"net/http"
@@ -13,39 +12,39 @@ import (
 	"go.uber.org/zap"
 )
 
-func(sg *SGMailManager) SendUserVerificationMail() gin.HandlerFunc {
+func(sg *SendgridManager) UserVerification() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		user_id := c.GetString("userId")
 
-		user, err := sg.Users.FetchUserByID(c.Request.Context(), &user_id)
+		user, err := sg.Users.Fetch(c.Request.Context(), &user_id)
 		if err != nil {
 			if err == sql.ErrNoRows {
-				Logger.Log.Error("Data not found")
+				logger_system.Log.Error("Data not found")
 				c.Status(http.StatusNotFound)
 				return
 			}
-			Logger.Log.Error("Error while getting user data", zap.Error(err))
-			c.Error(middlewares.ErrInternal("Failed to retrieve user data"))
+			logger_system.Log.Error("Error while getting user data", zap.Error(err))
+			c.Error(error_service.ErrInternal("Failed to retrieve user data"))
 			return
 		}
 
-		token, expires, err := jwt.GenerateUserVerificationToken(user_id, []byte(sg.USER_VERIFICATION_SECRET))
+		token, expires, err := jwt_service.GenerateUserVerificationToken(user_id, []byte(sg.UserVerificationSecret))
 		if err != nil {
-			Logger.Log.Error("Error in generating token", zap.Error(err))
-			c.Error(middlewares.ErrInternal("Failed to generate token"))
+			logger_system.Log.Error("Error in generating token", zap.Error(err))
+			c.Error(error_service.ErrInternal("Failed to generate token"))
 			return
 		}
 
-		token_url := fmt.Sprintf("http://%s/v2/user/verify?token=%s", sg.SERVER_URL, token)
+		token_url := fmt.Sprintf("http://%s/v2/user/verify?token=%s", sg.ServerUrl, token)
 
 		params := &MailServiceParams{
-			From: sg.TEST_EMAIL,
+			From: sg.TestEmail,
 			To: []string{user.Email},
 			Subject: "Verified your Account",
 			MailType: UserVerification,
 			MailData: &MailData{
-				DomainName: "Flommerce",
-				SupportEmail: "support@flommerce.com",
+				DomainName: sg.DomainEmail,
+				SupportEmail: sg.CustomerSupportEmail,
 				FirstName: user.FirstName,
 				Username: user.Username,
 				TokenUrl: token_url,
@@ -55,13 +54,12 @@ func(sg *SGMailManager) SendUserVerificationMail() gin.HandlerFunc {
 
 		mailReq := sg.NewMail(params)
 		if err := sg.SendMail(mailReq); err != nil {
-			Logger.Log.Error("Failed to send email", zap.Error(err))
-			c.Error(middlewares.ErrInternal("Failed to send email"))
+			logger_system.Log.Error("Failed to send email", zap.Error(err))
+			c.Error(error_service.ErrInternal("Failed to send email"))
 			return
 		}
 
 		c.JSON(http.StatusOK, gin.H{
-			"response": utils.EXIT_SUCCESS,
 			"detail": gin.H{
 				"info": "Sended",
 				"email": user.Email,
@@ -70,35 +68,34 @@ func(sg *SGMailManager) SendUserVerificationMail() gin.HandlerFunc {
 	}
 }
 
-func(sg *SGMailManager) VerifyUserVerification() gin.HandlerFunc {
+func(sg *SendgridManager) VerifyUserVerification() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
 			Token string `form:"token"`
 		}
 
 		if err := c.ShouldBindQuery(&req); err != nil {
-			Logger.Log.Error("Failed to bind query", zap.Error(err))
-			c.Error(middlewares.ErrBadRequest("Failed to read client request"))
+			logger_system.Log.Error("Failed to bind query", zap.Error(err))
+			c.Error(error_service.ErrBadRequest("Failed to read client request"))
 			return
 		}
 
-		claims, err := jwt.VerifyUserVerificationToken(req.Token, []byte(sg.USER_VERIFICATION_SECRET))
+		claims, err := jwt_service.VerifyUserVerificationToken(req.Token, []byte(sg.UserVerificationSecret))
 		if err != nil {
-			c.Error(middlewares.ErrUnauthorized("Invalid or Expired token"))
+			c.Error(error_service.ErrUnauthorized("Invalid or Expired token"))
 			return
 		}
 
 		user, err := sg.Users.VerifyUser(c.Request.Context(), claims.UserID)
 		if err != nil {
-			Logger.Log.Error("Failed to verified user", zap.Error(err))
-			c.Error(middlewares.ErrInternal("Failed to verified user"))
+			logger_system.Log.Error("Failed to verified user", zap.Error(err))
+			c.Error(error_service.ErrInternal("Failed to verified user"))
 			return
 		}
 
 		c.JSON(http.StatusOK, gin.H{
-			"response": utils.EXIT_SUCCESS,
 			"detail": gin.H{
-				"info":"Email verified successfully",
+				"info":"Email verified",
 				"id": user.UserID,
 				"email": user.Email,
 			},
@@ -106,25 +103,25 @@ func(sg *SGMailManager) VerifyUserVerification() gin.HandlerFunc {
 	}
 }
 
-func (sg *SGMailManager) SendPassResetMail() gin.HandlerFunc {
+func (sg *SendgridManager) SendPassReset() gin.HandlerFunc {
 	return func(c *gin.Context) {
 
 	}
 }
 
-func (sg *SGMailManager) VerifiyPassReset() gin.HandlerFunc {
+func (sg *SendgridManager) VerifiyPassReset() gin.HandlerFunc {
 	return func(c *gin.Context) {
 
 	}
 }
 
-func (sg *SGMailManager) SendOrderConfirmation() gin.HandlerFunc {
+func (sg *SendgridManager) SendOrderConfirmation() gin.HandlerFunc {
 	return func(c *gin.Context) {
 
 	}
 }
 
-func (sg *SGMailManager) VerifyOrderConfirmation() gin.HandlerFunc {
+func (sg *SendgridManager) VerifyOrderConfirmation() gin.HandlerFunc {
 	return func(c *gin.Context) {
 
 	}

@@ -3,7 +3,7 @@ package product
 import (
 	product_types "backend/src/controllers/product/types"
 	terror "backend/src/error"
-	"backend/src/repository"
+	repo_type "backend/src/repository/types"
 	logger_system "backend/src/utils/LoggerSystem"
 	"net/http"
 
@@ -21,10 +21,7 @@ func (pm *ProductManager) RegisterProduct() gin.HandlerFunc {
 			return
 		}
 
-		store_id := c.GetString("storeId")
-
-		params := &repository.ProductProfileParams{
-			StoreId: &store_id,
+		params := &repo_type.ProductProfileParams{
 			Name: &req.ProductName,
 			ImageUrl: &req.ImageUrl,
 			Price: &req.Price,
@@ -33,7 +30,7 @@ func (pm *ProductManager) RegisterProduct() gin.HandlerFunc {
 			Availability: &req.Availability,
 		}
 
-		product, err := pm.Products.CreateProduct(c.Request.Context(), params)
+		product, err := pm.Products.Create(c.Request.Context(), params)
 		if err != nil {
 			logger_system.Log.Error("detail", zap.Error(err))
 			c.Error(terror.ErrInternal("Failed to register product"))

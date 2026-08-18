@@ -3,7 +3,7 @@ package cart
 import (
 	cart_types "backend/src/controllers/cart/types"
 	terror "backend/src/error"
-	"backend/src/repository"
+	repo_type "backend/src/repository/types"
 	logger_system "backend/src/utils/LoggerSystem"
 	"database/sql"
 	"net/http"
@@ -23,8 +23,8 @@ func (cm *CartManager) UpdateQuantity() gin.HandlerFunc {
 		}
 
 		user_id := c.GetString("userId")
-		cart, err := cm.Carts.GetCart(c.Request.Context(), &repository.CartProfileParams{
-			BaseParams: repository.BaseParams{UserId: &user_id},
+		cart, err := cm.Carts.Get(c.Request.Context(), &repo_type.CartProfileParams{
+			BaseParams: repo_type.BaseParams{UserId: &user_id},
 		})
 
 		if err != nil {
@@ -33,13 +33,13 @@ func (cm *CartManager) UpdateQuantity() gin.HandlerFunc {
 			return
 		}
 
-		params := &repository.CartProfileParams{
+		params := &repo_type.CartProfileParams{
 			Quantity: &req.NewQuantity,
 			CartItemsID: &req.CartItemID,
 			CartID: &cart.ID,
 		}
 
-		items, err := cm.Carts.UpdateItemQuantity(c.Request.Context(), params)
+		items, err := cm.Carts.UpdateQuantity(c.Request.Context(), params)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				c.Error(terror.ErrNotFound("Cart items not found"))	

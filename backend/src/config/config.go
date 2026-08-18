@@ -22,14 +22,14 @@ type AppConfig struct {
 }
 
 type ServerConfig struct {
-	HOST 				string
-	PORT 				string
+	ServerHOST 			string
+	ServerPORT 			string
 
 	ProxyHOST 			string
 	ProxyPORT 			string
 
-	FrontendHOST 		string
-	FrontendPORT 		string
+	WebsiteHOST 		string
+	WebsitePORT 		string
 
 	JWT_SECRET 			string
 	SUDO_SECRET			string
@@ -51,10 +51,12 @@ type StripeConfig struct {
 }
 
 type SendgridConfig struct {
-	VERIFICATION_SECRET 		string
+	USER_VERIFICATION_SECRET 	string
 	SENDGRID_SECRET 			string
+
 	TEST_EMAIL					string
 	DOMAIN_EMAIL				string
+	SUPPORT_EMAIL				string
 
 	TEMPLATE_USER_VERIFICATION 	string
 	TEMPLATE_PASS_RESET 		string
@@ -84,7 +86,7 @@ func (a *ConfigManager) Validate() error {
 		return errors.New("sudo secret not found")
 	}
 
-	if a.SENDGRID_CONF.VERIFICATION_SECRET == "" {
+	if a.SENDGRID_CONF.USER_VERIFICATION_SECRET == "" {
 		return errors.New("verification secret not found")
 	}
 
@@ -109,12 +111,12 @@ func NewConfig() *ConfigManager {
 			DATABASE: os.Getenv("POSTGRES_URL"),
 		},
 		SERV_CONF: &ServerConfig{
-			HOST: 							os.Getenv("SERVER_HOST"),
-			PORT: 							os.Getenv("SERVER_PORT"),
+			ServerHOST: 					os.Getenv("SERVER_HOST"),
+			ServerPORT: 					os.Getenv("SERVER_PORT"),
 			ProxyHOST: 						os.Getenv("PROXY_HOST"),
 			ProxyPORT: 						os.Getenv("PROXY_PORT"),
-			FrontendHOST: 					os.Getenv("FRONTEND_HOST"),
-			FrontendPORT: 					os.Getenv("FRONTEND_PORT"),
+			WebsiteHOST: 					os.Getenv("FRONTEND_HOST"),
+			WebsitePORT: 					os.Getenv("FRONTEND_PORT"),
 			JWT_SECRET: 					os.Getenv("JWT_SECRET"),
 			SUDO_SECRET: 					os.Getenv("SUDO_SECRET"),
 		},
@@ -133,9 +135,11 @@ func NewConfig() *ConfigManager {
 		},
 		SENDGRID_CONF: &SendgridConfig{
 			SENDGRID_SECRET: 				os.Getenv("SENDGRID_SECRET"),
-			VERIFICATION_SECRET: 			os.Getenv("VERIFICATION_SECRET"),
+			USER_VERIFICATION_SECRET: 		os.Getenv("USER_VERIFICATION_SECRET"),
 			TEST_EMAIL: 					os.Getenv("SENDGRID_TEST_EMAIL"),
 			DOMAIN_EMAIL: 					os.Getenv("SENDGRID_DOMAIN_EMAIL"),
+			SUPPORT_EMAIL: 					os.Getenv("SENDGRID_SUPPORT_EMAIL"),
+
 			TEMPLATE_USER_VERIFICATION: 	os.Getenv("USER_VERIFICATION_TEMPLATE"),
 			TEMPLATE_ORDER_CONFIRMATION: 	os.Getenv("ORDER_CONFIRMATION_TEMPLATE"),
 			TEMPLATE_PASS_RESET: 			os.Getenv("PASS_RESET_TEMPLATE"),

@@ -2,16 +2,17 @@ package repository
 
 import (
 	"backend/src/models"
+	repo_type "backend/src/repository/types"
 	"context"
 	"database/sql"
 	"fmt"
 )
 
 type OrderStoreInterface interface {
-	CreateOrder(ctx context.Context, tx *sql.Tx, params *OrderStoreParams) (*models.Order, []*models.OrderItem, error)
-	RemoveOrder(ctx context.Context, tx *sql.Tx, params *OrderStoreParams) error
-	GetOrders(ctx context.Context, buyer_id string) ([]*models.Order, []*models.OrderItem, error)
-	UpdateOrderStatus(ctx context.Context, order_id, status string) error
+	Create(ctx context.Context, tx *sql.Tx, params *repo_type.OrderParams) (*models.Order, []*models.OrderItem, error)
+	Remove(ctx context.Context, tx *sql.Tx, params *repo_type.OrderParams) error
+	Get(ctx context.Context, buyer_id string) ([]*models.Order, []*models.OrderItem, error)
+	UpdateStatus(ctx context.Context, order_id, status string) error
 }
 
 type OrderStore struct {
@@ -22,7 +23,7 @@ func NewOrderStore(db *sql.DB) *OrderStore{
 	return &OrderStore{db: db}
 }
 
-func (os *OrderStore)CreateOrder(ctx context.Context, tx *sql.Tx, params *OrderStoreParams) (*models.Order, []*models.OrderItem, error) {
+func (os *OrderStore)Create(ctx context.Context, tx *sql.Tx, params *repo_type.OrderParams) (*models.Order, []*models.OrderItem, error) {
 	order := &models.Order{}
 	items := make([]*models.OrderItem, 0)
 	var err error
@@ -61,7 +62,7 @@ func (os *OrderStore)CreateOrder(ctx context.Context, tx *sql.Tx, params *OrderS
 	return order, items, nil
 }
 
-func (os *OrderStore)RemoveOrder(ctx context.Context, tx *sql.Tx, params *OrderStoreParams) error {
+func (os *OrderStore)Remove(ctx context.Context, tx *sql.Tx, params *repo_type.OrderParams) error {
 	results, err := tx.ExecContext(ctx,
 		`DELETE FROM mkt_ecommerce.mkt_orders
 		WHERE order_id = $1 AND buyer_id = $2`,
@@ -79,7 +80,7 @@ func (os *OrderStore)RemoveOrder(ctx context.Context, tx *sql.Tx, params *OrderS
 }
 
 
-func (os *OrderStore) GetOrders(ctx context.Context, buyer_id string) ([]*models.Order, []*models.OrderItem, error) {
+func (os *OrderStore) Get(ctx context.Context, buyer_id string) ([]*models.Order, []*models.OrderItem, error) {
 	orders := make([]*models.Order, 0)
 	items := make([]*models.OrderItem, 0)
 
@@ -147,7 +148,7 @@ func (os *OrderStore) GetOrders(ctx context.Context, buyer_id string) ([]*models
 	return orders, items, nil
 }
  
-func (os *OrderStore) UpdateOrderStatus(ctx context.Context, order_id, status string) error {
+func (os *OrderStore) UpdateStatus(ctx context.Context, order_id, status string) error {
 	results, err := os.db.ExecContext(ctx,
 		`UPDATE mkt_ecommerce.mkt_orders SET
 			status = COALESCE($1, status)

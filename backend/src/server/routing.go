@@ -2,6 +2,9 @@ package server
 
 import (
 	"backend/src/controllers"
+	"backend/src/controllers/cart"
+	"backend/src/controllers/order"
+	"backend/src/controllers/product"
 	authHandler "backend/src/controllers/user"
 	"backend/src/middlewares"
 	"backend/src/services"
@@ -16,24 +19,16 @@ func registerRoutes(r *gin.Engine, sm *ServerManager, lp *middlewares.LoginPriso
         Cart:      sm.Carts,
         Users:     sm.Users,
         Tokens:    sm.Tokens,
-        JWTSecret: sm.JWTSecret,
+        JWTSecret: sm.JwtSecret,
     }
 
-    storeCtrl := &controllers.StoreManager{
-		Users: sm.Users,
-        Stores: sm.Stores,
-        JWTSecret: sm.JWTSecret,
-        Cache: sm.Cacher,
-    }
-
-    prdctCtrl := &controllers.ProductManager{
-        Stores: sm.Stores,
+    prdctCtrl := &product.ProductManager{
         Products: sm.Products,
-        JWTSecret: sm.JWTSecret,
+        JWTSecret: sm.JwtSecret,
         Cache: sm.Cacher,
     }
 
-    orderCtrl := &controllers.OrderManager{
+    orderCtrl := &order.OrderManager{
         Orders: sm.Orders,
         Users: sm.Users,
         OrderService: &orderService.OrderService{Tx: sm.Tx},
@@ -42,17 +37,14 @@ func registerRoutes(r *gin.Engine, sm *ServerManager, lp *middlewares.LoginPriso
     paymentCtrl := &paymentService.PaymentManager{
         Orders: sm.Orders,
         Products: sm.Products,
-        Store: sm.Stores,
         Payment: sm.Payment,
     }
 
-    emailCtrl := sm.Email
-
     sudoCtrl := &controllers.SudoManager{
-        SUDOSecret: string(sm.SUDOSecret),
+        SUDOSecret: string(sm.SudoSecret),
     }
 
-    cartCtrl := &controllers.CartManager{
+    cartCtrl := &cart.CartManager{
         Carts: sm.Carts,
         Products: sm.Products,
     }
@@ -67,13 +59,12 @@ func registerRoutes(r *gin.Engine, sm *ServerManager, lp *middlewares.LoginPriso
             auth.POST("/logout",    userCtrl.LogoutUser())
         }
 
-        public.GET("/user/verify", emailCtrl.VerifyUserVerification())    
+        public.GET("/user/verify", sm.Email.VerifyUserVerification())    
 
         api := public.Group("/api")
         {
             api.GET("/users",       userCtrl.SearchUser())
             api.GET("/products",    prdctCtrl.SearchProduct())
-            api.GET("/stores",      storeCtrl.SearchStore())
         }
 
         webhook:= public.Group("/webhook")

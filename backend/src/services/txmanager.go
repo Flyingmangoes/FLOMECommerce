@@ -8,18 +8,15 @@ import (
 
 type TxManager struct {
 	CentralDB *sql.DB
-
 	Products repository.ProductStoreInterface
 	Orders repository.OrderStoreInterface
-	Stores repository.StoreStoreInterface
 }	
 
-func NewTxManager(db *sql.DB, ps repository.ProductStoreInterface, os repository.OrderStoreInterface, ss repository.StoreStoreInterface ) *TxManager {
+func NewTxManager(db *sql.DB, ps repository.ProductStoreInterface, os repository.OrderStoreInterface) *TxManager {
 	return &TxManager{
 		CentralDB: db,
 		Products: ps,
 		Orders: os,
-		Stores: ss,
 	}
 }
 

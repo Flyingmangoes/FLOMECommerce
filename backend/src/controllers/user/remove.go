@@ -1,10 +1,8 @@
 package user
 
 import (
-	user_type "backend/src/controllers/user/types"
 	terror "backend/src/error"
-	"backend/src/repository"
-	"backend/src/services/auth"
+	repo_type "backend/src/repository/types"
 	logger_system "backend/src/utils/LoggerSystem"
 	"net/http"
 
@@ -14,37 +12,20 @@ import (
 
 func (uc *UserManager)DeleteUser() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req user_type.RemoveUserRequest
-		if err := c.ShouldBindBodyWithJSON(&req); err != nil {
-			logger_system.Log.Error("Error", zap.Error(err))
-			c.Error(terror.ErrBadRequest("Failed to read client request"))
-			return
-		}
-
 		requester_id := c.GetString("userId")
-		password, err := uc.Users.FetchPassword(c.Request.Context(), &repository.UserProfileParams{
-			BaseParams: repository.BaseParams{UserId: &requester_id},
-		})
-		
-        if err != nil {
-            logger_system.Log.Error("Error", zap.Error(err))
-            c.Error(terror.ErrUnauthorized("Invalid credentials"))
-            return
-        }
-
-		if err := auth.ValidatePassword(*password, req.Password); err != nil {
-			logger_system.Log.Error("Error", zap.Error(err))
-			c.Error(terror.ErrUnauthorized("Invalid credentials"))
+		if requester_id == "" {
+			logger_system.Log.Error("Missing user id")
+			c.Error(terror.ErrUnauthorized("Invalid user"))
 			return
 		}
-
-		params := &repository.UserProfileParams{
-			BaseParams: repository.BaseParams{
+		
+		params := &repo_type.UserProfileParams{
+			BaseParams: repo_type.BaseParams{
 				UserId: &requester_id,
 			},
 		}
 
-		if err := uc.Users.DeleteUser(c.Request.Context(), params); err != nil {
+		if err := uc.Users.Delete(c.Request.Context(), params); err != nil {
 			logger_system.Log.Error("Error", zap.Error(err))
 			c.Error(terror.ErrInternal("Failed to remove user"))
 			return

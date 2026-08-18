@@ -1,10 +1,6 @@
 package auth
 
-import(
-	Logger"backend/src/utils/logger"
-	"go.uber.org/zap"
-	"fmt"
-)
+import "fmt"
 
 type Action string
 type AccountType string

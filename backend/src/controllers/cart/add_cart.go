@@ -3,7 +3,7 @@ package cart
 import (
 	cart_types "backend/src/controllers/cart/types"
 	terror "backend/src/error"
-	"backend/src/repository"
+	repo_type "backend/src/repository/types"
 	logger_system "backend/src/utils/LoggerSystem"
 	"database/sql"
 	"net/http"
@@ -23,12 +23,12 @@ func (cm *CartManager) AddCartItem() gin.HandlerFunc {
 		}
 
 		user_id := c.GetString("userId")
-		cart, err := cm.Carts.GetCart(c.Request.Context(), &repository.CartProfileParams{
-			BaseParams: repository.BaseParams{UserId: &user_id},
+		cart, err := cm.Carts.Get(c.Request.Context(), &repo_type.CartProfileParams{
+			BaseParams: repo_type.BaseParams{UserId: &user_id},
 		})
 
 		if err == sql.ErrNoRows {
-			cart, err = cm.Carts.CreateCart(c.Request.Context(), user_id)
+			cart, err = cm.Carts.Create(c.Request.Context(), user_id)
 			if err != nil {
 				logger_system.Log.Error("Failed to create cart", zap.Error(err))
 				c.Error(terror.ErrInternal("Failed to create cart"))
@@ -40,22 +40,14 @@ func (cm *CartManager) AddCartItem() gin.HandlerFunc {
 			return
 		}
 
-		store_id, err := cm.Products.FetchStoreID(c.Request.Context(), req.ProductID)
-		if err != nil {
-			logger_system.Log.Error("Failed to retrieve product", zap.Error(err))
-			c.Error(terror.ErrInternal("Faile to retrieve product"))
-			return
-		}
-
-		params := &repository.CartProfileParams{
-			BaseParams: repository.BaseParams{UserId: &user_id},
+		params := &repo_type.CartProfileParams{
+			BaseParams: repo_type.BaseParams{UserId: &user_id},
 			CartID: 	&cart.ID,
 			ProductID: 	&req.ProductID,
-			StoreID: &store_id,
 			Quantity: 	&req.Quantity,
 		}
 
-		cart_items, err := cm.Carts.AddCartItem(c.Request.Context(), params)
+		cart_items, err := cm.Carts.InsertItems(c.Request.Context(), params)
 		if err != nil {
 			logger_system.Log.Error("Failed to add item", zap.Error(err))
 			c.Error(terror.ErrInternal("Failed to add item"))

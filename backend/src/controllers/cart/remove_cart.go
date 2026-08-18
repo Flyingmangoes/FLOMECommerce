@@ -3,7 +3,7 @@ package cart
 import (
 	cart_types "backend/src/controllers/cart/types"
 	terror "backend/src/error"
-	"backend/src/repository"
+	repo_type "backend/src/repository/types"
 	logger_system "backend/src/utils/LoggerSystem"
 	"database/sql"
 	"net/http"
@@ -23,8 +23,8 @@ func (cm *CartManager) RemoveCartItem() gin.HandlerFunc {
 		}
 
 		user_id := c.GetString("userId")
-		cart, err := cm.Carts.GetCart(c.Request.Context(), &repository.CartProfileParams{
-			BaseParams: repository.BaseParams{
+		cart, err := cm.Carts.Get(c.Request.Context(), &repo_type.CartProfileParams{
+			BaseParams: repo_type.BaseParams{
 				UserId: &user_id,
 			},
 		})
@@ -35,7 +35,7 @@ func (cm *CartManager) RemoveCartItem() gin.HandlerFunc {
 			return
 		}
 
-		err = cm.Carts.RemoveItem(c.Request.Context(), &repository.CartProfileParams{
+		err = cm.Carts.RemoveItems(c.Request.Context(), &repo_type.CartProfileParams{
 			CartItemsID: &req.CartItemID,
 			CartID: &cart.ID,
 		})
@@ -54,11 +54,11 @@ func (cm *CartManager) ClearCart() gin.HandlerFunc {
 	return func (c *gin.Context) {
 		requester_id := c.GetString("userId")
 
-		cart, err := cm.Carts.GetCart(c.Request.Context(), &repository.CartProfileParams{
-			BaseParams: repository.BaseParams{UserId: &requester_id},
+		cart, err := cm.Carts.Get(c.Request.Context(), &repo_type.CartProfileParams{
+			BaseParams: repo_type.BaseParams{UserId: &requester_id},
 		})
-		err = cm.Carts.ClearCart(c.Request.Context(), &repository.CartProfileParams{
-			BaseParams: repository.BaseParams{UserId:  &requester_id},
+		err = cm.Carts.ClearItems(c.Request.Context(), &repo_type.CartProfileParams{
+			BaseParams: repo_type.BaseParams{UserId:  &requester_id},
 			CartID: &cart.ID,
 		})
 		if err != nil {

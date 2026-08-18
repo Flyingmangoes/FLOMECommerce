@@ -1,4 +1,4 @@
-package terror
+package error_service
 
 import (
     "log"

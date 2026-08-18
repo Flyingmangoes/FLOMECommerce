@@ -3,8 +3,7 @@ package product
 import (
 	product_types "backend/src/controllers/product/types"
 	terror "backend/src/error"
-	"backend/src/repository"
-	"backend/src/services/auth"
+	repo_type "backend/src/repository/types"
 	logger_system "backend/src/utils/LoggerSystem"
 	"net/http"
 
@@ -21,24 +20,8 @@ func (pm *ProductManager) RemoveProduct() gin.HandlerFunc {
 			return
 		}
 
-		requester_id := c.GetString("storeId")
-		isAllowed, err := auth.ValidateRequester(c.Request.Context(), 
-			requester_id, req.ProductID, string(auth.AccountAdmin), pm.Products,
-		)
-		if err != nil {
-			logger_system.Log.Error("Error while checking credentials", zap.Error(err))
-			c.Error(terror.ErrInternal("Failed to check credentials"))
-			return
-		}
-
-		if !isAllowed {
-			c.Error(terror.ErrUnauthorized("Invalid user"))
-			return
-		}
-
-		err = pm.Products.RemoveProduct(c.Request.Context(), &repository.ProductProfileParams{
+		err := pm.Products.Remove(c.Request.Context(), &repo_type.ProductProfileParams{
 			ProductID: &req.ProductID,
-			StoreId: &requester_id,
 		})
 
 		if err != nil {
