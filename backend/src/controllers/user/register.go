@@ -5,7 +5,7 @@ import (
 	terror "backend/src/error"
 	repo "backend/src/repository"
 	repo_type "backend/src/repository/types"
-	"backend/src/services/auth"
+	auth_service "backend/src/services/auth"
 	"backend/src/utils"
 	jwt_service "backend/src/utils/JWT"
 	logger_system "backend/src/utils/LoggerSystem"
@@ -27,7 +27,7 @@ func (uc *UserManager) RegisterUser() gin.HandlerFunc {
 			return
 		}
 
-		hashedpass, err := auth.Hashing([]byte(req.Password))
+		hashedpass, err := auth_service.HashPassword([]byte(req.Password))
 		if err != nil {
 			logger_system.Log.Error("Error", zap.Error(err))
 			c.Error(terror.ErrInternal("Failed to hash password"))

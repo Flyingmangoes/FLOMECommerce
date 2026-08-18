@@ -1,13 +1,13 @@
 package server
 
 import (
-	"backend/src/controllers"
 	"backend/src/controllers/cart"
+	sudo "backend/src/controllers/confirmation"
 	"backend/src/controllers/order"
 	"backend/src/controllers/product"
 	authHandler "backend/src/controllers/user"
 	"backend/src/middlewares"
-	"backend/src/services"
+	auth_service "backend/src/services/auth"
 	orderService "backend/src/services/order"
 	paymentService "backend/src/services/payment"
 
@@ -40,8 +40,8 @@ func registerRoutes(r *gin.Engine, sm *ServerManager, lp *middlewares.LoginPriso
         Payment: sm.Payment,
     }
 
-    sudoCtrl := &controllers.SudoManager{
-        SUDOSecret: string(sm.SudoSecret),
+    sudoCtrl := &sudo.SudoManager{
+        SudoSecret: string(sm.SudoSecret),
     }
 
     cartCtrl := &cart.CartManager{
@@ -73,134 +73,110 @@ func registerRoutes(r *gin.Engine, sm *ServerManager, lp *middlewares.LoginPriso
         }
 
         sudo := public.Group("/confirmation")
-        sudo.Use(middlewares.AuthMiddlewares(string(sm.JWTSecret)))
+        sudo.Use(middlewares.AuthMiddlewares(string(sm.JwtSecret)))
         {
-            sudo.POST("", sudoCtrl.GenerateConfirmation())
+            sudo.POST("", sudoCtrl.CreateSudo())
         }
     }
 
     protected := r.Group("/v2/protected/")
-    protected.Use(middlewares.AuthMiddlewares(string(sm.JWTSecret)))
+    protected.Use(middlewares.AuthMiddlewares(string(sm.JwtSecret)))
     {
         user := protected.Group("/user")
         {
-            user.POST("/verify/request", emailCtrl.SendUserVerificationMail())
-            user.POST("/register-store", storeCtrl.RegisterStore())
+            user.POST("/verify/request", sm.Email.UserVerification())
         }
 
         sudoUser := protected.Group("/sudo/user")
-        sudoUser.Use(middlewares.SudoMiddleware(string(sm.SUDOSecret)))
+        sudoUser.Use(middlewares.SudoMiddleware(string(sm.SudoSecret)))
         {
             sudoUser.PUT("", 
-                middlewares.AuthorizationMiddleware(services.ActionProfileUpdate), 
+                middlewares.AuthorizationMiddleware(auth_service.ActionProfileUpdate), 
                 userCtrl.UpdateUser(),
             )
 
             sudoUser.DELETE("", 
-                middlewares.AuthorizationMiddleware(services.ActionProfileDelete), 
+                middlewares.AuthorizationMiddleware(auth_service.ActionProfileDelete), 
                 userCtrl.DeleteUser(),
             )
         }
 
-        store := protected.Group("/store")
-        store.Use(middlewares.StoreMiddleware(sm.Stores))
+        product := protected.Group("/product")
         {
-            store.PUT("", 
-                middlewares.AuthorizationMiddleware(services.ActionStoreUpdate), 
-                storeCtrl.UpdateStore(),
+            product.POST("", 
+                middlewares.AuthorizationMiddleware(auth_service.ActionProductCreate), 
+                prdctCtrl.RegisterProduct(),
             )
-
-            product := store.Group("/product")
-            product.Use(middlewares.StoreMiddleware(sm.Stores))
-            {
-                product.POST("", 
-                    middlewares.AuthorizationMiddleware(services.ActionProductCreate), 
-                    prdctCtrl.RegisterProduct(),
-                )
-            }
-
-            sudoProduct := store.Group("/sudo/product")
-            sudoProduct.Use(middlewares.SudoMiddleware(string(sm.SUDOSecret)))
-            {
-                sudoProduct.PUT("", 
-                    middlewares.AuthorizationMiddleware(services.ActionProductUpdate), 
-                    prdctCtrl.UpdateProduct(),                    
-                )
-
-                sudoProduct.DELETE("", 
-                    middlewares.AuthorizationMiddleware(services.ActionProductDelete), 
-                    prdctCtrl.RemoveProduct(),
-                )
-            }
         }
 
-        sudoStore := protected.Group("/sudo/store")
-        sudoStore.Use(middlewares.SudoMiddleware(string(sm.SUDOSecret)))
+        sudoProduct := protected.Group("/sudo/product")
+        sudoProduct.Use(middlewares.SudoMiddleware(string(sm.SudoSecret)))
         {
-            sudoStore.DELETE("", 
-                middlewares.AuthorizationMiddleware(services.ActionStoreDelete), 
-                storeCtrl.DeleteStore(),                
-            )            
+            sudoProduct.PUT("", 
+                middlewares.AuthorizationMiddleware(auth_service.ActionProductUpdate), 
+                prdctCtrl.UpdateProduct(),                    
+            )
+
+            sudoProduct.DELETE("", 
+                middlewares.AuthorizationMiddleware(auth_service.ActionProductDelete), 
+                prdctCtrl.RemoveProduct(),
+            )
         }
         
         order := protected.Group("/order")
-        order.Use(middlewares.AuthMiddlewares(string(sm.JWTSecret)))
+        order.Use(middlewares.AuthMiddlewares(string(sm.JwtSecret)))
         {
             order.POST("", 
-                middlewares.AuthorizationMiddleware(services.ActionOrderCreate), 
+                middlewares.AuthorizationMiddleware(auth_service.ActionOrderCreate), 
                 orderCtrl.CreateOrder(),
             )
             
             order.POST("/verify/requests", 
                 sm.Email.SendOrderConfirmation(),
             )
-
-            order.POST("/verify", 
-                sm.Email.VerifyOrderConfirmation(),
-            )
         }
 
         sudoOrder := protected.Group("/sudo/order")
-        sudoOrder.Use(middlewares.SudoMiddleware(string(sm.JWTSecret)))
+        sudoOrder.Use(middlewares.SudoMiddleware(string(sm.JwtSecret)))
         {
             order.DELETE("", 
-                middlewares.AuthorizationMiddleware(services.ActionOrderCancel), 
+                middlewares.AuthorizationMiddleware(auth_service.ActionOrderCancel), 
                 orderCtrl.CancelOrder(),
             )
         }
             
 
         cart := protected.Group("/cart")
-        cart.Use(middlewares.AuthMiddlewares(string(sm.JWTSecret)))
+        cart.Use(middlewares.AuthMiddlewares(string(sm.JwtSecret)))
         {
             cart.POST("", 
-                middlewares.AuthorizationMiddleware(services.ActionCartAdd), 
+                middlewares.AuthorizationMiddleware(auth_service.ActionCartAdd), 
                 cartCtrl.AddCartItem(),
             )
 
             cart.PUT("", 
-                middlewares.AuthorizationMiddleware(services.ActionCartUpdate), 
+                middlewares.AuthorizationMiddleware(auth_service.ActionCartUpdate), 
                 cartCtrl.UpdateQuantity(),
             )
 
             cart.GET("", 
-                middlewares.AuthorizationMiddleware(services.ActionCartRead), 
+                middlewares.AuthorizationMiddleware(auth_service.ActionCartRead), 
                 cartCtrl.GetCarts(),
             )
 
             cart.DELETE("", 
-                middlewares.AuthorizationMiddleware(services.ActionCartRemove), 
+                middlewares.AuthorizationMiddleware(auth_service.ActionCartRemove), 
                 cartCtrl.RemoveCartItem(),
             )
 
             cart.DELETE("/clear", 
-                middlewares.AuthorizationMiddleware(services.ActionCartClear), 
+                middlewares.AuthorizationMiddleware(auth_service.ActionCartClear), 
                 cartCtrl.ClearCart(),
             )
         }
 
         payment := protected.Group("/payment")
-        payment.Use(middlewares.AuthMiddlewares(string(sm.JWTSecret)))
+        payment.Use(middlewares.AuthMiddlewares(string(sm.JwtSecret)))
         {
             payment.POST("/stripe", paymentCtrl.CheckoutOrder())
         }

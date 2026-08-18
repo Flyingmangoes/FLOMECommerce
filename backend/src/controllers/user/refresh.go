@@ -29,14 +29,14 @@ func (uc *UserManager)Refresh() gin.HandlerFunc {
 			return
 		}
 
-		stored, err := uc.Tokens.GetRefreshToken(c.Request.Context(), req.RefreshToken)
+		stored, err := uc.Tokens.GetToken(c.Request.Context(), req.RefreshToken)
 		if err != nil {
 			logger_system.Log.Error("Error", zap.Error(err))
 			c.Error(terror.ErrUnauthorized("Refresh token not found"))
 			return
 		}
 
-		if err := uc.Tokens.DeleteRefreshToken(c.Request.Context(), stored.Token); err != nil {
+		if err := uc.Tokens.DeleteToken(c.Request.Context(), stored.Token); err != nil {
 			logger_system.Log.Error("Error", zap.Error(err))
 			c.Error(terror.ErrInternal("Failed to rotate token"))
 			return
@@ -56,7 +56,7 @@ func (uc *UserManager)Refresh() gin.HandlerFunc {
 			return
 		}
 
-		if err := uc.Tokens.SaveRefreshToken(c.Request.Context(), claims.UserID, newRefresh, expiresAt); err != nil {
+		if err := uc.Tokens.SaveToken(c.Request.Context(), claims.UserID, newRefresh, expiresAt); err != nil {
 			logger_system.Log.Error("Error", zap.Error(err))
 			c.Error(terror.ErrInternal("Failed to save refresh token"))
 			return

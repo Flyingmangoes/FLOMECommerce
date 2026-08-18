@@ -16,7 +16,7 @@ func (uc *UserManager)LogoutUser() gin.HandlerFunc {
 
 		id = c.GetString("userId")
 
-		err = uc.Tokens.DeleteAllUserTokens(c.Request.Context(), id)
+		err = uc.Tokens.DeleteAllToken(c.Request.Context(), id)
 		if err != nil {
 			logger_system.Log.Error("Error", zap.Error(err))
 			c.Error(terror.ErrInternal("Failed to remove user token"))

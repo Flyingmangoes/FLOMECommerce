@@ -3,7 +3,7 @@ package user
 import (
 	user_type "backend/src/controllers/user/types"
 	terror "backend/src/error"
-	"backend/src/repository"
+	repo_type "backend/src/repository/types"
 	"backend/src/services/auth"
 	"backend/src/utils"
 	logger_system "backend/src/utils/LoggerSystem"
@@ -24,7 +24,7 @@ func (uc *UserManager)UpdateUser() gin.HandlerFunc {
 
 		var newPassword *string = nil
 		if req.NewPassword != nil {
-			hashedpass, err := auth.Hashing([]byte(*req.NewPassword))
+			hashedpass, err := auth_service.HashPassword([]byte(*req.NewPassword))
 			if err != nil {
 				logger_system.Log.Error("Error", zap.Error(err))
 				c.Error(terror.ErrInternal("Failed to hash password"))
@@ -35,34 +35,23 @@ func (uc *UserManager)UpdateUser() gin.HandlerFunc {
 		}
 
 		userId := c.GetString("userId")
-		params := &repository.UserProfileParams{
-			BaseParams: repository.BaseParams{
+		params := &repo_type.UserProfileParams{
+			BaseParams: repo_type.BaseParams{
 				UserId: &userId,
 				Username: req.NewUsername,
-				Locale: req.NewLocale,
-				Country: req.NewCountry,
+				PhoneNumber: req.NewPhonenumber,
 			},
-			
 			FirstName: req.NewFirstname,
 			LastName: req.NewLastname,
+			Locale: req.NewLocale,
+			Country: req.NewCountry,
+			Address: req.NewAddress,
 			NewPasswordHashed: newPassword,
-			PhoneNumber: req.NewPhonenumber,
 			EmailConsent: req.NewEmailConsent,
 			SmsConsent: req.NewSmsConsent,
 		}
-		
-		hashed_password, err := uc.Users.FetchPassword(c.Request.Context(), params)
-		if err != nil {
-    		c.Error(terror.ErrInternal("Failed to fetch user"))
-    		return
-		}
 
-		if err := auth.ValidatePassword(*hashed_password, req.Password); err != nil {
-    		c.Error(terror.ErrUnauthorized("Invalid credentials"))
-    		return
-		}
-
-		user, err := uc.Users.UpdateUser(c.Request.Context(), params)
+		user, err := uc.Users.Update(c.Request.Context(), params)
 		if err != nil {
 			logger_system.Log.Error("Error", zap.Error(err))
 			c.Error(terror.ErrInternal("Failed to update user"))
