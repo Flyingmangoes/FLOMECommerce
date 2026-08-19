@@ -10,10 +10,6 @@ import (
 	"go.uber.org/zap"
 )
 
-type SudoManager struct {
-	SudoSecret string
-}
-
 func (sm *SudoManager) CreateSudo() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userId := c.GetString("userId")

@@ -25,7 +25,7 @@ func (om *OrderManager) CreateOrder() gin.HandlerFunc {
 
 		buyerId := c.GetString("userId")
 
-		user, err := om.Users.Fetch(c.Request.Context(), &buyerId)
+		user, err := om.Users.Fetch(c.Request.Context(), buyerId)
 		if err != nil {
     		c.Error(terror.ErrInternal("Failed to fetch user"))
     		return

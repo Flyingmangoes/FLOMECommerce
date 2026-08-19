@@ -16,7 +16,6 @@ func NewDatabaseConnection(connStr string) *sql.DB {
 
 	if err = db.Ping(); err != nil {
 		logger_system.Log.Error("detail", zap.Error(err))
- 
 	}
 
 	logger_system.Log.Info("Database Established")

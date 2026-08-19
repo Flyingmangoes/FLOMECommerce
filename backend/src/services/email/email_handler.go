@@ -16,7 +16,7 @@ func(sg *SendgridManager) UserVerification() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		user_id := c.GetString("userId")
 
-		user, err := sg.Users.Fetch(c.Request.Context(), &user_id)
+		user, err := sg.Users.Fetch(c.Request.Context(), user_id)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				logger_system.Log.Error("Data not found")
