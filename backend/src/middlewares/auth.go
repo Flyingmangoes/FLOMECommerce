@@ -39,12 +39,12 @@ func AuthMiddlewares(secret string) gin.HandlerFunc {
 	}
 }        
 
-func AuthorizationMiddleware(action auth_service.Action) gin.HandlerFunc {
+func AuthorizationMiddleware(required_action auth_service.Action) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userId := c.GetString("userId")
 		userType := c.GetString("userType")
 
-		ok, err := auth_service.VerifyAuthorization(userId, auth_service.AccountType(userType), action)
+		ok, err := auth_service.VerifyAuthorization(userId, auth_service.AccountType(userType), required_action)
 		if err != nil  || !ok {
 			c.Error(terror.ErrUnauthorized("Invalid user"))
 			c.Abort()

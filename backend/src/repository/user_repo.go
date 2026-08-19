@@ -27,12 +27,12 @@ type UserStoreInterface interface {
 	Update(ctx context.Context, params *repo_type.UserProfileParams) (*models.User, error)
 	Delete(ctx context.Context, params *repo_type.UserProfileParams) (error)
 	Login(ctx context.Context, params *repo_type.UserProfileParams) (*models.User, error)
-	ResetPassword(ctx context.Context, params *repo_type.UserProfileParams)(error)
+	ResetPassword(ctx context.Context, user_id string)(error)
 
-	Fetch(ctx context.Context, user_id *string) (*models.User, error)
+	Fetch(ctx context.Context, user_id string) (*models.User, error)
 	FetchPassword(ctx context.Context, user_id string) (*string, error)
 
-	VerifyUser(ctx context.Context, verified_id string) (*models.User, error)
+	VerifyUser(ctx context.Context, verified_user_id string) (*models.User, error)
 }
 
 type UserStore struct {
@@ -246,8 +246,12 @@ func (us *UserStore)Login(ctx context.Context, params *repo_type.UserProfilePara
 	return user, nil
 }
 
-func (us *UserStore) Fetch(ctx context.Context, user_id *string) (*models.User, error) {
+func (us *UserStore) Fetch(ctx context.Context, user_id string) (*models.User, error) {
 	user := &models.User{}
+
+	if user_id == "" {
+		return nil, fmt.Errorf("user_id required")
+	}
 
 	err := us.db.QueryRowContext(ctx,
 		`SELECT user_id, firstname, lastname, 
@@ -279,6 +283,10 @@ func (us *UserStore) Fetch(ctx context.Context, user_id *string) (*models.User, 
 
 func (us *UserStore) FetchPassword(ctx context.Context, user_id string) (*string, error) {
     user := &models.User{}
+
+	if user_id == "" {
+		return nil, fmt.Errorf("user_id required")
+	}
 		
 	err := us.db.QueryRowContext(ctx,
 		`SELECT password_hash FROM mkt_ecommerce.mkt_users 
@@ -293,7 +301,7 @@ func (us *UserStore) FetchPassword(ctx context.Context, user_id string) (*string
     return &user.PasswordHash, nil
 }		
 
-func (us *UserStore) VerifyUser(ctx context.Context, verified_id string) (*models.User, error) {
+func (us *UserStore) VerifyUser(ctx context.Context, verified_user_id string) (*models.User, error) {
 	user := &models.User{}
 
 	err := us.db.QueryRowContext(ctx,
@@ -303,7 +311,7 @@ func (us *UserStore) VerifyUser(ctx context.Context, verified_id string) (*model
 			updated_at = NOW()
 		WHERE user_id = $2
 		RETURNING user_id, email`,
-		user_type_list[UserVerified], verified_id,
+		user_type_list[UserVerified], verified_user_id,
 	).Scan(&user.UserID, &user.Email)
 
 	if err != nil { return nil, err }
@@ -311,39 +319,21 @@ func (us *UserStore) VerifyUser(ctx context.Context, verified_id string) (*model
 	return user, nil
 }
 
-func(us *UserStore) ResetPassword(ctx context.Context, params *repo_type.UserProfileParams) error {
-	var results sql.Result 
-	var err error
-
+func(us *UserStore) ResetPassword(ctx context.Context, user_id string) error {
 	const query string = `
 		UPDATE mkt_ecommerce.mkt_users SET
 			password_hash = COALESCE($1, password_hash),
 			updated_at = NOW()
 	`
 
-	if params.UserId == nil {
+	if user_id == "" {
 		return fmt.Errorf("user id is required")
 	}
 
-	switch {
-		case params.Email != nil && params.Username == nil:{
-			results, err = us.db.ExecContext(
-				ctx, 
-				query + `WHERE user_id = $1 AND email = $2`, 
-				params.UserId, params.Email,
-			)
-		}
-		case params.Username != nil && params.Email == nil:{
-			results, err = us.db.ExecContext(
-				ctx,
-				query + `WHERE user_id = $1 AND username = $2`,
-				params.UserId, params.Username,
-			)
-		}
-		default: {
-			return fmt.Errorf("at least one identifier is required")
-		}
-	}
+	results, err := us.db.ExecContext(ctx, 
+		query + `WHERE user_id = $1`,
+		user_id,
+	)
 
 	if err != nil {
 		return err

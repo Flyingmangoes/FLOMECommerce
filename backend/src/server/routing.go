@@ -2,7 +2,7 @@ package server
 
 import (
 	"backend/src/controllers/cart"
-	sudo "backend/src/controllers/confirmation"
+	sudo "backend/src/controllers/sudo"
 	"backend/src/controllers/order"
 	"backend/src/controllers/product"
 	authHandler "backend/src/controllers/user"
@@ -62,8 +62,7 @@ func registerRoutes(r *gin.Engine, sm *ServerManager, lp *middlewares.LoginPriso
         public.GET("/user/verify", sm.Email.VerifyUserVerification())    
 
         api := public.Group("/api")
-        {
-            api.GET("/users",       userCtrl.SearchUser())
+        {  
             api.GET("/products",    prdctCtrl.SearchProduct())
         }
 
