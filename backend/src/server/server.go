@@ -51,7 +51,7 @@ func (sm *ServerManager)Start(cfg *config.ConfigManager) {
 	iRate := middlewares.NewIPRateLimit(rate.Limit(cfg.RATE_CONF.RPM), cfg.RATE_CONF.BURST)
 	prison := middlewares.NewLoginPrison(cfg.APP_CONF.MAX_RETRY_LOGIN, time.Duration(cfg.APP_CONF.RETRY_LOGIN_COOLDOWN * int(time.Minute)))
 
-	router.Use(middlewares.CORSMiddleware())
+	router.Use(middlewares.CORS())
 	router.Use(iRate.RateLimiting())
 	router.Use(error_service.JSONAppErrorReporter())
 

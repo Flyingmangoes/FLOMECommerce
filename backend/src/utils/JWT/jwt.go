@@ -90,7 +90,7 @@ func GenerateSudoToken(
     user_type string, 
     secret []byte,
 )(string, error) {
-    if user_id == "" && user_type == "" {
+    if user_id == "" || user_type == "" {
         return "", fmt.Errorf("Missing required identifier")
     }
 

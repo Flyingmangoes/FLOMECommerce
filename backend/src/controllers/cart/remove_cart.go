@@ -60,7 +60,7 @@ func (cm *CartManager) ClearCart() gin.HandlerFunc {
 		err = cm.Carts.ClearItems(c.Request.Context(), &repo_type.CartProfileParams{
 			BaseParams: repo_type.BaseParams{UserId:  &requester_id},
 			CartID: &cart.ID,
-		})
+		})   
 		if err != nil {
 			if err == sql.ErrNoRows{
 				logger_system.Log.Error("Rows not found", zap.Error(err))
@@ -76,3 +76,5 @@ func (cm *CartManager) ClearCart() gin.HandlerFunc {
 		c.JSON(http.StatusOK, gin.H{ "response": "OK"})
 	}
 }
+
+
