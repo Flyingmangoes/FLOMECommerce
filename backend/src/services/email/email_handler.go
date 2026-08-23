@@ -2,8 +2,8 @@ package email_services
 
 import (
 	error_service "backend/src/error"
-	jwt_service "backend/src/utils/JWT"
-	logger_system "backend/src/utils/LoggerSystem"
+	jwt_service "backend/src/utils/jwt_service"
+	logger_system "backend/src/utils/logger_service"
 	"database/sql"
 	"fmt"
 	"net/http"
@@ -12,7 +12,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func(sg *SendgridManager) UserVerification() gin.HandlerFunc {
+func (sg *SendgridManager) UserVerification() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		user_id := c.GetString("userId")
 
@@ -38,17 +38,17 @@ func(sg *SendgridManager) UserVerification() gin.HandlerFunc {
 		token_url := fmt.Sprintf("http://%s/v2/user/verify?token=%s", sg.ServerUrl, token)
 
 		params := &MailServiceParams{
-			From: sg.TestEmail,
-			To: []string{user.Email},
-			Subject: "Verified your Account",
+			From:     sg.TestEmail,
+			To:       []string{user.Email},
+			Subject:  "Verified your Account",
 			MailType: UserVerification,
 			MailData: &MailData{
-				DomainName: sg.DomainEmail,
+				DomainName:   sg.DomainEmail,
 				SupportEmail: sg.CustomerSupportEmail,
-				FirstName: user.FirstName,
-				Username: user.Username,
-				TokenUrl: token_url,
-				Expiration: &expires,
+				FirstName:    user.FirstName,
+				Username:     user.Username,
+				TokenUrl:     token_url,
+				Expiration:   &expires,
 			},
 		}
 
@@ -61,14 +61,14 @@ func(sg *SendgridManager) UserVerification() gin.HandlerFunc {
 
 		c.JSON(http.StatusOK, gin.H{
 			"detail": gin.H{
-				"info": "Sended",
+				"info":  "Sended",
 				"email": user.Email,
 			},
 		})
 	}
 }
 
-func(sg *SendgridManager) VerifyUserVerification() gin.HandlerFunc {
+func (sg *SendgridManager) VerifyUserVerification() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
 			Token string `form:"token"`
@@ -95,8 +95,8 @@ func(sg *SendgridManager) VerifyUserVerification() gin.HandlerFunc {
 
 		c.JSON(http.StatusOK, gin.H{
 			"detail": gin.H{
-				"info":"Email verified",
-				"id": user.UserID,
+				"info":  "Email verified",
+				"id":    user.UserID,
 				"email": user.Email,
 			},
 		})

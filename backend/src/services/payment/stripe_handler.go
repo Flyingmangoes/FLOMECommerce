@@ -3,7 +3,7 @@ package payment_service
 import (
 	error_service "backend/src/error"
 	repo "backend/src/repository"
-	logger_system "backend/src/utils/LoggerSystem"
+	logger_system "backend/src/utils/logger_service"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -15,16 +15,16 @@ import (
 )
 
 type PaymentManager struct {
-	Products 	repo.ProductStoreInterface
-	Orders 		repo.OrderStoreInterface
-	Payment 	*PaymentService
+	Products repo.ProductStoreInterface
+	Orders   repo.OrderStoreInterface
+	Payment  *PaymentService
 }
 
 func (pm *PaymentManager) CheckoutOrder() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var (
 			buyerEmail string
-			orderId string
+			orderId    string
 		)
 
 		buyerId := c.GetString("userId")
@@ -32,12 +32,12 @@ func (pm *PaymentManager) CheckoutOrder() gin.HandlerFunc {
 
 		orders, order_items, err := pm.Orders.Get(c.Request.Context(), buyerId)
 		if err != nil {
-			logger_system.Log.Error("Failed retrieve order data",zap.Error(err))
+			logger_system.Log.Error("Failed retrieve order data", zap.Error(err))
 			c.Error(error_service.ErrInternal("Retrieve order data failed"))
 			return
 		}
 
-		for _, value := range order_items{
+		for _, value := range order_items {
 			product, err := pm.Products.Get(c.Request.Context(), value.ProductID)
 			if err != nil {
 				logger_system.Log.Error("Failed to retrieve product data", zap.Error(err))
@@ -46,13 +46,13 @@ func (pm *PaymentManager) CheckoutOrder() gin.HandlerFunc {
 			}
 
 			item_detail := ItemDetail{
-				ProductID: value.ProductID,
+				ProductID:   value.ProductID,
 				ProductName: product.Name,
 				ProductDesc: product.Desc,
-				StoreName: "Flomm",
-				Price: product.Price,
-				Quantity: value.Quantity,
-				ImageUrl: product.ProductIMG,
+				StoreName:   "Flomm",
+				Price:       product.Price,
+				Quantity:    value.Quantity,
+				ImageUrl:    product.ProductIMG,
 			}
 
 			items = append(items, item_detail)
@@ -60,7 +60,7 @@ func (pm *PaymentManager) CheckoutOrder() gin.HandlerFunc {
 
 		for _, value := range orders {
 			if value.Status == "pending" {
-				buyerEmail = value.BuyerEmail			
+				buyerEmail = value.BuyerEmail
 				orderId = value.ID
 				break
 			}
@@ -78,19 +78,19 @@ func (pm *PaymentManager) CheckoutOrder() gin.HandlerFunc {
 	}
 }
 
-func(pm *PaymentManager) StripeWebhooks() gin.HandlerFunc {
-	return func (c *gin.Context)  {
+func (pm *PaymentManager) StripeWebhooks() gin.HandlerFunc {
+	return func(c *gin.Context) {
 		payload, err := io.ReadAll(c.Request.Body)
 		if err != nil {
 			logger_system.Log.Error("Failed to read request body", zap.Error(err))
 			c.Status(http.StatusBadRequest)
 			return
 		}
-		
+
 		signHeader := c.GetHeader("Stripe-Signature")
 		event, err := pm.Payment.StripeClient.ConstructEvent(
-			payload, 
-			signHeader, 
+			payload,
+			signHeader,
 			pm.Payment.WebhookKey,
 		)
 		if err != nil {
@@ -116,7 +116,7 @@ func(pm *PaymentManager) StripeWebhooks() gin.HandlerFunc {
 			if err := json.Unmarshal(event.Data.Raw, &session); err != nil {
 				c.Status(http.StatusBadRequest)
 				return
-    		}
+			}
 
 			orderId := session.Metadata["order_id"]
 			pm.Orders.UpdateStatus(c.Request.Context(), orderId, "cancelled")

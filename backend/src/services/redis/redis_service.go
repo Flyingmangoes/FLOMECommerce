@@ -2,7 +2,7 @@ package cache_service
 
 import (
 	"backend/src/config"
-	logger_system "backend/src/utils/LoggerSystem"
+	logger_system "backend/src/utils/logger_service"
 	"context"
 	"fmt"
 	"net"
@@ -24,22 +24,22 @@ type RedisInterface interface {
 }
 
 type RedisManager struct {
-	REDIS_PORT		string
-	REDIS_HOST  	string
-	CACHE_TTL		time.Duration
-	Client			*redis.Client
-}	
+	REDIS_PORT string
+	REDIS_HOST string
+	CACHE_TTL  time.Duration
+	Client     *redis.Client
+}
 
 func NewRedisService(cfg *config.ConfigManager) *RedisManager {
-	redis_client:= redis.NewClient(&redis.Options{
+	redis_client := redis.NewClient(&redis.Options{
 		Addr: net.JoinHostPort(cfg.REDIS_CONF.REDIS_HOST, cfg.REDIS_CONF.REDIS_PORT),
 	})
 
 	return &RedisManager{
 		REDIS_PORT: cfg.REDIS_CONF.REDIS_PORT,
 		REDIS_HOST: cfg.REDIS_CONF.REDIS_HOST,
-		CACHE_TTL: time.Duration(cfg.REDIS_CONF.CACHE_TTL * int(time.Minute)), 
-		Client: redis_client,
+		CACHE_TTL:  time.Duration(cfg.REDIS_CONF.CACHE_TTL * int(time.Minute)),
+		Client:     redis_client,
 	}
 }
 
@@ -52,24 +52,24 @@ func (rm *RedisManager) ConnectionCheck() {
 	logger_system.Log.Info("Connected", zap.String("response", "OK"))
 }
 
-func(rm *RedisManager)Set(ctx context.Context, cacheKey string, cacheValue string) error {
+func (rm *RedisManager) Set(ctx context.Context, cacheKey string, cacheValue string) error {
 	return rm.Client.Set(ctx, cacheKey, cacheValue, rm.CACHE_TTL).Err()
 }
 
-func(rm *RedisManager)Get(ctx context.Context, cacheKey string) ([]byte, error) {
+func (rm *RedisManager) Get(ctx context.Context, cacheKey string) ([]byte, error) {
 	val, err := rm.Client.Get(ctx, cacheKey).Bytes()
 	return val, err
 }
 
-func(rm *RedisManager)Del(ctx context.Context, cacheKey string) error {
-	return rm.Client.Del(ctx , cacheKey).Err()
+func (rm *RedisManager) Del(ctx context.Context, cacheKey string) error {
+	return rm.Client.Del(ctx, cacheKey).Err()
 }
 
-func(rm *RedisManager)Clear(ctx context.Context, cacheKeys []string) error {
+func (rm *RedisManager) Clear(ctx context.Context, cacheKeys []string) error {
 	return rm.Client.Del(ctx, cacheKeys...).Err()
 }
 
-func(rm *RedisManager)GenerateCacheKey(prefix, rawQuery string) string {
+func (rm *RedisManager) GenerateCacheKey(prefix, rawQuery string) string {
 	params, _ := url.ParseQuery(rawQuery)
 
 	keys := make([]string, 0, len(params))

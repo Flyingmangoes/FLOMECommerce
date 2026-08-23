@@ -3,7 +3,7 @@ package email_services
 import (
 	"backend/src/config"
 	"backend/src/repository"
-	logger_system "backend/src/utils/LoggerSystem"
+	logger_system "backend/src/utils/logger_service"
 	"fmt"
 	"strconv"
 	"time"
@@ -21,36 +21,36 @@ type MailService interface {
 }
 
 type MailServiceParams struct {
-	From 		string
-	To 			[]string
-	Subject 	string
-	MailType 	MailType
-	MailData 	*MailData
+	From     string
+	To       []string
+	Subject  string
+	MailType MailType
+	MailData *MailData
 }
 
 type SendgridManager struct {
-	Users 			repository.UserStoreInterface
+	Users repository.UserStoreInterface
 	SendgridEmail
 	SendgridContext
 	SendgridTemplate
-}	
-
-type SendgridEmail struct {
-	CustomerSupportEmail 	string
-	DomainEmail 			string
-	TestEmail 				string
 }
 
-type SendgridTemplate struct{
-	TUserVerification 		string
-	TPassReset 				string
-	TOrderConfirmation 		string
+type SendgridEmail struct {
+	CustomerSupportEmail string
+	DomainEmail          string
+	TestEmail            string
+}
+
+type SendgridTemplate struct {
+	TUserVerification  string
+	TPassReset         string
+	TOrderConfirmation string
 }
 
 type SendgridContext struct {
-	ServerUrl 					string
-	SendgridApiSecret 			string
-	UserVerificationSecret 		string
+	ServerUrl              string
+	SendgridApiSecret      string
+	UserVerificationSecret string
 }
 
 func NewSendgridManager(cfg *config.SendgridConfig, server_url string, us repository.UserStoreInterface) *SendgridManager {
@@ -58,70 +58,73 @@ func NewSendgridManager(cfg *config.SendgridConfig, server_url string, us reposi
 		Users: us,
 		SendgridEmail: SendgridEmail{
 			CustomerSupportEmail: cfg.SUPPORT_EMAIL,
-			DomainEmail:cfg.DOMAIN_EMAIL,
-			TestEmail: cfg.TEST_EMAIL,
+			DomainEmail:          cfg.DOMAIN_EMAIL,
+			TestEmail:            cfg.TEST_EMAIL,
 		},
 		SendgridContext: SendgridContext{
-			ServerUrl: server_url,
-			SendgridApiSecret: cfg.SENDGRID_SECRET,
+			ServerUrl:              server_url,
+			SendgridApiSecret:      cfg.SENDGRID_SECRET,
 			UserVerificationSecret: cfg.USER_VERIFICATION_SECRET,
 		},
 		SendgridTemplate: SendgridTemplate{
-			TUserVerification: cfg.TEMPLATE_USER_VERIFICATION,
-			TPassReset: cfg.TEMPLATE_PASS_RESET,
+			TUserVerification:  cfg.TEMPLATE_USER_VERIFICATION,
+			TPassReset:         cfg.TEMPLATE_PASS_RESET,
 			TOrderConfirmation: cfg.TEMPLATE_ORDER_CONFIRMATION,
 		},
 	}
 }
 
 type MailData struct {
-	DomainName 		string 		`json:"domainName"`
-	Username 		string		`json:"username"`
-	FirstName		string		`json:"firstName"`
-	SupportEmail 	string		`json:"supportEmail"`
-	TokenUrl 		string		`json:"token"`
-	Expiration 		*time.Time 	`json:"expires"`
+	DomainName   string     `json:"domainName"`
+	Username     string     `json:"username"`
+	FirstName    string     `json:"firstName"`
+	SupportEmail string     `json:"supportEmail"`
+	TokenUrl     string     `json:"token"`
+	Expiration   *time.Time `json:"expires"`
 }
 
 type Mail struct {
-	from 		string
-	to 			[]string
-	subject 	string
-	mailTyp 	MailType
-	data 		*MailData
+	from    string
+	to      []string
+	subject string
+	mailTyp MailType
+	data    *MailData
 }
 
 const (
 	UserVerification MailType = iota + 1
-	PassReset 
+	PassReset
 	OrderConfirmation
 )
 
 var typeList = map[MailType]string{
 	OrderConfirmation: "Order_Confirmation",
-	UserVerification: "User_Verification",
-	PassReset: "Pass_Reset",
+	UserVerification:  "User_Verification",
+	PassReset:         "Pass_Reset",
 }
 
 const (
 	MailEndpoint string = "/v3/mail/send"
-	MailHost 	 string = "https://api.sendgrid.com"
+	MailHost     string = "https://api.sendgrid.com"
 )
 
-func(sg *SendgridManager) CreateMail(mailReq *Mail) []byte {
+func (sg *SendgridManager) CreateMail(mailReq *Mail) []byte {
 	m := mail.NewV3Mail()
 
 	from := mail.NewEmail("Flommerce", mailReq.from)
 	m.SetFrom(from)
 
 	switch mailReq.mailTyp {
-		case UserVerification: {
+	case UserVerification:
+		{
 			m.SetTemplateID(sg.TUserVerification)
 		}
-		case PassReset: {
+	case PassReset:
+		{
 			m.SetTemplateID(sg.TPassReset)
 		}
-		case OrderConfirmation: {
+	case OrderConfirmation:
+		{
 			m.SetTemplateID(sg.TOrderConfirmation)
 		}
 	default:
@@ -148,7 +151,7 @@ func(sg *SendgridManager) CreateMail(mailReq *Mail) []byte {
 	return mail.GetRequestBody(m)
 }
 
-func(sg *SendgridManager) SendMail(mailReq *Mail) error {
+func (sg *SendgridManager) SendMail(mailReq *Mail) error {
 	request := sendgrid.GetRequest(sg.SendgridApiSecret, MailEndpoint, MailHost)
 	request.Method = "POST"
 
@@ -165,31 +168,31 @@ func(sg *SendgridManager) SendMail(mailReq *Mail) error {
 	return nil
 }
 
-func(sg *SendgridManager) NewMail(params *MailServiceParams) *Mail {
+func (sg *SendgridManager) NewMail(params *MailServiceParams) *Mail {
 	return &Mail{
-		from: params.From,
-		to: params.To,
-		subject: params.Subject,				
+		from:    params.From,
+		to:      params.To,
+		subject: params.Subject,
 		mailTyp: params.MailType,
-		data: params.MailData,
+		data:    params.MailData,
 	}
 }
 
-func(sg *SendgridManager) Validate() error {
+func (sg *SendgridManager) Validate() error {
 	switch {
-	case sg.TUserVerification == "" : 
-		return fmt.Errorf("Missing User Verification template")		
-	case sg.TPassReset == "": 
-		return fmt.Errorf("Missing Password Reset template")		
-	case sg.TOrderConfirmation == "": 
-		return fmt.Errorf("Missing Order template")		
-	case sg.TestEmail == "": 
-		return fmt.Errorf("Missing test email")		
-	case sg.DomainEmail == "": 
+	case sg.TUserVerification == "":
+		return fmt.Errorf("Missing User Verification template")
+	case sg.TPassReset == "":
+		return fmt.Errorf("Missing Password Reset template")
+	case sg.TOrderConfirmation == "":
+		return fmt.Errorf("Missing Order template")
+	case sg.TestEmail == "":
+		return fmt.Errorf("Missing test email")
+	case sg.DomainEmail == "":
 		return fmt.Errorf("Missing domain email")
-	case sg.CustomerSupportEmail == "": 
+	case sg.CustomerSupportEmail == "":
 		return fmt.Errorf("Missing Customer Support Email")
 	default:
 		return nil
 	}
-} 
+}
