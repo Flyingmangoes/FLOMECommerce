@@ -4,7 +4,7 @@ import (
 	cart_types "backend/src/controllers/cart/types"
 	terror "backend/src/error"
 	repo_type "backend/src/repository/types"
-	logger_system "backend/src/utils/LoggerSystem"
+	logger_system "backend/src/utils/logger_service"
 	"database/sql"
 	"net/http"
 
@@ -13,7 +13,7 @@ import (
 )
 
 func (cm *CartManager) UpdateQuantity() gin.HandlerFunc {
-	return func (c *gin.Context) {
+	return func(c *gin.Context) {
 		var req cart_types.UpdateQuantityRequest
 
 		if err := c.ShouldBindBodyWithJSON(&req); err != nil {
@@ -34,15 +34,15 @@ func (cm *CartManager) UpdateQuantity() gin.HandlerFunc {
 		}
 
 		params := &repo_type.CartProfileParams{
-			Quantity: &req.NewQuantity,
+			Quantity:    &req.NewQuantity,
 			CartItemsID: &req.CartItemID,
-			CartID: &cart.ID,
+			CartID:      &cart.ID,
 		}
 
 		items, err := cm.Carts.UpdateQuantity(c.Request.Context(), params)
 		if err != nil {
 			if err == sql.ErrNoRows {
-				c.Error(terror.ErrNotFound("Cart items not found"))	
+				c.Error(terror.ErrNotFound("Cart items not found"))
 			}
 
 			logger_system.Log.Error("Failed to update quantity", zap.Error(err))
@@ -52,8 +52,8 @@ func (cm *CartManager) UpdateQuantity() gin.HandlerFunc {
 
 		c.JSON(http.StatusOK, gin.H{
 			"detail": gin.H{
-				"info":"quantity updated",
-				"cart": cart,
+				"info":      "quantity updated",
+				"cart":      cart,
 				"cart_item": items,
 			},
 		})

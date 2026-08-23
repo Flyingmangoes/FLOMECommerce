@@ -2,7 +2,7 @@ package payment_service
 
 import (
 	"backend/src/config"
-	logger_system "backend/src/utils/LoggerSystem"
+	logger_system "backend/src/utils/logger_service"
 	"context"
 	"fmt"
 	"net"
@@ -13,32 +13,32 @@ import (
 )
 
 type PaymentService struct {
-	WebhookKey string
-	SuccessURL string
-	CancelURL string
+	WebhookKey   string
+	SuccessURL   string
+	CancelURL    string
 	StripeClient *stripe.Client
 }
 
 type ItemDetail struct {
-    ProductID   string
-    ProductName string
-    ProductDesc string
-    StoreName   string
-    Price       float64
-    Quantity    int
-    ImageUrl    string
+	ProductID   string
+	ProductName string
+	ProductDesc string
+	StoreName   string
+	Price       float64
+	Quantity    int
+	ImageUrl    string
 }
 
 func NewPaymentService(cfg *config.StripeConfig, successURL, cancelURL string) *PaymentService {
 	return &PaymentService{
-		SuccessURL: successURL,
-		CancelURL: cancelURL,
-		WebhookKey: cfg.STRIPE_WEBHOOK_SECRET,
+		SuccessURL:   successURL,
+		CancelURL:    cancelURL,
+		WebhookKey:   cfg.STRIPE_WEBHOOK_SECRET,
 		StripeClient: stripe.NewClient(cfg.STRIPE_SECRET_KEY),
 	}
 }
 
-func NewStripeURL(cfg *config.ConfigManager)(string, string){
+func NewStripeURL(cfg *config.ConfigManager) (string, string) {
 	joined := net.JoinHostPort(cfg.SERV_CONF.WebsiteHOST, cfg.SERV_CONF.WebsitePORT)
 
 	success := fmt.Sprintf("http://%s/success", joined)
@@ -47,10 +47,10 @@ func NewStripeURL(cfg *config.ConfigManager)(string, string){
 	return success, cancel
 }
 
-func(ps *PaymentService) CreateCheckoutSession(ctx context.Context, orderID, buyerEmail string, items []ItemDetail) (*stripe.CheckoutSession, error) {
+func (ps *PaymentService) CreateCheckoutSession(ctx context.Context, orderID, buyerEmail string, items []ItemDetail) (*stripe.CheckoutSession, error) {
 	lineItems := make([]*stripe.CheckoutSessionCreateLineItemParams, 0, len(items))
 
-	for _, item := range items{	
+	for _, item := range items {
 		priceInCents := int64(item.Price * 100)
 
 		lineItems = append(lineItems, &stripe.CheckoutSessionCreateLineItemParams{
@@ -58,9 +58,9 @@ func(ps *PaymentService) CreateCheckoutSession(ctx context.Context, orderID, buy
 			PriceData: &stripe.CheckoutSessionCreateLineItemPriceDataParams{
 				Currency: stripe.String("usd"),
 				ProductData: &stripe.CheckoutSessionCreateLineItemPriceDataProductDataParams{
-					Name: &item.ProductName,
+					Name:        &item.ProductName,
 					Description: &item.ProductDesc,
-					Images: []*string{stripe.String(item.ImageUrl)},
+					Images:      []*string{stripe.String(item.ImageUrl)},
 					Metadata: map[string]string{
 						"product_id": item.ProductID,
 						"store_name": item.StoreName,
@@ -78,12 +78,12 @@ func(ps *PaymentService) CreateCheckoutSession(ctx context.Context, orderID, buy
 	logger_system.Log.Debug("urls", zap.String("cancel url", cancel))
 
 	params := &stripe.CheckoutSessionCreateParams{
-		LineItems: lineItems,
-		Mode: stripe.String(string(stripe.CheckoutSessionModePayment)),
+		LineItems:     lineItems,
+		Mode:          stripe.String(string(stripe.CheckoutSessionModePayment)),
 		CustomerEmail: stripe.String(buyerEmail),
-		SuccessURL: stripe.String(success),
-		CancelURL: stripe.String(cancel),
-		ExpiresAt: stripe.Int64(time.Now().Add(30 * time.Minute).Unix()),
+		SuccessURL:    stripe.String(success),
+		CancelURL:     stripe.String(cancel),
+		ExpiresAt:     stripe.Int64(time.Now().Add(30 * time.Minute).Unix()),
 
 		Metadata: map[string]string{
 			"order_id": orderID,
@@ -96,6 +96,5 @@ func(ps *PaymentService) CreateCheckoutSession(ctx context.Context, orderID, buy
 	}
 
 	return s, nil
-	
-}
 
+}
