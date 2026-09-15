@@ -12,7 +12,7 @@ import (
 )
 
 func (om *OrderManager) CancelOrder() gin.HandlerFunc {
-	return func (c *gin.Context) {
+	return func(c *gin.Context) {
 		var req order_types.CancelOrderRequest
 
 		if err := c.ShouldBindBodyWithJSON(req); err != nil {

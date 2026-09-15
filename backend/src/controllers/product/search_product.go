@@ -6,6 +6,7 @@ import (
 	"backend/src/models"
 	repo_type "backend/src/repository/types"
 	logger_system "backend/src/utils/LoggerSystem"
+	utils "backend/src/utils/data_type"
 	"encoding/json"
 	"net/http"
 	"time"
@@ -29,7 +30,7 @@ func (pm *ProductManager) SearchProduct() gin.HandlerFunc {
 			cursor, err := utils.DecodeCursor(*req.Cursor)
 			if err != nil {
 				c.Error(terror.ErrBadRequest("Invalid cursor"))
-				return 
+				return
 			}
 
 			filter.Cursor = cursor
@@ -38,12 +39,12 @@ func (pm *ProductManager) SearchProduct() gin.HandlerFunc {
 		filter.Normalize()
 
 		params := &repo_type.ProductSearchParams{
-			Query: req.Query,
-			Category: req.Category,
-			StoreID: req.StoreID,
-			MinPrice: req.MinPrice,			
-			MaxPrice: req.MaxPrice,
-			SortBy: req.SortBy,
+			Query:     req.Query,
+			Category:  req.Category,
+			StoreID:   req.StoreID,
+			MinPrice:  req.MinPrice,
+			MaxPrice:  req.MaxPrice,
+			SortBy:    req.SortBy,
 			SortOrder: req.SortOrder,
 		}
 
@@ -52,7 +53,7 @@ func (pm *ProductManager) SearchProduct() gin.HandlerFunc {
 		logger_system.Log.Info("cached", zap.Any("cached value", cached))
 		if err == nil && cached != nil {
 			var page utils.Page[models.Product]
-			if err :=  json.Unmarshal(cached, &page); err == nil {
+			if err := json.Unmarshal(cached, &page); err == nil {
 				logger_system.Log.Info("build", zap.Any("page", page))
 				c.JSON(http.StatusOK, page)
 				return
@@ -67,7 +68,7 @@ func (pm *ProductManager) SearchProduct() gin.HandlerFunc {
 		}
 
 		page, err := utils.Build(products, filter.Limit, func(p models.Product) (time.Time, string) {
-			return p.CreatedAt, p.ProductID			
+			return p.CreatedAt, p.ProductID
 		})
 		if err != nil {
 			c.Error(terror.ErrInternal("Failed to build page"))

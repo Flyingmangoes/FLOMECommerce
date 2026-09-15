@@ -13,9 +13,9 @@ import (
 )
 
 func (cm *CartManager) AddCartItem() gin.HandlerFunc {
-	return func (c *gin.Context) {
+	return func(c *gin.Context) {
 		var req cart_types.AddItemRequest
-		
+
 		if err := c.ShouldBindBodyWithJSON(&req); err != nil {
 			logger_system.Log.Error("Failed to parse client requst", zap.Error(err))
 			c.Error(terror.ErrBadRequest("Failed to read client request"))
@@ -42,9 +42,9 @@ func (cm *CartManager) AddCartItem() gin.HandlerFunc {
 
 		params := &repo_type.CartProfileParams{
 			BaseParams: repo_type.BaseParams{UserId: &user_id},
-			CartID: 	&cart.ID,
-			ProductID: 	&req.ProductID,
-			Quantity: 	&req.Quantity,
+			CartID:     &cart.ID,
+			ProductID:  &req.ProductID,
+			Quantity:   &req.Quantity,
 		}
 
 		cart_items, err := cm.Carts.InsertItems(c.Request.Context(), params)
@@ -56,8 +56,8 @@ func (cm *CartManager) AddCartItem() gin.HandlerFunc {
 
 		c.JSON(http.StatusOK, gin.H{
 			"detail": gin.H{
-				"info":"item added",
-				"cart": cart,
+				"info":      "item added",
+				"cart":      cart,
 				"cart_item": cart_items,
 			},
 		})

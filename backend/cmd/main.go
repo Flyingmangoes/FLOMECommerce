@@ -8,8 +8,8 @@ import (
 	"backend/src/services"
 	email_service "backend/src/services/email"
 	payment_service "backend/src/services/payment"
-	"backend/src/services/redis"
-	logger_system "backend/src/utils/LoggerSystem"
+	cache_service "backend/src/services/redis"
+	logger_system "backend/src/utils/logger_service"
 	"fmt"
 	"log/slog"
 	"net"
@@ -38,13 +38,13 @@ func main() {
 
 	logger_system.Log.Info("Connecting to database")
 	db := database.NewDatabaseConnection(cfg.DB_CONF.DATABASE)
-	
+
 	logger_system.Log.Info("Initializing repository")
-	userStore 	 := repository.NewUserStore(db)
+	userStore := repository.NewUserStore(db)
 	productStore := repository.NewProductStore(db)
-	orderStore 	 := repository.NewOrderStore(db)
-	tokenStore 	 := repository.NewTokenStore(db)
-	cartStore 	 := repository.NewCartStore(db)
+	orderStore := repository.NewOrderStore(db)
+	tokenStore := repository.NewTokenStore(db)
+	cartStore := repository.NewCartStore(db)
 
 	logger_system.Log.Info("Initializing Service")
 
@@ -72,23 +72,23 @@ func main() {
 	logger_system.Log.Info("Starting Server")
 	serverManager := &server.ServerManager{
 		EnvironmentStatus: cfg.ENVIRONMENT_STATUS,
-		Users: userStore,
-		Products: productStore,	
-		Orders: orderStore,
-		Carts: cartStore,
-		Tokens: tokenStore,
-		Email: emailService,
-		Payment: paymentService,
-		Tx: txManager,
-		Cacher: cacheService,
+		Users:             userStore,
+		Products:          productStore,
+		Orders:            orderStore,
+		Carts:             cartStore,
+		Tokens:            tokenStore,
+		Email:             emailService,
+		Payment:           paymentService,
+		Tx:                txManager,
+		Cacher:            cacheService,
 
 		ServerSecret: server.ServerSecret{
-			JwtSecret: []byte(cfg.SERV_CONF.JWT_SECRET),
+			JwtSecret:  []byte(cfg.SERV_CONF.JWT_SECRET),
 			SudoSecret: []byte(cfg.SERV_CONF.SUDO_SECRET),
 		},
 	}
 
-	serverManager.Start(cfg)	
+	serverManager.Start(cfg)
 	logger_system.Log.Info("Shutting Down")
 	os.Exit(0)
 }

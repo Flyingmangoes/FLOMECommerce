@@ -2,8 +2,8 @@ package sudo
 
 import (
 	terror "backend/src/error"
-	jwt_service "backend/src/utils/JWT"
-	logger_system "backend/src/utils/LoggerSystem"
+	"backend/src/utils/jwt_service"
+	logger_system "backend/src/utils/logger_service"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -28,7 +28,7 @@ func (sm *SudoManager) CreateSudo() gin.HandlerFunc {
 			return
 		}
 
-		c.Header("X-Sudo-Token", "Sudo" + sudoToken)
+		c.Header("X-Sudo-Token", "Sudo"+sudoToken)
 		c.JSON(http.StatusOK, gin.H{
 			"token": sudoToken,
 		})
