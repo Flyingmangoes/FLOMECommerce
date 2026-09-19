@@ -15,10 +15,6 @@ interface FooterColumn {
   links: string[]
 }
 
-// Reproduced directly from the current Figma content. The "Product" column's
-// items ("Background", "Improvement", "Features", "Category", "Prices") read
-// like placeholder copy rather than real nav labels — flagging this, worth
-// confirming before shipping (see chat).
 const columns: FooterColumn[] = [
   { title: 'Product', links: ['Background', 'Improvement', 'Features', 'Category', 'Prices'] },
   { title: 'Company', links: ['About Us', 'Careers', 'Press Kits', 'Partners', 'Contact'] },

@@ -33,5 +33,5 @@ export function mapOrderResponse(raw: Record<string, unknown>): OrderModel {
             quantity: item.quantity as number || 0,
             price: item.price as number || 0
         }))
-    }
+    }   
 }

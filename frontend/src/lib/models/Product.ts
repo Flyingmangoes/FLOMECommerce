@@ -6,9 +6,16 @@ export interface Product {
     productImage: string;
     productCategory: string;
     productRating: number;
-    productStock: number;
+    productTotalStock: number;
+    productExtra: ProductExtra[];
     createdAt: string;
     updatedAt: string;
+}
+
+export interface ProductExtra {
+    color: string;
+    size: string;
+    stock: number;
 }
 
 export function mapProductResponse(raw: Record<string, unknown>): Product {
@@ -20,7 +27,12 @@ export function mapProductResponse(raw: Record<string, unknown>): Product {
         productImage: raw.productImage as string || '',
         productCategory: raw.productCategory as string || '',
         productRating: raw.productRating as number || 0.0,
-        productStock: raw.productStock as number || 0,
+        productTotalStock: raw.productTotalStock as number || 0,
+        productExtra: (raw.productExtra as Record<string, unknown>[] || []).map(item => ({
+            color: item.Color as string || '',
+            size: item.Color as string || '',
+            stock: item.Stock as number || 0,
+        })),
         createdAt: raw.createdAt as string || '',
         updatedAt: raw.updatedAt as string || ''    
     }

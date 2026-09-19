@@ -1,31 +1,150 @@
 <script setup lang="ts">
-import ProductCard from './product_card.vue'
+import { computed, ref } from 'vue'
+import { Shirt, Layers, Footprints, ShoppingBag } from 'lucide-vue-next'
+import { animate } from 'animejs'
 import type { Product } from '@/lib/models/Product'
 
-defineProps<{
-  products: Product[]
-  emptyMessage?: string
+const props = defineProps<{
+  product: Product
 }>()
 
 const emit = defineEmits<{
-  selectProduct: [product: Product]
+  select: [product: Product]
 }>()
+
+const cardRef = ref<HTMLElement | null>(null)
+const imageRef = ref<HTMLElement | null>(null)
+
+// Placeholder icon per category, used until productImage is populated
+// with real photography.
+const categoryIcon = computed(() => {
+  const key = (props.product.productCategory ?? '').toLowerCase()
+  if (key.includes('foot')) return Footprints
+  if (key.includes('access')) return ShoppingBag
+  if (key.includes('top') || key.includes('outer')) return Shirt
+  return Layers
+})
+
+const isOutOfStock = computed(() => props.product.productTotalStock <= 0)
+
+const availableColorCount = computed(
+  () => props.product.productExtra?.filter((c) => c.color? null : c.stock > 0).length ?? 0
+)
+const availableSizeCount = computed(
+  () => props.product.productExtra?.filter((s) => s.size? null : s.stock > 0).length ?? 0
+)
+
+function handleMouseEnter() {
+  if (isOutOfStock.value) return
+  if (cardRef.value) {
+    animate(cardRef.value, {
+      translateY: -6,
+      duration: 250,
+      ease: 'outQuad',
+    })
+  }
+  if (imageRef.value) {
+    animate(imageRef.value, {
+      scale: 1.04,
+      duration: 300,
+      ease: 'outQuad',
+    })
+  }
+}
+
+function handleMouseLeave() {
+  if (cardRef.value) {
+    animate(cardRef.value, {
+      translateY: 0,
+      duration: 300,
+      ease: 'outQuad',
+    })
+  }
+  if (imageRef.value) {
+    animate(imageRef.value, {
+      scale: 1,
+      duration: 300,
+      ease: 'outQuad',
+    })
+  }
+}
+
+function handleClick() {
+  if (isOutOfStock.value) return
+  if (cardRef.value) {
+    // Quick press feedback before firing the select event
+    animate(cardRef.value, {
+      scale: [1, 0.97, 1],
+      duration: 260,
+      ease: 'outQuad',
+    })
+  }
+  emit('select', props.product)
+}
 </script>
 
 <template>
-  <div
-    v-if="products.length > 0"
-    class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-14 lg:gap-x-20 lg:gap-y-16"
+  <article
+    ref="cardRef"
+    class="w-full max-w-[350px]"
+    :class="isOutOfStock ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'"
+    role="button"
+    :tabindex="isOutOfStock ? -1 : 0"
+    @click="handleClick"
+    @keydown.enter="handleClick"
+    @mouseenter="handleMouseEnter"
+    @mouseleave="handleMouseLeave"
   >
-    <ProductCard
-      v-for="product in products"
-      :key="product.productID"
-      :product="product"
-      @select="emit('selectProduct', $event)"
-    />
-  </div>
+    <!-- Picture -->
+    <div
+      class="relative w-full aspect-[350/340] rounded-2xl bg-neutral-100 flex items-center justify-center overflow-hidden"
+    >
+      <img
+        v-if="product.productImage"
+        ref="imageRef"
+        :src="product.productImage"
+        :alt="product.productName"
+        class="w-full h-full object-cover"
+      />
+      <component
+        :is="categoryIcon"
+        v-else
+        :size="40"
+        :stroke-width="1.2"
+        class="text-neutral-400"
+      />
 
-  <div v-else class="w-full py-24 text-center text-neutral-500">
-    {{ emptyMessage ?? 'No products found.' }}
-  </div>
+      <span
+        v-if="isOutOfStock"
+        class="absolute top-3 left-3 rounded-full bg-black/80 px-3 py-1 text-[11px] font-semibold text-white"
+      >
+        Out of Stock
+      </span>
+    </div>
+
+    <!-- Description -->
+    <div class="w-full bg-white px-3.5 pt-1.5 pb-5">
+      <div class="flex items-start justify-between">
+        <span class="text-[11px] font-semibold tracking-wide text-neutral-500 uppercase">
+          {{ product.productCategory }}
+        </span>
+        <span class="text-lg font-extrabold text-black">${{ product.productPrice.toFixed(0) }}</span>
+      </div>
+      <h3 class="text-base font-bold leading-snug text-black mt-1 mb-1">
+        {{ product.productName }}
+      </h3>
+      <p
+        v-if="availableColorCount > 0 || availableSizeCount > 0"
+        class="text-xs text-neutral-500"
+      >
+        <template v-if="availableColorCount > 0">
+          {{ availableColorCount }} {{ availableColorCount === 1 ? 'Color' : 'Colors' }}
+        </template>
+        <template v-if="availableColorCount > 0 && availableSizeCount > 0"> &middot; </template>
+        <template v-if="availableSizeCount > 0">
+          {{ availableSizeCount }} {{ availableSizeCount === 1 ? 'Size' : 'Sizes' }}
+        </template>
+      </p>
+    </div>
+  </article>
 </template>

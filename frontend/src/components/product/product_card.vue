@@ -21,7 +21,14 @@ const categoryIcon = computed(() => {
   return Layers
 })
 
-const isOutOfStock = computed(() => props.product.productStock <= 0)
+const isOutOfStock = computed(() => props.product.productTotalStock <= 0)
+
+const availableColorCount = computed(
+  () => props.product.productExtra?.filter((c) => c.color? null : c.stock > 0).length ?? 0
+)
+const availableSizeCount = computed(
+  () => props.product.productExtra?.filter((s) => s.size? null : s.stock > 0).length ?? 0
+)
 
 function handleClick() {
   if (isOutOfStock.value) return
@@ -73,9 +80,21 @@ function handleClick() {
         </span>
         <span class="text-lg font-extrabold text-black">${{ product.productPrice.toFixed(0) }}</span>
       </div>
-      <h3 class="text-base font-bold leading-snug text-black mt-1">
+      <h3 class="text-base font-bold leading-snug text-black mt-1 mb-1">
         {{ product.productName }}
       </h3>
+      <p
+        v-if="availableColorCount > 0 || availableSizeCount > 0"
+        class="text-xs text-neutral-500"
+      >
+        <template v-if="availableColorCount > 0">
+          {{ availableColorCount }} {{ availableColorCount === 1 ? 'Color' : 'Colors' }}
+        </template>
+        <template v-if="availableColorCount > 0 && availableSizeCount > 0"> &middot; </template>
+        <template v-if="availableSizeCount > 0">
+          {{ availableSizeCount }} {{ availableSizeCount === 1 ? 'Size' : 'Sizes' }}
+        </template>
+      </p>
     </div>
   </article>
 </template>

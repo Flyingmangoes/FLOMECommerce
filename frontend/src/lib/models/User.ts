@@ -3,7 +3,6 @@ export interface UserModel {
   firstName: string;
   lastName: string;
   username: string;
-  password: string;
   email: string;
   phoneNumber: string;
   locale: string;
@@ -26,7 +25,6 @@ export function mapUserResponse(raw: Record<string, unknown>): UserModel {
     firstName: raw.firstName as string || '',
     lastName: raw.lastName as string || '',
     username: raw.username as string || '',
-    password: "",
     email: raw.email as string || '',
     phoneNumber: raw.phoneNumber as string || '',
     locale: raw.locale as string || '',
