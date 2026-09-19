@@ -4,7 +4,7 @@ import (
 	product_types "backend/src/controllers/product/types"
 	terror "backend/src/error"
 	repo_type "backend/src/repository/types"
-	logger_system "backend/src/utils/LoggerSystem"
+	logger_system "backend/src/utils/logger_service"
 	"net/http"
 
 	"github.com/gin-gonic/gin"

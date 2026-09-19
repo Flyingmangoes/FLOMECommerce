@@ -4,7 +4,7 @@ import (
 	order_types "backend/src/controllers/order/types"
 	terror "backend/src/error"
 	order_services "backend/src/services/order"
-	logger_system "backend/src/utils/LoggerSystem"
+	logger_system "backend/src/utils/logger_service"
 	"net/http"
 
 	"github.com/gin-gonic/gin"

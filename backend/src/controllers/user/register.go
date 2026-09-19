@@ -6,9 +6,9 @@ import (
 	repo "backend/src/repository"
 	repo_type "backend/src/repository/types"
 	auth_service "backend/src/services/auth"
-	"backend/src/utils"
-	jwt_service "backend/src/utils/JWT"
-	logger_system "backend/src/utils/LoggerSystem"
+	utils "backend/src/utils/data_type"
+	jwt_service "backend/src/utils/jwt_service"
+	logger_system "backend/src/utils/logger_service"
 	"errors"
 	"net/http"
 
@@ -36,18 +36,18 @@ func (uc *UserManager) RegisterUser() gin.HandlerFunc {
 
 		params := &repo_type.UserProfileParams{
 			BaseParams: repo_type.BaseParams{
-				Email: &req.Email,
-				Username: &req.Username,
+				Email:       &req.Email,
+				Username:    &req.Username,
 				PhoneNumber: &req.PhoneNumber,
 			},
-			FirstName: &req.FirstName,
-			LastName: &req.LastName,
-			UserType: utils.PINT(repo.UserUnverified),
+			FirstName:      &req.FirstName,
+			LastName:       &req.LastName,
+			UserType:       utils.PINT(repo.UserUnverified),
 			HashedPassword: utils.PSTRING(string(hashedpass)),
-		
-			IsAgree: &req.IsAgreed,
-			EmailConsent: &req.EmailConsent,
-			SmsConsent: &req.SmsConsent,
+
+			IsAgree:       &req.IsAgreed,
+			EmailConsent:  &req.EmailConsent,
+			SmsConsent:    &req.SmsConsent,
 			ConsentSource: &req.ConsentSource,
 		}
 
@@ -82,16 +82,16 @@ func (uc *UserManager) RegisterUser() gin.HandlerFunc {
 		if err != nil {
 			logger_system.Log.Error("Error", zap.Error(err))
 			c.Error(terror.ErrInternal("Failed to generate refresh token"))
-			return 
+			return
 		}
 
 		if err := uc.Tokens.SaveToken(c.Request.Context(), user.UserID, refreshToken, expiresAt); err != nil {
- 	   		logger_system.Log.Error("Error", zap.Error(err))
+			logger_system.Log.Error("Error", zap.Error(err))
 			c.Error(terror.ErrInternal("Failed to save session"))
-    		return
+			return
 		}
 
-		c.Header("Authorization", "Bearer" + accessToken)
+		c.Header("Authorization", "Bearer"+accessToken)
 		c.Header("X-Refresh-Token", refreshToken)
 
 		logger_system.Log.Info("Register process completed")
@@ -102,7 +102,7 @@ func (uc *UserManager) RegisterUser() gin.HandlerFunc {
 			},
 
 			"token": gin.H{
-				"access_token": accessToken,
+				"access_token":  accessToken,
 				"refresh_token": refreshToken,
 			},
 		})

@@ -5,8 +5,8 @@ import (
 	terror "backend/src/error"
 	"backend/src/models"
 	repo_type "backend/src/repository/types"
-	logger_system "backend/src/utils/LoggerSystem"
-	utils "backend/src/utils/data_type"
+	logger_system "backend/src/utils/logger_service"
+	"backend/src/utils/pagination"
 	"encoding/json"
 	"net/http"
 	"time"
@@ -24,10 +24,10 @@ func (pm *ProductManager) SearchProduct() gin.HandlerFunc {
 			return
 		}
 
-		filter := utils.PagFilter{Limit: req.Limit}
+		filter := pagination.PagFilter{Limit: req.Limit}
 
 		if req.Cursor != nil {
-			cursor, err := utils.DecodeCursor(*req.Cursor)
+			cursor, err := pagination.DecodeCursor(*req.Cursor)
 			if err != nil {
 				c.Error(terror.ErrBadRequest("Invalid cursor"))
 				return
@@ -52,7 +52,7 @@ func (pm *ProductManager) SearchProduct() gin.HandlerFunc {
 		cached, err := pm.Cache.Get(c.Request.Context(), cacheKey)
 		logger_system.Log.Info("cached", zap.Any("cached value", cached))
 		if err == nil && cached != nil {
-			var page utils.Page[models.Product]
+			var page pagination.Page[models.Product]
 			if err := json.Unmarshal(cached, &page); err == nil {
 				logger_system.Log.Info("build", zap.Any("page", page))
 				c.JSON(http.StatusOK, page)
@@ -67,7 +67,7 @@ func (pm *ProductManager) SearchProduct() gin.HandlerFunc {
 			return
 		}
 
-		page, err := utils.Build(products, filter.Limit, func(p models.Product) (time.Time, string) {
+		page, err := pagination.Build(products, filter.Limit, func(p models.Product) (time.Time, string) {
 			return p.CreatedAt, p.ProductID
 		})
 		if err != nil {

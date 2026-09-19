@@ -1,7 +1,7 @@
 package database
 
 import (
-	logger_system "backend/src/utils/LoggerSystem"
+	logger_system "backend/src/utils/logger_service"
 	"database/sql"
 
 	_ "github.com/lib/pq"

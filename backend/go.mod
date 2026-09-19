@@ -1,6 +1,6 @@
 module backend
 
-go 1.25.7
+go 1.26
 
 require (
 	github.com/gin-gonic/gin v1.12.0
@@ -8,7 +8,8 @@ require (
 	github.com/lib/pq v1.11.2
 	github.com/redis/go-redis/v9 v9.20.1
 	github.com/sendgrid/sendgrid-go v3.16.1+incompatible
-	github.com/stripe/stripe-go/v85 v85.1.0
+	github.com/stripe/stripe-go v70.15.0+incompatible
+	github.com/stripe/stripe-go/v82 v82.5.1
 	github.com/subosito/gotenv v1.6.0
 	go.uber.org/zap v1.27.1
 	golang.org/x/crypto v0.48.0

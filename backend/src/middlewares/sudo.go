@@ -2,7 +2,7 @@ package middlewares
 
 import (
 	terror "backend/src/error"
-	jwt_service "backend/src/utils/JWT"
+	jwt_service "backend/src/utils/jwt_service"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -21,7 +21,7 @@ func SudoMiddleware(secret string) gin.HandlerFunc {
 		if len(parts) != 2 || parts[0] != "Sudo" {
 			c.Error(terror.ErrUnauthorized("Invalid authorization format"))
 			c.Abort()
-			return 
+			return
 		}
 
 		_, err := jwt_service.VerifySudoToken(parts[1], []byte(secret))

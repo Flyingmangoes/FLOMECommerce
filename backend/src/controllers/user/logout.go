@@ -2,17 +2,17 @@ package user
 
 import (
 	terror "backend/src/error"
-	logger_system "backend/src/utils/LoggerSystem"
+	logger_system "backend/src/utils/logger_service"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
-func (uc *UserManager)LogoutUser() gin.HandlerFunc {
+func (uc *UserManager) LogoutUser() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var id string;
-		var err error;
+		var id string
+		var err error
 
 		id = c.GetString("userId")
 
@@ -25,5 +25,5 @@ func (uc *UserManager)LogoutUser() gin.HandlerFunc {
 
 		logger_system.Log.Info("Logout process completed")
 		c.JSON(http.StatusOK, gin.H{"response": "success"})
-	}	
+	}
 }

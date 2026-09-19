@@ -4,7 +4,7 @@ import (
 	product_types "backend/src/controllers/product/types"
 	terror "backend/src/error"
 	repo_type "backend/src/repository/types"
-	logger_system "backend/src/utils/LoggerSystem"
+	logger_system "backend/src/utils/logger_service"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -22,11 +22,11 @@ func (pm *ProductManager) RegisterProduct() gin.HandlerFunc {
 		}
 
 		params := &repo_type.ProductProfileParams{
-			Name: &req.ProductName,
-			ImageUrl: &req.ImageUrl,
-			Price: &req.Price,
-			Desc: &req.Desc,
-			Category: &req.Category,
+			Name:         &req.ProductName,
+			ImageUrl:     &req.ImageUrl,
+			Price:        &req.Price,
+			Desc:         &req.Desc,
+			Category:     &req.Category,
 			Availability: &req.Availability,
 		}
 
@@ -39,7 +39,7 @@ func (pm *ProductManager) RegisterProduct() gin.HandlerFunc {
 
 		c.JSON(http.StatusCreated, gin.H{
 			"detail": gin.H{
-				"info": "product created",
+				"info":    "product created",
 				"product": product_types.CreateProductResponse(product),
 			},
 		})

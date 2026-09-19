@@ -8,7 +8,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/stripe/stripe-go/v85"
+	"github.com/stripe/stripe-go/v82"
 	"go.uber.org/zap"
 )
 

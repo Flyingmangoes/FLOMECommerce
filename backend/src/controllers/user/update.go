@@ -4,16 +4,16 @@ import (
 	user_type "backend/src/controllers/user/types"
 	terror "backend/src/error"
 	repo_type "backend/src/repository/types"
-	"backend/src/services/auth"
-	"backend/src/utils"
-	logger_system "backend/src/utils/LoggerSystem"
+	auth_service "backend/src/services/auth"
+	utils "backend/src/utils/data_type"
+	logger_system "backend/src/utils/logger_service"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
-func (uc *UserManager)UpdateUser() gin.HandlerFunc {
+func (uc *UserManager) UpdateUser() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req user_type.UpdateUserRequest
 		if err := c.ShouldBindBodyWithJSON(&req); err != nil {
@@ -37,18 +37,18 @@ func (uc *UserManager)UpdateUser() gin.HandlerFunc {
 		userId := c.GetString("userId")
 		params := &repo_type.UserProfileParams{
 			BaseParams: repo_type.BaseParams{
-				UserId: &userId,
-				Username: req.NewUsername,
+				UserId:      &userId,
+				Username:    req.NewUsername,
 				PhoneNumber: req.NewPhonenumber,
 			},
-			FirstName: req.NewFirstname,
-			LastName: req.NewLastname,
-			Locale: req.NewLocale,
-			Country: req.NewCountry,
-			Address: req.NewAddress,
+			FirstName:         req.NewFirstname,
+			LastName:          req.NewLastname,
+			Locale:            req.NewLocale,
+			Country:           req.NewCountry,
+			Address:           req.NewAddress,
 			NewPasswordHashed: newPassword,
-			EmailConsent: req.NewEmailConsent,
-			SmsConsent: req.NewSmsConsent,
+			EmailConsent:      req.NewEmailConsent,
+			SmsConsent:        req.NewSmsConsent,
 		}
 
 		user, err := uc.Users.Update(c.Request.Context(), params)
@@ -61,6 +61,6 @@ func (uc *UserManager)UpdateUser() gin.HandlerFunc {
 		logger_system.Log.Info("Update process completed")
 		c.JSON(http.StatusOK, gin.H{
 			"detail": user_type.CreateUserResponse(user),
-		}) 
+		})
 	}
 }

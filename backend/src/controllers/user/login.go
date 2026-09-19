@@ -5,9 +5,9 @@ import (
 	terror "backend/src/error"
 	"backend/src/middlewares"
 	repo_type "backend/src/repository/types"
-	"backend/src/services/auth"
-	jwt_service "backend/src/utils/JWT"
-	logger_system "backend/src/utils/LoggerSystem"
+	auth_service "backend/src/services/auth"
+	jwt_service "backend/src/utils/jwt_service"
+	logger_system "backend/src/utils/logger_service"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -15,12 +15,12 @@ import (
 )
 
 type LoginRequest struct {
-	Email		 string `json:"email"    binding:"omitempty,email"`
-	Username 	 string `json:"username" binding:"omitempty"`
-	Password 	 string	`json:"password" binding:"required,min=8"`
+	Email    string `json:"email"    binding:"omitempty,email"`
+	Username string `json:"username" binding:"omitempty"`
+	Password string `json:"password" binding:"required,min=8"`
 }
 
-func (uc *UserManager)LoginUser(prison *middlewares.LoginPrison) gin.HandlerFunc {
+func (uc *UserManager) LoginUser(prison *middlewares.LoginPrison) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		key := c.ClientIP()
 
@@ -34,7 +34,7 @@ func (uc *UserManager)LoginUser(prison *middlewares.LoginPrison) gin.HandlerFunc
 		user, err := uc.Users.Login(c.Request.Context(), &repo_type.UserProfileParams{
 			BaseParams: repo_type.BaseParams{
 				Username: &req.Username,
-				Email: &req.Email,
+				Email:    &req.Email,
 			},
 		})
 		if err != nil {
@@ -46,18 +46,18 @@ func (uc *UserManager)LoginUser(prison *middlewares.LoginPrison) gin.HandlerFunc
 		locked, remaining := prison.IsLocked(key)
 		if locked {
 			c.JSON(http.StatusTooManyRequests, gin.H{
-                "error":      "too many failed attempts",
-                "retry_after": remaining.String(),
-            })
-            return
+				"error":       "too many failed attempts",
+				"retry_after": remaining.String(),
+			})
+			return
 		}
 
 		if err := auth_service.ValidatePassword(user.PasswordHash, req.Password); err != nil {
 			logger_system.Log.Error("Error", zap.Error(err))
 			prison.RecordFailure(key)
-            c.Error(terror.ErrUnauthorized("Invalid credentials"))
-            return
-        }
+			c.Error(terror.ErrUnauthorized("Invalid credentials"))
+			return
+		}
 
 		prison.Release(key)
 
@@ -72,26 +72,26 @@ func (uc *UserManager)LoginUser(prison *middlewares.LoginPrison) gin.HandlerFunc
 		if err != nil {
 			logger_system.Log.Error("Error", zap.Error(err))
 			c.Error(terror.ErrInternal("Failed to generate refresh token"))
-			return 
+			return
 		}
 
 		if err := uc.Tokens.SaveToken(c.Request.Context(), user.UserID, refreshToken, expiresAt); err != nil {
 			logger_system.Log.Error("Error", zap.Error(err))
 			c.Error(terror.ErrInternal("Failed to save session"))
-    		return
+			return
 		}
 
-		c.Header("Authorization", "Bearer" + accessToken)
+		c.Header("Authorization", "Bearer"+accessToken)
 		c.Header("X-Refresh-Token", refreshToken)
 
 		logger_system.Log.Info("Login process completed")
 		c.JSON(http.StatusOK, gin.H{
 			"response": "login success",
-			"detail": user_type.CreateUserResponse(user),
+			"detail":   user_type.CreateUserResponse(user),
 
 			// for postman remove after make frontend
 			"token": gin.H{
-				"access_token": accessToken,
+				"access_token":  accessToken,
 				"refresh_token": refreshToken,
 			},
 		})

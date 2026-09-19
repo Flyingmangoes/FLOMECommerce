@@ -3,14 +3,14 @@ package user
 import (
 	terror "backend/src/error"
 	repo_type "backend/src/repository/types"
-	logger_system "backend/src/utils/LoggerSystem"
+	logger_system "backend/src/utils/logger_service"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
-func (uc *UserManager)DeleteUser() gin.HandlerFunc {
+func (uc *UserManager) DeleteUser() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		requester_id := c.GetString("userId")
 		if requester_id == "" {
@@ -18,7 +18,7 @@ func (uc *UserManager)DeleteUser() gin.HandlerFunc {
 			c.Error(terror.ErrUnauthorized("Invalid user"))
 			return
 		}
-		
+
 		params := &repo_type.UserProfileParams{
 			BaseParams: repo_type.BaseParams{
 				UserId: &requester_id,

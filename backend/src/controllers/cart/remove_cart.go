@@ -4,7 +4,7 @@ import (
 	cart_types "backend/src/controllers/cart/types"
 	terror "backend/src/error"
 	repo_type "backend/src/repository/types"
-	logger_system "backend/src/utils/LoggerSystem"
+	logger_system "backend/src/utils/logger_service"
 	"database/sql"
 	"net/http"
 
@@ -13,7 +13,7 @@ import (
 )
 
 func (cm *CartManager) RemoveCartItem() gin.HandlerFunc {
-	return func (c *gin.Context) {
+	return func(c *gin.Context) {
 		var req cart_types.RemoveItemRequest
 
 		if err := c.ShouldBindBodyWithJSON(&req); err != nil {
@@ -37,13 +37,13 @@ func (cm *CartManager) RemoveCartItem() gin.HandlerFunc {
 
 		err = cm.Carts.RemoveItems(c.Request.Context(), &repo_type.CartProfileParams{
 			CartItemsID: &req.CartItemID,
-			CartID: &cart.ID,
+			CartID:      &cart.ID,
 		})
 
 		if err != nil {
 			logger_system.Log.Error("Failed to remove item", zap.Error(err))
 			c.Error(terror.ErrInternal("Failed to remove item"))
-			return 
+			return
 		}
 
 		c.JSON(http.StatusOK, gin.H{"response": "OK"})
@@ -51,18 +51,18 @@ func (cm *CartManager) RemoveCartItem() gin.HandlerFunc {
 }
 
 func (cm *CartManager) ClearCart() gin.HandlerFunc {
-	return func (c *gin.Context) {
+	return func(c *gin.Context) {
 		requester_id := c.GetString("userId")
 
 		cart, err := cm.Carts.Get(c.Request.Context(), &repo_type.CartProfileParams{
 			BaseParams: repo_type.BaseParams{UserId: &requester_id},
 		})
 		err = cm.Carts.ClearItems(c.Request.Context(), &repo_type.CartProfileParams{
-			BaseParams: repo_type.BaseParams{UserId:  &requester_id},
-			CartID: &cart.ID,
+			BaseParams: repo_type.BaseParams{UserId: &requester_id},
+			CartID:     &cart.ID,
 		})
 		if err != nil {
-			if err == sql.ErrNoRows{
+			if err == sql.ErrNoRows {
 				logger_system.Log.Error("Rows not found", zap.Error(err))
 				c.Error(terror.ErrNotFound("Cart not found"))
 				return
@@ -73,6 +73,6 @@ func (cm *CartManager) ClearCart() gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{ "response": "OK"})
+		c.JSON(http.StatusOK, gin.H{"response": "OK"})
 	}
 }

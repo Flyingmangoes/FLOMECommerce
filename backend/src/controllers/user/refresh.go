@@ -2,16 +2,16 @@ package user
 
 import (
 	terror "backend/src/error"
-	jwt_service "backend/src/utils/JWT"
-	logger_system "backend/src/utils/LoggerSystem"
+	jwt_service "backend/src/utils/jwt_service"
+	logger_system "backend/src/utils/logger_service"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
-func (uc *UserManager)Refresh() gin.HandlerFunc {
-	return  func(c *gin.Context) {
+func (uc *UserManager) Refresh() gin.HandlerFunc {
+	return func(c *gin.Context) {
 		var req struct {
 			RefreshToken string `json:"refresh_token" binding:"required"`
 		}
@@ -62,15 +62,15 @@ func (uc *UserManager)Refresh() gin.HandlerFunc {
 			return
 		}
 
-		c.Header("Authorization", "Bearer" + newAccess)
+		c.Header("Authorization", "Bearer"+newAccess)
 		c.Header("X-Refresh-Token", newRefresh)
 
 		logger_system.Log.Info("Refresh process completed")
 		c.JSON(http.StatusOK, gin.H{
 			"token": gin.H{
-				"access_token": newAccess,
+				"access_token":  newAccess,
 				"refresh_token": newRefresh,
 			},
 		})
-	}	
+	}
 }

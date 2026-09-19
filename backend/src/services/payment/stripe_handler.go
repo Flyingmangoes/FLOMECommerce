@@ -10,7 +10,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/stripe/stripe-go/v85"
+	"github.com/stripe/stripe-go"
 	"go.uber.org/zap"
 )
 

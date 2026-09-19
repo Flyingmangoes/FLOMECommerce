@@ -3,7 +3,7 @@ package cart
 import (
 	terror "backend/src/error"
 	repo_type "backend/src/repository/types"
-	logger_system "backend/src/utils/LoggerSystem"
+	logger_system "backend/src/utils/logger_service"
 	"database/sql"
 	"net/http"
 
@@ -12,7 +12,7 @@ import (
 )
 
 func (cm *CartManager) GetCarts() gin.HandlerFunc {
-	return func (c *gin.Context) {
+	return func(c *gin.Context) {
 		requester_id := c.GetString("userId")
 		cart, err := cm.Carts.Get(c.Request.Context(), &repo_type.CartProfileParams{
 			BaseParams: repo_type.BaseParams{
@@ -31,7 +31,7 @@ func (cm *CartManager) GetCarts() gin.HandlerFunc {
 		})
 		if err != nil {
 			if err == sql.ErrNoRows {
-				c.Error(terror.ErrNotFound("Cart items not found"))	
+				c.Error(terror.ErrNotFound("Cart items not found"))
 				return
 			}
 			logger_system.Log.Error("Error in retrieving cart items", zap.Error(err))
@@ -41,7 +41,7 @@ func (cm *CartManager) GetCarts() gin.HandlerFunc {
 
 		c.JSON(http.StatusOK, gin.H{
 			"detail": gin.H{"cart": cart,
-				"cart_items":items,
+				"cart_items": items,
 			},
 		})
 	}
