@@ -23,12 +23,15 @@ const categoryIcon = computed(() => {
 
 const isOutOfStock = computed(() => props.product.productTotalStock <= 0)
 
-const availableColorCount = computed(
-  () => props.product.productExtra?.filter((c) => c.color? null : c.stock > 0).length ?? 0
-)
-const availableSizeCount = computed(
-  () => props.product.productExtra?.filter((s) => s.size? null : s.stock > 0).length ?? 0
-)
+const availableColorCount = computed(() => {
+  const inStock = props.product.productExtra?.filter((e) => e.stock > 0) ?? []
+  return new Set(inStock.map((e) => e.color)).size
+})
+
+const availableSizeCount = computed(() => {
+  const inStock = props.product.productExtra?.filter((e) => e.stock > 0) ?? []
+  return new Set(inStock.map((e) => e.size)).size
+})
 
 function handleClick() {
   if (isOutOfStock.value) return
